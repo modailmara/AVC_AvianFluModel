@@ -248,6 +248,21 @@ class FloatingStaff(PersonAgent):
         return neighbourhood
 
 
+# class Farmer(PersonAgent):
+#     """
+#     Farmers stay on the farm. One per farm.
+#     """
+#
+#     def get_hospital_neighbour_cells(self):
+#         """
+#         This type of agent can move within the farm services area in the hospital
+#         :return: Collection of Farm Services cells next to this agent
+#         :rtype: CellCollection
+#         """
+#         return [self.cell]
+
+
+# --------------------------------------------------------
 class LocationAgent(FixedAgent):
     """
     An agent that primarily represents a location

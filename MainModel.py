@@ -1,17 +1,21 @@
+import sys
+import inspect
+
 import mesa
 import math
 from mesa.datacollection import DataCollector
 from mesa.experimental.cell_space import OrthogonalVonNeumannGrid
 
-from Agents import HospitalAgent, DairyFarmAgent, PersonAgent, FarmServicesVet, FarmServicesTechnician, LargeAnimalVet, \
-    SmallAnimalVet, FloatingStaff
+import Agents
+from Agents import HospitalAgent, DairyFarmAgent, PersonAgent, FarmServicesVet, FarmServicesTechnician, \
+    LargeAnimalVet, SmallAnimalVet, FloatingStaff
 from constants import Location, VET_STEPS_AT_FARM, DiseaseState, HospitalDepartment, NUM_FARM_SERVICES_VETS, \
     NUM_FARM_SERVICES_TECHS, NUM_FLOATING_STAFF, NUM_LARGE_ANIMAL_VETS, NUM_SMALL_ANIMAL_VETS, \
     HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECT_CATTLE_PROB, CATTLE_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB, \
     BIRD_INFECT_COW_PROB
 
 
-def number_state(model, disease_state):
+def number_state(model, disease_state, agent_types=None):
     """
     Get the number of person agents of a type in a model that are in a particular disease state.
 
@@ -19,25 +23,37 @@ def number_state(model, disease_state):
     :type model: MainModel object
     :param disease_state: State of disease to match
     :type disease_state: DiseaseState enum value
+    :param agent_types: List of person agent types to count. Defaults to all person agents
+    :type agent_types: list of classes
+
     :return: Count of how many agents of that type are in that disease state
     :rtype: int
     """
+    if agent_types is None:
+        person_classes = [cls[1] for cls in model.person_agent_types]
+        # print('classes: "{}"'.format(person_classes))
+    else:
+        person_classes = agent_types
+
     num = 0
-    for agent_class in [FarmServicesVet, FarmServicesTechnician, FloatingStaff, LargeAnimalVet, SmallAnimalVet]:
+    for agent_class in person_classes:
         num += len(model.agents_by_type[agent_class].select(lambda agent: agent.disease_state == disease_state))
     return num
 
 
-def number_people(model):
+def number_people(model, agent_type=PersonAgent):
     """
     Get the number of person agents in the model
 
     :param model: The model to get the information from
     :type model: MainModel object
+    :param agent_type: The type of agent to count. Default=PersonAgent
+    :type agent_type: class
+
     :return: Count of how many agents of that ty
     :rtype: int
     """
-    return len([agent for agent in model.agents if isinstance(agent, PersonAgent)])
+    return len([agent for agent in model.agents if isinstance(agent, agent_type)])
 
 
 def proportion_vet_infected(model):
@@ -67,6 +83,10 @@ class MainModel(mesa.Model):
         super().__init__(seed=seed)
         self.simulator = simulator
         self.simulator.setup(self)
+
+        # store a list of all the Person agent types - seems this gets used a bit
+        self.person_agent_types = [cls for cls in inspect.getmembers(Agents, inspect.isclass)
+                                   if issubclass(cls[1], PersonAgent) and cls[1] != PersonAgent]
 
         self.width = width
         self.height = height
@@ -143,15 +163,33 @@ class MainModel(mesa.Model):
 
         # add collecters for the people infection trackers
         model_reporters = {
-                "Infected": proportion_vet_infected,
-                "Susceptible": number_vet_susceptible,
-                "Recovered": number_vet_recovered,
+            "Infected": proportion_vet_infected,
+            "Susceptible": number_vet_susceptible,
+            "Recovered": number_vet_recovered,
+            # FarmServicesVet, FarmServicesTechnician, LargeAnimalVet, SmallAnimalVet, FloatingStaff
+            "FarmServicesVet":
+                lambda model: number_state(model, DiseaseState.INFECTED, [FarmServicesVet]) /
+                              number_people(model, FarmServicesVet),
+            "FarmServicesTechnician":
+                lambda model: number_state(model, DiseaseState.INFECTED, [FarmServicesTechnician]) /
+                              number_people(model, FarmServicesTechnician),
+            "LargeAnimalVet":
+                lambda model: number_state(model, DiseaseState.INFECTED, [LargeAnimalVet]) /
+                              number_people(model, LargeAnimalVet),
+            "SmallAnimalVet":
+                lambda model: number_state(model, DiseaseState.INFECTED, [SmallAnimalVet]) /
+                              number_people(model, SmallAnimalVet),
+            "FloatingStaff":
+                lambda model: number_state(model, DiseaseState.INFECTED, [FloatingStaff]) /
+                              number_people(model, FloatingStaff),
+
         }
-        # add in a model reporter for each farm (can't work out how to visualise agent reporters)
+        # add in a model reporter for each farm
+        agent_reporters = {DairyFarmAgent: {'Infection': 'infection_level'}}
 
         self.datacollector = mesa.DataCollector(
             model_reporters=model_reporters,
-            agenttype_reporters={DairyFarmAgent: {'Infection': 'infection_level'}}
+            agenttype_reporters=agent_reporters,
         )
         self.datacollector.collect(self)
 

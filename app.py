@@ -125,29 +125,91 @@ def post_process_space(ax):
     ax.set_xticks([])
     ax.set_yticks([])
 
-
 space_component = make_space_component(
     vet_location_portrayal, draw_grid=False, post_process=post_process_space
 )
 
 
 def post_process_vet_staff_lineplot(ax):
-    ax.set_title("Infections in Vet Hospital Staff")
+    # ax.set_title("Infections in Vet Hospital Staff")
     ax.set_ylim(ymin=-0.05, ymax=1.05)
     ax.set_ylabel("Proportion Population")
-    ax.legend(bbox_to_anchor=(1.05, 1.0), loc="upper left")
+    # ax.legend(bbox_to_anchor=(1.05, 1.0), loc="upper left")
 
-
-vet_staff_plot = make_plot_component(
+person_infection_plot = make_plot_component(
     {"Infected": "xkcd:red", "Susceptible": "xkcd:green", "Recovered": "xkcd:black"},
     post_process=post_process_vet_staff_lineplot,
 )
 
 
-# dairy_farm_lineplot = make_plot_component(
-#     {"f1": 'xkcd:blood'},
-#     post_process=post_process_dairy_farm_lineplot,
-# )
+def post_process_fs_vet_lineplot(ax):
+    ax.set_title("Farm Services Vets and Students")
+    post_process_vet_staff_lineplot(ax)
+
+
+fs_vet_plot = make_plot_component(
+    {"FarmServicesVet": "xkcd:red"}, post_process=post_process_fs_vet_lineplot,
+)
+
+
+def post_process_fs_tech_lineplot(ax):
+    ax.set_title("Farm Services Technician")
+    post_process_vet_staff_lineplot(ax)
+
+fs_tech_plot = make_plot_component(
+    {"FarmServicesTechnician": "xkcd:red"}, post_process=post_process_fs_tech_lineplot,
+)
+
+
+def post_process_large_vet_lineplot(ax):
+    ax.set_title("Large Animal Vet")
+    post_process_vet_staff_lineplot(ax)
+
+large_vet_plot = make_plot_component(
+    {"LargeAnimalVet": "xkcd:red"}, post_process=post_process_large_vet_lineplot,
+)
+
+
+def post_process_small_vet_lineplot(ax):
+    ax.set_title("Small Animal Vet")
+    post_process_vet_staff_lineplot(ax)
+
+small_vet_plot = make_plot_component(
+    {"SmallAnimalVet": "xkcd:red"}, post_process=post_process_small_vet_lineplot,
+)
+
+
+def post_process_floating_staff_lineplot(ax):
+    ax.set_title("Floating Staff")
+    post_process_vet_staff_lineplot(ax)
+
+float_staff_plot = make_plot_component(
+    {"FloatingStaff": "xkcd:red"}, post_process=post_process_floating_staff_lineplot,
+)
+
+
+@solara.component
+def people_infection_plots(model):
+    """
+    Creates a plot for each type of Person Agent, showing the infection levels on that type.
+    """
+    fig = Figure(figsize=(30, 5))
+    axs = fig.subplots(ncols=len(model.person_agent_types), sharex=True, sharey=True)
+
+    # get the infection values to chart
+    update_counter.get()  # update
+
+    vars_df = model.datacollector.get_model_vars_dataframe()
+    print(vars_df.head())
+
+    axs[0].set_ylim(ymin=0, ymax=1)
+    for ax in axs:
+        ax.set_ylabel("infected / total")
+        ax.set_xlabel('Step')
+
+    solara.FigureMatplotlib(fig)
+
+
 @solara.component
 def dairy_farm_lineplot(model):
     """
@@ -177,11 +239,12 @@ def dairy_farm_lineplot(model):
 
 
 simulator = ABMSimulator()
-model = MainModel(simulator=simulator)
+main_model = MainModel(simulator=simulator)
 
 page = SolaraViz(
-    model,
-    components=[space_component, vet_staff_plot, dairy_farm_lineplot],
+    main_model,
+    # dairy_farm_lineplot
+    components=[space_component, fs_vet_plot, fs_tech_plot, large_vet_plot, small_vet_plot, float_staff_plot],
     model_params=model_params,
     name="Hub and Spoke",
     simulator=simulator,
