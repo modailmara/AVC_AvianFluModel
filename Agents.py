@@ -1,9 +1,11 @@
 from mesa.experimental.cell_space import CellAgent, FixedAgent, CellCollection
 
+from SIRModel import SIRModel
+
 from constants import CHANCE_FARM_NEEDS_VET, FarmVetVisitState, Location, \
     DiseaseState, HUMAN_INFECTED_STEPS, HUMAN_RECOVERED_STEPS, HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECT_CATTLE_PROB, \
     CATTLE_INFECT_HUMAN_PROB, CATTLE_INFECT_CATTLE_PROB, CATTLE_RECOVERY_PROB, HospitalDepartment, \
-    BIRD_INFECT_COW_PROB, CATTLE_RECOVERY_END_PROB
+    BIRD_INFECT_COW_PROB, CATTLE_RECOVERY_END_PROB, DEFAULT_DAIRY_HERD_SIZE
 
 
 class PersonAgent(CellAgent):
@@ -90,9 +92,8 @@ class PersonAgent(CellAgent):
                     person.infect()
             if self.location == Location.FARM:
                 # try to infect a cow in the farm's herd
-                if self.farm.num_susceptible_cattle > 0:
-                    if self.random.random() < self.human_infect_cattle_prob:
-                        self.farm.infect_cattle(1)
+                if self.random.random() < self.human_infect_cattle_prob:
+                    self.farm.cattle_model.infect_susceptible(1)
 
         # advance the agent's own disease
         self.progress_disease()
@@ -304,15 +305,15 @@ class DairyFarmAgent(LocationAgent):
                  ):
         super().__init__(model, cell)
 
+        # SIR model for the cattle herd
+        self.cattle_model = SIRModel(population=susceptible_cattle,
+                                     infection_probability=cattle_infect_cattle_prob,
+                                     recovery_rate=CATTLE_RECOVERY_PROB,
+                                     recovered_expire_rate=CATTLE_RECOVERY_END_PROB)
+
         # infection parameters
         self.cattle_infect_human_prob = cattle_infect_human_prob
-        self.cattle_infect_cattle_prob = cattle_infect_cattle_prob
         self.bird_infect_cattle_prob = bird_infect_cattle_prob
-
-        # counters for SIR system dynamics model
-        self.num_susceptible_cattle = susceptible_cattle
-        self.num_infected_cattle = infected_cattle
-        self.num_recovered_cattle = 0
 
         # sometimes the vet visits
         self.vet_state = FarmVetVisitState.OK
@@ -325,7 +326,7 @@ class DairyFarmAgent(LocationAgent):
         :return: Total number of cattle
         :rtype: int
         """
-        return self.num_susceptible_cattle + self.num_infected_cattle + self.num_recovered_cattle
+        return self.cattle_model.population
 
     @property
     def infection_level(self):
@@ -334,30 +335,11 @@ class DairyFarmAgent(LocationAgent):
         :return: #infected / #total
         :rtype: float
         """
-        return self.num_infected_cattle / self.herd_count
-
-    def progress_sd_model(self):
-        """
-
-        """
-        new_infected = sum([self.random.random() < CATTLE_INFECT_CATTLE_PROB for _ in range(self.num_infected_cattle)])
-        new_recovered = sum([self.random.random() < CATTLE_RECOVERY_PROB for _ in range(self.num_infected_cattle)])
-        recovery_ended = sum([self.random.random() < CATTLE_RECOVERY_END_PROB
-                              for _ in range(self.num_recovered_cattle)])
-
-        # update susceptible: remove newly infected
-        self.num_susceptible_cattle = max(0, self.num_susceptible_cattle - new_infected)
-        self.num_susceptible_cattle += recovery_ended
-        # update infected: add newly infected, remove newly recovered
-        self.num_infected_cattle += new_infected
-        self.num_infected_cattle -= new_recovered
-        # update recovered: add newly recovered
-        self.num_recovered_cattle += new_recovered
-        self.num_recovered_cattle -= recovery_ended
+        return self.cattle_model.infected / self.herd_count
 
     def step(self):
         # progress the system dynamics model on the farm
-        self.progress_sd_model()
+        self.cattle_model.progress_infection()
 
         self.try_infect_vet()
 
@@ -368,29 +350,19 @@ class DairyFarmAgent(LocationAgent):
             self.model.request_vet_visit(self)
 
         # see if any cows get infected from wild birds
-        num_infect = sum([self.random.random() < self.bird_infect_cattle_prob
-                          for _ in range(self.num_susceptible_cattle)])
-        self.infect_cattle(num_infect)
+        num_infect = sum(self.random.random() < self.bird_infect_cattle_prob
+                         for _ in range(self.cattle_model.susceptible))
+        self.cattle_model.infect_susceptible(num_infect)
 
     def try_infect_vet(self):
         """
         Try to infect the visiting vet
         """
-        if self.visiting_vet is not None and self.num_infected_cattle > 0:
+        if self.visiting_vet is not None and self.cattle_model.infected > 0:
             # there is a vet here and the farm has some infected cattle
+            # assumes the vet only contacts one cow
             if self.random.random() < self.cattle_infect_human_prob:
                 self.visiting_vet.infect()
-
-    def infect_cattle(self, num_cattle):
-        """
-        Infect some cattle with avian influenza
-        :param num_cattle: The number of cattle that are newly infected
-        :type num_cattle: int
-        """
-        # can only infect susceptible
-        num_to_infect = min(self.num_susceptible_cattle, num_cattle)
-        self.num_susceptible_cattle -= num_to_infect
-        self.num_infected_cattle += num_to_infect
 
     def visit_from_vet(self, vet):
         """

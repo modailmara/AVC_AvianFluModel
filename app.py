@@ -26,12 +26,12 @@ def vet_location_portrayal(agent):
 
     # marker and size by type
     if isinstance(agent, PersonAgent):
-        portrayal['linewidths'] = 1
+        portrayal['linewidths'] = .5
         portrayal['marker'] = 'o'
         portrayal['zorder'] = 2
 
         if isinstance(agent, FarmServicesVet):
-            portrayal['color'] = 'xkcd:light brown'
+            portrayal['color'] = 'xkcd:brown'
         elif isinstance(agent, FarmServicesTechnician):
             portrayal['color'] = 'xkcd:slate grey'
         elif isinstance(agent, FloatingStaff):
@@ -64,7 +64,7 @@ def vet_location_portrayal(agent):
         portrayal['size'] = 100
 
         # disease state
-        if agent.num_infected_cattle > 0:
+        if agent.infection_level > 0:
             portrayal['color'] = 'xkcd:light pink'
         else:
             portrayal['color'] = 'xkcd:light green'
