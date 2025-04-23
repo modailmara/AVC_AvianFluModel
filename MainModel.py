@@ -8,7 +8,7 @@ from mesa.experimental.cell_space import OrthogonalVonNeumannGrid
 
 import Agents
 from Agents import HospitalAgent, DairyFarmAgent, PersonAgent, FarmServicesVet, FarmServicesTechnician, \
-    LargeAnimalVet, SmallAnimalVet, FloatingStaff
+    LargeAnimalVet, SmallAnimalVet, FloatingStaff, Farmer
 from constants import Location, VET_STEPS_AT_FARM, DiseaseState, HospitalDepartment, NUM_FARM_SERVICES_VETS, \
     NUM_FARM_SERVICES_TECHS, NUM_FLOATING_STAFF, NUM_LARGE_ANIMAL_VETS, NUM_SMALL_ANIMAL_VETS, \
     HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECT_CATTLE_PROB, CATTLE_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB, \
@@ -31,7 +31,6 @@ def number_state(model, disease_state, agent_types=None):
     """
     if agent_types is None:
         person_classes = [cls[1] for cls in model.person_agent_types]
-        # print('classes: "{}"'.format(person_classes))
     else:
         person_classes = agent_types
 
@@ -130,6 +129,10 @@ class MainModel(mesa.Model):
                                cattle_infect_human_prob=cattle_infect_human_prob,
                                cattle_infect_cattle_prob=cattle_infect_cattle_prob,
                                bird_infect_cattle_prob=bird_infect_cattle_prob)
+                # one farmer per farm
+                Farmer(self, cell=cell,
+                       human_infect_human_prob=human_infect_human_prob,
+                       human_infect_cattle_prob=human_infect_cattle_prob)
 
         # queue to manage farm requests for vets
         self.farm_request_queue = []
@@ -182,7 +185,7 @@ class MainModel(mesa.Model):
             "FloatingStaff":
                 lambda model: number_state(model, DiseaseState.INFECTED, [FloatingStaff]) /
                               number_people(model, FloatingStaff),
-
+            "Farmer": lambda model: number_state(model, DiseaseState.INFECTED, [Farmer]) / number_people(model, Farmer)
         }
         # add in a model reporter for each farm
         agent_reporters = {DairyFarmAgent: {'Infection': 'infection_level'}}

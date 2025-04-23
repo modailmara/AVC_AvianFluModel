@@ -1,4 +1,4 @@
-from mesa.experimental.cell_space import CellAgent, FixedAgent
+from mesa.experimental.cell_space import CellAgent, FixedAgent, CellCollection
 
 from constants import CHANCE_FARM_NEEDS_VET, FarmVetVisitState, Location, \
     DiseaseState, HUMAN_INFECTED_STEPS, HUMAN_RECOVERED_STEPS, HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECT_CATTLE_PROB, \
@@ -83,14 +83,12 @@ class PersonAgent(CellAgent):
         Do all the things for a single step
         """
         if self.disease_state == DiseaseState.INFECTED:
-            # try and infect others
-            if self.location == Location.HOSPITAL:
-                # try to infect other vets in the same cell
-                local_susceptible_vets = [vet for vet in self.cell.agents if isinstance(vet, PersonAgent)]
-                for vet in local_susceptible_vets:
-                    if self.random.random() < self.human_infect_human_prob:
-                        vet.infect()
-            elif self.location == Location.FARM:
+            # try to infect other people in the same cell
+            local_susceptible_people = [vet for vet in self.cell.agents if isinstance(vet, PersonAgent)]
+            for person in local_susceptible_people:
+                if self.random.random() < self.human_infect_human_prob:
+                    person.infect()
+            if self.location == Location.FARM:
                 # try to infect a cow in the farm's herd
                 if self.farm.num_susceptible_cattle > 0:
                     if self.random.random() < self.human_infect_cattle_prob:
@@ -248,18 +246,18 @@ class FloatingStaff(PersonAgent):
         return neighbourhood
 
 
-# class Farmer(PersonAgent):
-#     """
-#     Farmers stay on the farm. One per farm.
-#     """
-#
-#     def get_hospital_neighbour_cells(self):
-#         """
-#         This type of agent can move within the farm services area in the hospital
-#         :return: Collection of Farm Services cells next to this agent
-#         :rtype: CellCollection
-#         """
-#         return [self.cell]
+class Farmer(PersonAgent):
+    """
+    Farmers stay on the farm. One per farm.
+    """
+    def get_hospital_neighbour_cells(self):
+        """
+        This type of agent remains on the cell it starts on. Movement is handled manually in other places.
+        :return: Collection of Farm Services cells next to this agent
+        :rtype: CellCollection
+        """
+        # TODO: there has to be a better way to do this
+        return self.cell.neighborhood.select(lambda cell: cell == self.cell)
 
 
 # --------------------------------------------------------

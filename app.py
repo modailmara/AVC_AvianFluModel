@@ -22,10 +22,14 @@ def vet_location_portrayal(agent):
     if agent is None:
         return
 
-    portrayal = {'size': 35}
+    portrayal = {'size': 35, 'edgecolors': 'black', 'linewidths': 0}
 
     # marker and size by type
     if isinstance(agent, PersonAgent):
+        portrayal['linewidths'] = 1
+        portrayal['marker'] = 'o'
+        portrayal['zorder'] = 2
+
         if isinstance(agent, FarmServicesVet):
             portrayal['color'] = 'xkcd:light brown'
         elif isinstance(agent, FarmServicesTechnician):
@@ -36,16 +40,16 @@ def vet_location_portrayal(agent):
             portrayal['color'] = 'xkcd:blue'
         elif isinstance(agent, SmallAnimalVet):
             portrayal['color'] = 'xkcd:drab green'
-        else:
+        else:  # farmer
             portrayal['color'] = 'xkcd:green'
+
         if agent.disease_state == DiseaseState.INFECTED:
-            portrayal['color'] = 'xkcd:red'
-        # elif agent.disease_state == DiseaseState.RECOVERED:
-        #     portrayal['color'] = 'xkcd:black'
-        # else:  # susceptible
-        #     portrayal['color'] = 'xkcd:green'
-        portrayal['marker'] = 'o'
-        portrayal['zorder'] = 2
+            portrayal['edgecolors'] = 'xkcd:red'
+        elif agent.disease_state == DiseaseState.RECOVERED:
+            portrayal['edgecolors'] = 'xkcd:black'
+        else:  # susceptible
+            portrayal['edgecolors'] = 'xkcd:green'
+
     elif isinstance(agent, HospitalAgent):
         portrayal['marker'] = 's'
         portrayal['size'] = 500
@@ -188,6 +192,15 @@ float_staff_plot = make_plot_component(
 )
 
 
+def post_process_farmer_lineplot(ax):
+    ax.set_title("Farmer")
+    post_process_vet_staff_lineplot(ax)
+
+farmer_plot = make_plot_component(
+    {"Farmer": "xkcd:red"}, post_process=post_process_farmer_lineplot,
+)
+
+
 @solara.component
 def people_infection_plots(model):
     """
@@ -243,8 +256,9 @@ main_model = MainModel(simulator=simulator)
 
 page = SolaraViz(
     main_model,
-    # dairy_farm_lineplot
-    components=[space_component, fs_vet_plot, fs_tech_plot, large_vet_plot, small_vet_plot, float_staff_plot],
+    #
+    components=[space_component, dairy_farm_lineplot,
+                fs_vet_plot, fs_tech_plot, large_vet_plot, small_vet_plot, float_staff_plot, farmer_plot],
     model_params=model_params,
     name="Hub and Spoke",
     simulator=simulator,
