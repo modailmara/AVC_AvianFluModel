@@ -125,14 +125,16 @@ class MainModel(mesa.Model):
             elif cell.coordinate[0] in range(height - 4, height, 2) and cell.coordinate[1] % 2 == 0:
                 # farms are every second cell along the right edge of the space
                 # print("  farm")
-                DairyFarmAgent(self, cell=cell,
-                               cattle_infect_human_prob=cattle_infect_human_prob,
-                               cattle_infect_cattle_prob=cattle_infect_cattle_prob,
-                               bird_infect_cattle_prob=bird_infect_cattle_prob)
+                farm = DairyFarmAgent(self, cell=cell,
+                                      cattle_infect_human_prob=cattle_infect_human_prob,
+                                      cattle_infect_cattle_prob=cattle_infect_cattle_prob,
+                                      bird_infect_cattle_prob=bird_infect_cattle_prob)
                 # one farmer per farm
-                Farmer(self, cell=cell,
-                       human_infect_human_prob=human_infect_human_prob,
-                       human_infect_cattle_prob=human_infect_cattle_prob)
+                farmer = Farmer(self, cell=cell,
+                                human_infect_human_prob=human_infect_human_prob,
+                                human_infect_cattle_prob=human_infect_cattle_prob)
+                farmer.location = Location.FARM
+                farmer.farm = farm
 
         # queue to manage farm requests for vets
         self.farm_request_queue = []
@@ -211,7 +213,8 @@ class MainModel(mesa.Model):
             farm_services_vet.visit_farm(farm)
 
         # manage vets that have finished their visit at a farm and are returning to the hospital
-        vets_at_farms = self.agents_by_type[FarmServicesVet].select(lambda a: a.location == Location.FARM)
+        vets_at_farms = self.agents_by_type[FarmServicesVet].select(
+            lambda a: a.location == Location.FARM and isinstance(a, FarmServicesVet))
         for farm_services_vet in vets_at_farms:
             if farm_services_vet.steps_at_farm > VET_STEPS_AT_FARM:
                 # been there long enough - time to go back to the hospital
@@ -220,7 +223,7 @@ class MainModel(mesa.Model):
 
         # agents do all their steps
         # self.agents_by_type[PersonAgent].shuffle_do('step')
-        for agent_class in [FarmServicesVet, FarmServicesTechnician, LargeAnimalVet, SmallAnimalVet, FloatingStaff]:
+        for name, agent_class in self.person_agent_types:
             self.agents_by_type[agent_class].shuffle_do('step')
         self.agents_by_type[DairyFarmAgent].shuffle_do('step')
 

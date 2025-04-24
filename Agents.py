@@ -23,6 +23,8 @@ class PersonAgent(CellAgent):
         """
         super().__init__(model)
 
+        self.farm = None
+
         # disease information
         self.human_infect_human_prob = human_infect_human_prob
         self.human_infect_cattle_prob = human_infect_cattle_prob
@@ -251,14 +253,11 @@ class Farmer(PersonAgent):
     """
     Farmers stay on the farm. One per farm.
     """
-    def get_hospital_neighbour_cells(self):
+    def move(self):
         """
-        This type of agent remains on the cell it starts on. Movement is handled manually in other places.
-        :return: Collection of Farm Services cells next to this agent
-        :rtype: CellCollection
+        Farmers just stay on the farm and don't move.
         """
-        # TODO: there has to be a better way to do this
-        return self.cell.neighborhood.select(lambda cell: cell == self.cell)
+        pass
 
 
 # --------------------------------------------------------

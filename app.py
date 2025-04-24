@@ -256,9 +256,9 @@ main_model = MainModel(simulator=simulator)
 
 page = SolaraViz(
     main_model,
-    #
-    components=[space_component, dairy_farm_lineplot,
-                fs_vet_plot, fs_tech_plot, large_vet_plot, small_vet_plot, float_staff_plot, farmer_plot],
+    components=[space_component, dairy_farm_lineplot, farmer_plot],
+    #components=[space_component, dairy_farm_lineplot,
+    #            fs_vet_plot, fs_tech_plot, large_vet_plot, small_vet_plot, float_staff_plot, farmer_plot],
     model_params=model_params,
     name="Hub and Spoke",
     simulator=simulator,
