@@ -135,7 +135,7 @@ space_component = make_space_component(
 
 
 def post_process_vet_staff_lineplot(ax):
-    # ax.set_title("Infections in Vet Hospital Staff")
+    ax.set_title("Infections in Vet Hospital Staff")
     ax.set_ylim(ymin=-0.05, ymax=1.05)
     ax.set_ylabel("Proportion Population")
     # ax.legend(bbox_to_anchor=(1.05, 1.0), loc="upper left")
@@ -147,8 +147,8 @@ person_infection_plot = make_plot_component(
 
 
 def post_process_fs_vet_lineplot(ax):
-    ax.set_title("Farm Services Vets and Students")
     post_process_vet_staff_lineplot(ax)
+    ax.set_title("Farm Services Vets and Students")
 
 
 fs_vet_plot = make_plot_component(
@@ -157,8 +157,8 @@ fs_vet_plot = make_plot_component(
 
 
 def post_process_fs_tech_lineplot(ax):
-    ax.set_title("Farm Services Technician")
     post_process_vet_staff_lineplot(ax)
+    ax.set_title("Farm Services Technician")
 
 fs_tech_plot = make_plot_component(
     {"FarmServicesTechnician": "xkcd:red"}, post_process=post_process_fs_tech_lineplot,
@@ -192,9 +192,18 @@ float_staff_plot = make_plot_component(
 )
 
 
-def post_process_farmer_lineplot(ax):
-    ax.set_title("Farmer")
+def post_process_community_lineplot(ax):
     post_process_vet_staff_lineplot(ax)
+    ax.set_title("Community Infection Proportion")
+
+community_plot = make_plot_component(
+    {"Community": "xkcd:red"}, post_process=post_process_community_lineplot,
+)
+
+
+def post_process_farmer_lineplot(ax):
+    post_process_vet_staff_lineplot(ax)
+    ax.set_title("Farmer")
 
 farmer_plot = make_plot_component(
     {"Farmer": "xkcd:red"}, post_process=post_process_farmer_lineplot,
@@ -206,7 +215,7 @@ def people_infection_plots(model):
     """
     Creates a plot for each type of Person Agent, showing the infection levels on that type.
     """
-    fig = Figure(figsize=(30, 5))
+    fig = Figure()
     axs = fig.subplots(ncols=len(model.person_agent_types), sharex=True, sharey=True)
 
     # get the infection values to chart
@@ -256,9 +265,9 @@ main_model = MainModel(simulator=simulator)
 
 page = SolaraViz(
     main_model,
-    components=[space_component, dairy_farm_lineplot, farmer_plot],
-    #components=[space_component, dairy_farm_lineplot,
-    #            fs_vet_plot, fs_tech_plot, large_vet_plot, small_vet_plot, float_staff_plot, farmer_plot],
+    components=[space_component, dairy_farm_lineplot, farmer_plot, community_plot, fs_vet_plot],
+    # components=[space_component, dairy_farm_lineplot,
+    #             fs_vet_plot, fs_tech_plot, large_vet_plot, small_vet_plot, float_staff_plot, farmer_plot],
     model_params=model_params,
     name="Hub and Spoke",
     simulator=simulator,

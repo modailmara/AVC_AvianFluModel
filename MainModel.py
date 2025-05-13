@@ -6,13 +6,14 @@ import math
 from mesa.datacollection import DataCollector
 from mesa.experimental.cell_space import OrthogonalVonNeumannGrid
 
+from SIRModel import SIRModel
 import Agents
 from Agents import HospitalAgent, DairyFarmAgent, PersonAgent, FarmServicesVet, FarmServicesTechnician, \
     LargeAnimalVet, SmallAnimalVet, FloatingStaff, Farmer
-from constants import Location, VET_STEPS_AT_FARM, DiseaseState, HospitalDepartment, NUM_FARM_SERVICES_VETS, \
+from constants import Location, Time, DiseaseState, HospitalDepartment, VET_STEPS_AT_FARM, NUM_FARM_SERVICES_VETS, \
     NUM_FARM_SERVICES_TECHS, NUM_FLOATING_STAFF, NUM_LARGE_ANIMAL_VETS, NUM_SMALL_ANIMAL_VETS, \
     HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECT_CATTLE_PROB, CATTLE_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB, \
-    BIRD_INFECT_COW_PROB
+    BIRD_INFECT_COW_PROB, STEPS_PER_DAY, WORK_DAY_STEPS, COMMUNITY_STEPS
 
 
 def number_state(model, disease_state, agent_types=None):
@@ -98,10 +99,18 @@ class MainModel(mesa.Model):
             random=self.random,
         )
 
+        # queue to manage farm requests for vets
+        self.farm_request_queue = []
+        self.available_farm_clinicians = []
+
+        # set starting time to nighttime
+        self.time_of_day = Time.DAY
+
         self.hospital_cells = []  # keep a list of cells that are hospital
         self.farm_services_cells = []
         self.large_animal_cells = []
         self.small_animal_cells = []
+        self.farm_cells = []
         # create the hospital agents and farm agents
         for cell in self.grid:
             # print("{}".format(cell.coordinate))
@@ -129,42 +138,36 @@ class MainModel(mesa.Model):
                                       cattle_infect_human_prob=cattle_infect_human_prob,
                                       cattle_infect_cattle_prob=cattle_infect_cattle_prob,
                                       bird_infect_cattle_prob=bird_infect_cattle_prob)
+                self.farm_cells.append(cell)
                 # one farmer per farm
-                farmer = Farmer(self, cell=cell,
-                                human_infect_human_prob=human_infect_human_prob,
-                                human_infect_cattle_prob=human_infect_cattle_prob)
-                farmer.location = Location.FARM
-                farmer.farm = farm
-
-        # queue to manage farm requests for vets
-        self.farm_request_queue = []
+                Farmer(self, farm, cell=None,
+                       human_infect_human_prob=human_infect_human_prob,
+                       human_infect_cattle_prob=human_infect_cattle_prob)
 
         # create vets and start them at the hospital
         for _ in range(NUM_FARM_SERVICES_TECHS):
-            FarmServicesTechnician(self, cell=self.random.choice(self.farm_services_cells),
+            FarmServicesTechnician(self, cell=None,
                                    human_infect_human_prob=human_infect_human_prob,
                                    human_infect_cattle_prob=human_infect_cattle_prob)
         for _ in range(NUM_FARM_SERVICES_VETS):
-            FarmServicesVet(self, cell=self.random.choice(self.farm_services_cells),
+            FarmServicesVet(self, cell=None,
                             human_infect_human_prob=human_infect_human_prob,
                             human_infect_cattle_prob=human_infect_cattle_prob)
         for _ in range(NUM_LARGE_ANIMAL_VETS):
-            LargeAnimalVet(self, cell=self.random.choice(self.large_animal_cells),
+            LargeAnimalVet(self, cell=None,
                            human_infect_human_prob=human_infect_human_prob,
                            human_infect_cattle_prob=human_infect_cattle_prob)
         for _ in range(NUM_SMALL_ANIMAL_VETS):
-            SmallAnimalVet(self, cell=self.random.choice(self.small_animal_cells),
+            # self.random.choice(self.)
+            SmallAnimalVet(self, cell=None,
                            human_infect_human_prob=human_infect_human_prob,
                            human_infect_cattle_prob=human_infect_cattle_prob)
         for _ in range(NUM_FLOATING_STAFF):
-            FloatingStaff(self, cell=self.random.choice(self.large_animal_cells + self.small_animal_cells),
+            FloatingStaff(self, cell=None,
                           human_infect_human_prob=human_infect_human_prob,
                           human_infect_cattle_prob=human_infect_cattle_prob)
 
-        # infect some random farms to get things going
-        num_infected_farms = min(num_infected_farms, len(self.agents_by_type[DairyFarmAgent]))
-        for farm in self.random.sample(self.agents_by_type[DairyFarmAgent], k=num_infected_farms):
-            farm.infect_cattle(1)
+        self.community_model = SIRModel()
 
         # add collecters for the people infection trackers
         model_reporters = {
@@ -187,7 +190,8 @@ class MainModel(mesa.Model):
             "FloatingStaff":
                 lambda model: number_state(model, DiseaseState.INFECTED, [FloatingStaff]) /
                               number_people(model, FloatingStaff),
-            "Farmer": lambda model: number_state(model, DiseaseState.INFECTED, [Farmer]) / number_people(model, Farmer)
+            "Farmer": lambda model: number_state(model, DiseaseState.INFECTED, [Farmer]) / number_people(model, Farmer),
+            "Community": lambda model: model.community_model.proportion_infected
         }
         # add in a model reporter for each farm
         agent_reporters = {DairyFarmAgent: {'Infection': 'infection_level'}}
@@ -222,12 +226,19 @@ class MainModel(mesa.Model):
                 farm_services_vet.leave_farm()
 
         # agents do all their steps
-        # self.agents_by_type[PersonAgent].shuffle_do('step')
         for name, agent_class in self.person_agent_types:
-            self.agents_by_type[agent_class].shuffle_do('step')
-        self.agents_by_type[DairyFarmAgent].shuffle_do('step')
+            if self.steps % STEPS_PER_DAY == WORK_DAY_STEPS[0]:
+                # start of the work day
+                self.agents_by_type[agent_class].shuffle_do('start_work')
+            elif self.steps % STEPS_PER_DAY == COMMUNITY_STEPS[0]:
+                # time to go home
+                self.agents_by_type[agent_class].shuffle_do('go_home')
+
+        self.agents.shuffle_do('step')
 
         self.datacollector.collect(self)
+
+        print('---')
 
     def request_vet_visit(self, farm):
         """

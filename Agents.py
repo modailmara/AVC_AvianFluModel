@@ -1,11 +1,14 @@
 from mesa.experimental.cell_space import CellAgent, FixedAgent, CellCollection
+import numpy as np
 
 from SIRModel import SIRModel
 
-from constants import CHANCE_FARM_NEEDS_VET, FarmVetVisitState, Location, \
-    DiseaseState, HUMAN_INFECTED_STEPS, HUMAN_RECOVERED_STEPS, HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECT_CATTLE_PROB, \
-    CATTLE_INFECT_HUMAN_PROB, CATTLE_INFECT_CATTLE_PROB, CATTLE_RECOVERY_PROB, HospitalDepartment, \
-    BIRD_INFECT_COW_PROB, CATTLE_RECOVERY_END_PROB, DEFAULT_DAIRY_HERD_SIZE
+from constants import CHANCE_FARM_NEEDS_VET, FarmVetVisitState, Location, DiseaseState, HospitalDepartment, \
+    HUMAN_INFECTED_STEPS, HUMAN_RECOVERED_STEPS, HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECT_CATTLE_PROB, \
+    CATTLE_INFECT_HUMAN_PROB, BIRD_INFECT_COW_PROB, CATTLE_INFECT_CATTLE_PROB, \
+    DEFAULT_DAIRY_HERD_SIZE, CATTLE_CATTLE_CONTACTS_PER_STEP, CATTLE_RECOVERY_STEPS, CATTLE_RECOVERY_END_STEPS, \
+    CATTLE_FARMER_CONTACTS_PER_STEP, CATTLE_VET_CONTACTS_PER_STEP, \
+    COMMUNITY_CONTACTS_PER_STEP
 
 
 class PersonAgent(CellAgent):
@@ -31,8 +34,8 @@ class PersonAgent(CellAgent):
         self.disease_state = DiseaseState.SUSCEPTIBLE
         self.steps_current_disease_state = 0
 
-        # information about where they are now
-        self.location = Location.HOSPITAL
+        # information about where they are now - start in the community
+        self.location = Location.COMMUNITY
 
         self.cell = cell
 
@@ -63,11 +66,12 @@ class PersonAgent(CellAgent):
         """
         If in the hospital area, move randomly to another hospital space.
         """
-        hospital_neighbour_cells = self.get_hospital_neighbour_cells()
-        # print("{} {}".format(len(hospital_neighbour_cells), type(self)))
-        # move to a random neighbouring hospital cell
-        self.cell = hospital_neighbour_cells.select_random_cell()
-        # raise NotImplementedError("Should be implemented by inheriting classes.")
+        if self.location == Location.HOSPITAL:
+            hospital_neighbour_cells = self.get_hospital_neighbour_cells()
+            # print("{} {}".format(len(hospital_neighbour_cells), type(self)))
+            # move to a random neighbouring hospital cell
+            self.cell = hospital_neighbour_cells.select_random_cell()
+            # raise NotImplementedError("Should be implemented by inheriting classes.")
 
     def get_hospital_neighbour_cells(self):
         """
@@ -87,15 +91,55 @@ class PersonAgent(CellAgent):
         Do all the things for a single step
         """
         if self.disease_state == DiseaseState.INFECTED:
-            # try to infect other people in the same cell
-            local_susceptible_people = [vet for vet in self.cell.agents if isinstance(vet, PersonAgent)]
-            for person in local_susceptible_people:
-                if self.random.random() < self.human_infect_human_prob:
-                    person.infect()
-            if self.location == Location.FARM:
-                # try to infect a cow in the farm's herd
-                if self.random.random() < self.human_infect_cattle_prob:
-                    self.farm.cattle_model.infect_susceptible(1)
+            if self.location == Location.COMMUNITY:
+                # try to infect some people in the community
+                potential_infections = np.random.binomial(COMMUNITY_CONTACTS_PER_STEP,
+                                                          self.model.community_model.proportion_susceptible)
+                num_infections = np.random.binomial(potential_infections, HUMAN_INFECT_HUMAN_PROB)
+                self.model.community_model.infect_susceptible(num_infections)
+            else:
+                # try to infect other people in the same cell
+                local_susceptible_people = [vet for vet in self.cell.agents if isinstance(vet, PersonAgent)]
+                for person in local_susceptible_people:
+                    if self.random.random() < self.human_infect_human_prob:
+                        person.infect()
+                if self.location == Location.FARM:
+                    # try to infect a cow in the farm's herd
+                    if isinstance(self, Farmer):
+                        possible_infections = np.random.binomial(
+                            CATTLE_FARMER_CONTACTS_PER_STEP,
+                            self.farm.cattle_model.proportion_susceptible)
+                    else:
+                        possible_infections = np.random.binomial(
+                            CATTLE_VET_CONTACTS_PER_STEP,
+                            self.farm.cattle_model.proportion_susceptible)
+                    infections = np.random.binomial(possible_infections, HUMAN_INFECT_CATTLE_PROB)
+                    self.farm.cattle_model.infect_susceptible(infections)
+        elif self.disease_state == DiseaseState.SUSCEPTIBLE:
+            # may get infected from an SIR model. Note that infections from other agents happen by sharing a cell
+            if self.location in [Location.FARM, Location.COMMUNITY]:
+                if self.location == Location.FARM:
+                    sir_model = self.farm.cattle_model
+                    num_contacts = CATTLE_FARMER_CONTACTS_PER_STEP if isinstance(self, Farmer) \
+                        else CATTLE_VET_CONTACTS_PER_STEP
+                    infection_prob = CATTLE_INFECT_HUMAN_PROB
+                else:  # self.location == Location.COMMUNITY
+                    sir_model = self.model.community_model
+                    num_contacts = COMMUNITY_CONTACTS_PER_STEP
+                    infection_prob = HUMAN_INFECT_HUMAN_PROB
+
+                possible_infection_sources = np.random.binomial(num_contacts, sir_model.proportion_infected)
+                is_infected = np.random.binomial(possible_infection_sources, infection_prob) > 0
+
+                if self.location == Location.FARM:
+                    print("{} farmer? {}".format(self.location, isinstance(self, Farmer)))
+                    print("  num_contacts={}, prop_inf={}, poss_source={}, inf_prob={}\n  {}"
+                          .format(num_contacts, sir_model.proportion_infected, possible_infection_sources,
+                                  infection_prob,
+                                  is_infected))
+
+                if is_infected:
+                    self.infect()
 
         # advance the agent's own disease
         self.progress_disease()
@@ -108,6 +152,27 @@ class PersonAgent(CellAgent):
         """
         self.disease_state = DiseaseState.INFECTED
         self.steps_current_disease_state = 0
+
+    def go_home(self):
+        """
+        This agent is finished for the day.
+        """
+        self.cell = None
+        self.location = Location.COMMUNITY
+
+    def start_work(self):
+        """
+        Work day has started.
+        """
+        self.go_to_start_cell()
+        self.location = Location.HOSPITAL
+
+    def go_to_start_cell(self):
+        """
+        Assign a cell to this agent.
+        This method should be overriden by most person agents. Default is a random cell in the hospital.
+        """
+        self.cell = self.random.choice(self.model.hospital_cells)
 
 
 class FarmServicesVet(PersonAgent):
@@ -172,6 +237,23 @@ class FarmServicesVet(PersonAgent):
         )
         return neighbourhood
 
+    def go_home(self):
+        """
+        This agent is finished for the day.
+        """
+        if self.location == Location.FARM:
+            self.farm.vet_leaving()
+            self.leave_farm()
+        self.cell = None
+        self.location = Location.COMMUNITY
+
+    def go_to_start_cell(self):
+        """
+        Assign a cell to this agent.
+        This method should be overriden by most person agents. Default is a random cell in the hospital.
+        """
+        self.cell = self.random.choice(self.model.farm_services_cells)
+
 
 class FarmServicesTechnician(PersonAgent):
     """
@@ -189,6 +271,13 @@ class FarmServicesTechnician(PersonAgent):
                              for agent in cell.agents)
         )
         return neighbourhood
+
+    def go_to_start_cell(self):
+        """
+        Assign a cell to this agent.
+        This method should be overriden by most person agents. Default is a random cell in the hospital.
+        """
+        self.cell = self.random.choice(self.model.farm_services_cells)
 
 
 class LargeAnimalVet(PersonAgent):
@@ -210,6 +299,13 @@ class LargeAnimalVet(PersonAgent):
         )
         return neighbourhood
 
+    def go_to_start_cell(self):
+        """
+        Assign a cell to this agent.
+        This method should be overriden by most person agents. Default is a random cell in the hospital.
+        """
+        self.cell = self.random.choice(self.model.large_animal_cells)
+
 
 class SmallAnimalVet(PersonAgent):
     """
@@ -227,6 +323,13 @@ class SmallAnimalVet(PersonAgent):
                              for agent in cell.agents)
         )
         return neighbourhood
+
+    def go_to_start_cell(self):
+        """
+        Assign a cell to this agent.
+        This method should be overriden by most person agents. Default is a random cell in the hospital.
+        """
+        self.cell = self.random.choice(self.model.small_animal_cells)
 
 
 class FloatingStaff(PersonAgent):
@@ -248,16 +351,53 @@ class FloatingStaff(PersonAgent):
         )
         return neighbourhood
 
+    def go_to_start_cell(self):
+        """
+        Assign a cell to this agent.
+        This method should be overriden by most person agents. Default is a random cell in the hospital.
+        """
+        self.cell = self.random.choice(self.model.large_animal_cells + self.model.small_animal_cells)
+
 
 class Farmer(PersonAgent):
     """
     Farmers stay on the farm. One per farm.
     """
+    def __init__(self, model, farm, cell=None,
+                 human_infect_human_prob=HUMAN_INFECT_HUMAN_PROB,
+                 human_infect_cattle_prob=HUMAN_INFECT_CATTLE_PROB):
+        """
+
+        :param model: The model that this agent belongs to
+        :type model: MainModel object
+        """
+        super().__init__(model, cell=cell,
+                         human_infect_human_prob=human_infect_human_prob,
+                         human_infect_cattle_prob=human_infect_cattle_prob)
+
+        # farmers are always on the same farm
+        self.farm = farm
+        self.steps_at_farm = 0
+
     def move(self):
         """
-        Farmers just stay on the farm and don't move.
+        Farmers just stay on the farm or community and don't move.
         """
         pass
+
+    def start_work(self):
+        """
+        Work day has started.
+        """
+        self.go_to_start_cell()
+        self.location = Location.FARM
+
+    def go_to_start_cell(self):
+        """
+        Assign a cell to this agent.
+        This method should be overriden by most person agents. Default is a random cell in the hospital.
+        """
+        self.cell = self.farm.cell
 
 
 # --------------------------------------------------------
@@ -278,6 +418,9 @@ class LocationAgent(FixedAgent):
 
         self.cell = cell
 
+    def step(self):
+        pass
+
 
 class HospitalAgent(LocationAgent):
     """
@@ -297,7 +440,7 @@ class DairyFarmAgent(LocationAgent):
 
     Maybe keep an internal network model for infected herd?
     """
-    def __init__(self, model, cell=None, susceptible_cattle=50, infected_cattle=0,
+    def __init__(self, model, cell=None, susceptible_cattle=DEFAULT_DAIRY_HERD_SIZE, infected_cattle=0,
                  cattle_infect_human_prob=CATTLE_INFECT_HUMAN_PROB,
                  cattle_infect_cattle_prob=CATTLE_INFECT_CATTLE_PROB,
                  bird_infect_cattle_prob=BIRD_INFECT_COW_PROB
@@ -307,8 +450,9 @@ class DairyFarmAgent(LocationAgent):
         # SIR model for the cattle herd
         self.cattle_model = SIRModel(population=susceptible_cattle,
                                      infection_probability=cattle_infect_cattle_prob,
-                                     recovery_rate=CATTLE_RECOVERY_PROB,
-                                     recovered_expire_rate=CATTLE_RECOVERY_END_PROB)
+                                     recovery_steps=CATTLE_RECOVERY_STEPS,
+                                     recovered_expire_steps=CATTLE_RECOVERY_END_STEPS,
+                                     num_contacts=CATTLE_CATTLE_CONTACTS_PER_STEP)
 
         # infection parameters
         self.cattle_infect_human_prob = cattle_infect_human_prob
@@ -340,8 +484,6 @@ class DairyFarmAgent(LocationAgent):
         # progress the system dynamics model on the farm
         self.cattle_model.progress_infection()
 
-        self.try_infect_vet()
-
         # does the farm need a vet?
         if self.vet_state == FarmVetVisitState.OK and self.random.random() <= CHANCE_FARM_NEEDS_VET:
             # need a vet and don't have one - request a vet
@@ -352,16 +494,6 @@ class DairyFarmAgent(LocationAgent):
         num_infect = sum(self.random.random() < self.bird_infect_cattle_prob
                          for _ in range(self.cattle_model.susceptible))
         self.cattle_model.infect_susceptible(num_infect)
-
-    def try_infect_vet(self):
-        """
-        Try to infect the visiting vet
-        """
-        if self.visiting_vet is not None and self.cattle_model.infected > 0:
-            # there is a vet here and the farm has some infected cattle
-            # assumes the vet only contacts one cow
-            if self.random.random() < self.cattle_infect_human_prob:
-                self.visiting_vet.infect()
 
     def visit_from_vet(self, vet):
         """

@@ -1,6 +1,7 @@
-from random import random
+import numpy as np
 
-from constants import COMMUNITY_POPULATION, HUMAN_INFECT_HUMAN_PROB, HUMAN_RECOVERY_RATE, HUMAN_RECOVERY_EXPIRE_RATE
+from constants import COMMUNITY_POPULATION, HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECTED_STEPS, HUMAN_RECOVERED_STEPS, \
+    COMMUNITY_CONTACTS_PER_STEP
 
 
 class SIRModel(object):
@@ -9,18 +10,18 @@ class SIRModel(object):
     """
 
     def __init__(self, population=COMMUNITY_POPULATION, infection_probability=HUMAN_INFECT_HUMAN_PROB,
-                 recovery_rate=HUMAN_RECOVERY_RATE, recovered_expire_rate=HUMAN_RECOVERY_EXPIRE_RATE):
+                 recovery_steps=HUMAN_INFECTED_STEPS, recovered_expire_steps=HUMAN_RECOVERED_STEPS,
+                 num_contacts=COMMUNITY_CONTACTS_PER_STEP):
         # counts for each disease state - start off clear of the disease
         self.susceptible = population
         self.infected = 0
         self.recovered = 0
 
         # model parameters
-        # number of contact events per infected per step
-        self.contacts_per_infected = 1
-        self.infection_probability = infection_probability
-        self.recovery_rate = recovery_rate
-        self.recovered_expire_rate = recovered_expire_rate
+        self.infection_prob = infection_probability
+        self.recovery_prob = 1 / recovery_steps
+        self.recovered_expire_prob = 1 / recovered_expire_steps
+        self.num_contacts = num_contacts
 
     @property
     def population(self):
@@ -31,20 +32,39 @@ class SIRModel(object):
         """
         return self.susceptible + self.infected + self.recovered
 
+    @property
+    def proportion_susceptible(self):
+        """
+
+        :return:
+        :rtype: float
+        """
+        return self.susceptible / self.population
+
+    @property
+    def proportion_infected(self):
+        """
+
+        :return: Proportion of the population that is infected.
+        :rtype: float
+        """
+        return self.infected / self.population
+
     def progress_infection(self):
         """
         Progress one step of the disease
+        - infected can infect susceptible
+        - infected recover
+        - recovery immunity expires
         """
-        # calculate how many should change disease state
-        # available in 3.12:
-        # random.binomialvariate(self.infected, self.contacts_per_infected * self.infection_probability)
-        new_infection_prob = self.contacts_per_infected * self.infection_probability
-        new_infected = sum(random() < new_infection_prob for i in range(self.infected))
-        new_recovered = sum(random() < self.recovery_rate for i in range(self.infected))
-        new_recovery_ended = sum(random() < self.recovered_expire_rate for i in range(self.recovered))
+        potential_new_infections = np.random.binomial(self.num_contacts * self.infected, self.proportion_susceptible)
+
+        new_infected = min(self.susceptible, np.random.binomial(potential_new_infections, self.infection_prob))
+        new_recovered = np.random.binomial(self.infected, self.recovery_prob)
+        new_recovery_ended = np.random.binomial(self.recovered, self.recovered_expire_prob)
 
         # adjust the state counts
-        self.susceptible -= new_infected
+        self.susceptible -= min(new_infected, self.susceptible)
         self.susceptible += new_recovery_ended
         self.infected += new_infected
         self.infected -= new_recovered
@@ -67,4 +87,7 @@ class SIRModel(object):
         self.infected += num_infected
 
         return num_infected
+
+    def step(self):
+        self.progress_infection()
 
