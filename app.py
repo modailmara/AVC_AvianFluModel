@@ -260,16 +260,45 @@ def dairy_farm_lineplot(model):
     solara.FigureMatplotlib(fig)
 
 
+@solara.component
+def infection_path_vis(model):
+    # get the path labels and the counts
+    update_counter.get()
+    path_items = model.infection_paths.get_paths_counts()
+    # print(path_items)
+    if len(path_items) > 0:
+        paths, counts = zip(*path_items)
+    else:
+        paths, counts = ([], [])
+    paths = [('-'.join(names),) for names in paths]
+    # print(paths)
+    all_paths = []
+    for i in range(len(paths)):
+        all_paths += paths[i] * counts[i]
+    # print(all_paths)
+    # make a histogram plot of the paths vs count
+    fig = Figure()
+    ax = fig.subplots()
+
+    ax.hist(all_paths, orientation='horizontal')
+
+    ax.set_title("Counts of Infection Paths")
+    ax.set_ylabel("# times infection path occurred")
+    ax.set_xlabel('')
+
+    solara.FigureMatplotlib(fig)
+
+
 simulator = ABMSimulator()
 main_model = MainModel(simulator=simulator)
 
 page = SolaraViz(
     main_model,
-    components=[space_component, dairy_farm_lineplot, farmer_plot, community_plot, fs_vet_plot],
+    components=[space_component, dairy_farm_lineplot, infection_path_vis, community_plot],
     # components=[space_component, dairy_farm_lineplot,
     #             fs_vet_plot, fs_tech_plot, large_vet_plot, small_vet_plot, float_staff_plot, farmer_plot],
     model_params=model_params,
-    name="Hub and Spoke",
+    name="Avian Flu in the Veterinary Teaching Hospital",
     simulator=simulator,
 )
 page  # noqa

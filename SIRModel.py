@@ -9,9 +9,28 @@ class SIRModel(object):
     Simple Susceptible-Infected-Recovered system dynamics model
     """
 
-    def __init__(self, population=COMMUNITY_POPULATION, infection_probability=HUMAN_INFECT_HUMAN_PROB,
+    def __init__(self, model, name,
+                 population=COMMUNITY_POPULATION, infection_probability=HUMAN_INFECT_HUMAN_PROB,
                  recovery_steps=HUMAN_INFECTED_STEPS, recovered_expire_steps=HUMAN_RECOVERED_STEPS,
                  num_contacts=COMMUNITY_CONTACTS_PER_STEP):
+        """
+
+        :param name: Name of this model. Identifies what this model represents.
+        :type name: str
+        :param population:
+        :type population:
+        :param infection_probability:
+        :type infection_probability:
+        :param recovery_steps:
+        :type recovery_steps:
+        :param recovered_expire_steps:
+        :type recovered_expire_steps:
+        :param num_contacts:
+        :type num_contacts:
+        """
+        self.model = model
+        self.name = name
+
         # counts for each disease state - start off clear of the disease
         self.susceptible = population
         self.infected = 0
@@ -72,19 +91,26 @@ class SIRModel(object):
         self.recovered -= new_recovery_ended
         # print('  S: {}\n  I: {}\n  R: {}\n'.format(self.susceptible, self.infected, self.recovered))
 
-    def infect_susceptible(self, num_to_infect):
+    def infect_susceptible(self, num_to_infect, infection_path=[]):
         """
         Changes some of the model entities from susceptible to infected. If there are less susceptible than the number
         specified, will only infect the number of susceptible.
 
         :param num_to_infect: The requested number to change susceptible -> infected
         :type num_to_infect: int
+        :param infection_path: The path this infection took before getting to this SIR model
+        :type infection_path: list
+
         :return: Number of entities infected
         :rtype: int
         """
         num_infected = min(self.susceptible, num_to_infect)
         self.susceptible -= num_infected
         self.infected += num_infected
+
+        # add the infection path, need to append this SIR model name
+        path = infection_path + [self.name]
+        self.model.infection_paths.add_path(path, num_infected)
 
         return num_infected
 

@@ -1,12 +1,10 @@
-import sys
 import inspect
-
 import mesa
 import math
-from mesa.datacollection import DataCollector
 from mesa.experimental.cell_space import OrthogonalVonNeumannGrid
 
 from SIRModel import SIRModel
+from InfectionPaths import InfectionPaths
 import Agents
 from Agents import HospitalAgent, DairyFarmAgent, PersonAgent, FarmServicesVet, FarmServicesTechnician, \
     LargeAnimalVet, SmallAnimalVet, FloatingStaff, Farmer
@@ -73,7 +71,7 @@ class MainModel(mesa.Model):
     The model that coordinates the agents and environment for a Hub and Spoke model of Avian Influenza.
     """
 
-    def __init__(self, width=20, height=20, seed=None, simulator=None, num_infected_farms=0,
+    def __init__(self, width=20, height=20, seed=None, simulator=None,
                  human_infect_human_prob=HUMAN_INFECT_HUMAN_PROB,
                  human_infect_cattle_prob=HUMAN_INFECT_CATTLE_PROB,
                  cattle_infect_human_prob=CATTLE_INFECT_HUMAN_PROB,
@@ -102,9 +100,6 @@ class MainModel(mesa.Model):
         # queue to manage farm requests for vets
         self.farm_request_queue = []
         self.available_farm_clinicians = []
-
-        # set starting time to nighttime
-        self.time_of_day = Time.DAY
 
         self.hospital_cells = []  # keep a list of cells that are hospital
         self.farm_services_cells = []
@@ -167,7 +162,8 @@ class MainModel(mesa.Model):
                           human_infect_human_prob=human_infect_human_prob,
                           human_infect_cattle_prob=human_infect_cattle_prob)
 
-        self.community_model = SIRModel()
+        self.community_model = SIRModel(self, 'community')
+        self.infection_paths = InfectionPaths()
 
         # add collecters for the people infection trackers
         model_reporters = {
@@ -237,8 +233,6 @@ class MainModel(mesa.Model):
         self.agents.shuffle_do('step')
 
         self.datacollector.collect(self)
-
-        print('---')
 
     def request_vet_visit(self, farm):
         """

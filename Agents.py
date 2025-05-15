@@ -26,6 +26,8 @@ class PersonAgent(CellAgent):
         """
         super().__init__(model)
 
+        self.name = type(self).__name__
+
         self.farm = None
 
         # disease information
@@ -33,6 +35,9 @@ class PersonAgent(CellAgent):
         self.human_infect_cattle_prob = human_infect_cattle_prob
         self.disease_state = DiseaseState.SUSCEPTIBLE
         self.steps_current_disease_state = 0
+
+        # the path to the person agent's current infection, [] if they aren't infected
+        self.current_infection_path = []
 
         # information about where they are now - start in the community
         self.location = Location.COMMUNITY
@@ -44,12 +49,14 @@ class PersonAgent(CellAgent):
         If the agent is already infected, then the disease progresses. Either increment time in the current stage or
         move to the next stage.
         """
-        # print('vet Disease: {} ({})'.format(self.disease_state, self.steps_current_disease_state))
         if self.disease_state == DiseaseState.INFECTED:
             if self.steps_current_disease_state > HUMAN_INFECTED_STEPS:
                 # been infected long enough, time to get better
                 self.steps_current_disease_state = 0
                 self.disease_state = DiseaseState.RECOVERED
+
+                # empty infection path
+                self.current_infection_path = []
             else:
                 # remain at this state so add another step
                 self.steps_current_disease_state += 1
@@ -68,7 +75,6 @@ class PersonAgent(CellAgent):
         """
         if self.location == Location.HOSPITAL:
             hospital_neighbour_cells = self.get_hospital_neighbour_cells()
-            # print("{} {}".format(len(hospital_neighbour_cells), type(self)))
             # move to a random neighbouring hospital cell
             self.cell = hospital_neighbour_cells.select_random_cell()
             # raise NotImplementedError("Should be implemented by inheriting classes.")
@@ -96,13 +102,14 @@ class PersonAgent(CellAgent):
                 potential_infections = np.random.binomial(COMMUNITY_CONTACTS_PER_STEP,
                                                           self.model.community_model.proportion_susceptible)
                 num_infections = np.random.binomial(potential_infections, HUMAN_INFECT_HUMAN_PROB)
-                self.model.community_model.infect_susceptible(num_infections)
+                self.model.community_model.infect_susceptible(num_infections,
+                                                              infection_path=self.current_infection_path)
             else:
                 # try to infect other people in the same cell
                 local_susceptible_people = [vet for vet in self.cell.agents if isinstance(vet, PersonAgent)]
                 for person in local_susceptible_people:
                     if self.random.random() < self.human_infect_human_prob:
-                        person.infect()
+                        person.infect(infection_path=self.current_infection_path + [self.name])
                 if self.location == Location.FARM:
                     # try to infect a cow in the farm's herd
                     if isinstance(self, Farmer):
@@ -114,7 +121,8 @@ class PersonAgent(CellAgent):
                             CATTLE_VET_CONTACTS_PER_STEP,
                             self.farm.cattle_model.proportion_susceptible)
                     infections = np.random.binomial(possible_infections, HUMAN_INFECT_CATTLE_PROB)
-                    self.farm.cattle_model.infect_susceptible(infections)
+                    self.farm.cattle_model.infect_susceptible(
+                        infections, infection_path=self.current_infection_path + [self.name])
         elif self.disease_state == DiseaseState.SUSCEPTIBLE:
             # may get infected from an SIR model. Note that infections from other agents happen by sharing a cell
             if self.location in [Location.FARM, Location.COMMUNITY]:
@@ -131,27 +139,22 @@ class PersonAgent(CellAgent):
                 possible_infection_sources = np.random.binomial(num_contacts, sir_model.proportion_infected)
                 is_infected = np.random.binomial(possible_infection_sources, infection_prob) > 0
 
-                if self.location == Location.FARM:
-                    print("{} farmer? {}".format(self.location, isinstance(self, Farmer)))
-                    print("  num_contacts={}, prop_inf={}, poss_source={}, inf_prob={}\n  {}"
-                          .format(num_contacts, sir_model.proportion_infected, possible_infection_sources,
-                                  infection_prob,
-                                  is_infected))
-
                 if is_infected:
-                    self.infect()
+                    self.infect(infection_path=[sir_model.name])
 
         # advance the agent's own disease
         self.progress_disease()
         # move depending on location
         self.move()
 
-    def infect(self):
+    def infect(self, infection_path=[]):
         """
         Get infected by avian influenza
         """
         self.disease_state = DiseaseState.INFECTED
         self.steps_current_disease_state = 0
+        self.current_infection_path = infection_path
+        self.model.infection_paths.add_path(infection_path + [self.name])
 
     def go_home(self):
         """
@@ -193,6 +196,7 @@ class FarmServicesVet(PersonAgent):
                          human_infect_human_prob=human_infect_human_prob,
                          human_infect_cattle_prob=human_infect_cattle_prob)
 
+        self.name = 'fs clinician'
         self.farm = None
         self.steps_at_farm = 0
 
@@ -282,7 +286,7 @@ class FarmServicesTechnician(PersonAgent):
 
 class LargeAnimalVet(PersonAgent):
     """
-    farm services technicians (2) (stay at farm services area)
+    Large animal clinic, farm services
     """
 
     def get_hospital_neighbour_cells(self):
@@ -334,7 +338,7 @@ class SmallAnimalVet(PersonAgent):
 
 class FloatingStaff(PersonAgent):
     """
-    farm services technicians (2) (stay at farm services area)
+    Floating staff: small animal and large animal
     """
 
     def get_hospital_neighbour_cells(self):
@@ -443,16 +447,18 @@ class DairyFarmAgent(LocationAgent):
     def __init__(self, model, cell=None, susceptible_cattle=DEFAULT_DAIRY_HERD_SIZE, infected_cattle=0,
                  cattle_infect_human_prob=CATTLE_INFECT_HUMAN_PROB,
                  cattle_infect_cattle_prob=CATTLE_INFECT_CATTLE_PROB,
-                 bird_infect_cattle_prob=BIRD_INFECT_COW_PROB
-                 ):
+                 bird_infect_cattle_prob=BIRD_INFECT_COW_PROB):
         super().__init__(model, cell)
 
         # SIR model for the cattle herd
-        self.cattle_model = SIRModel(population=susceptible_cattle,
+        self.cattle_model = SIRModel(model=self.model, name='farm',
+                                     population=susceptible_cattle,
                                      infection_probability=cattle_infect_cattle_prob,
                                      recovery_steps=CATTLE_RECOVERY_STEPS,
                                      recovered_expire_steps=CATTLE_RECOVERY_END_STEPS,
                                      num_contacts=CATTLE_CATTLE_CONTACTS_PER_STEP)
+
+        self.name = self.cattle_model.name
 
         # infection parameters
         self.cattle_infect_human_prob = cattle_infect_human_prob
@@ -478,7 +484,7 @@ class DairyFarmAgent(LocationAgent):
         :return: #infected / #total
         :rtype: float
         """
-        return self.cattle_model.infected / self.herd_count
+        return self.cattle_model.proportion_infected
 
     def step(self):
         # progress the system dynamics model on the farm
@@ -493,7 +499,7 @@ class DairyFarmAgent(LocationAgent):
         # see if any cows get infected from wild birds
         num_infect = sum(self.random.random() < self.bird_infect_cattle_prob
                          for _ in range(self.cattle_model.susceptible))
-        self.cattle_model.infect_susceptible(num_infect)
+        self.cattle_model.infect_susceptible(num_infect, infection_path=['bird'])
 
     def visit_from_vet(self, vet):
         """
