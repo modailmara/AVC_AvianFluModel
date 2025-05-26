@@ -1,7 +1,7 @@
 import numpy as np
 
-from constants import COMMUNITY_POPULATION, HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECTED_STEPS, HUMAN_RECOVERED_STEPS, \
-    COMMUNITY_CONTACTS_PER_STEP
+from constants import COMMUNITY_POPULATION, HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECTED_DAYS, HUMAN_RECOVERED_DAYS, \
+    COMMUNITY_CONTACTS_PER_DAY, STEPS_PER_DAY
 
 
 class SIRModel(object):
@@ -11,8 +11,8 @@ class SIRModel(object):
 
     def __init__(self, model, name,
                  population=COMMUNITY_POPULATION, infection_probability=HUMAN_INFECT_HUMAN_PROB,
-                 recovery_steps=HUMAN_INFECTED_STEPS, recovered_expire_steps=HUMAN_RECOVERED_STEPS,
-                 num_contacts=COMMUNITY_CONTACTS_PER_STEP):
+                 recovery_days=HUMAN_INFECTED_DAYS, recovered_expire_days=HUMAN_RECOVERED_DAYS,
+                 num_contacts_per_day=COMMUNITY_CONTACTS_PER_DAY):
         """
 
         :param name: Name of this model. Identifies what this model represents.
@@ -21,26 +21,25 @@ class SIRModel(object):
         :type population:
         :param infection_probability:
         :type infection_probability:
-        :param recovery_steps:
-        :type recovery_steps:
-        :param recovered_expire_steps:
-        :type recovered_expire_steps:
-        :param num_contacts:
-        :type num_contacts:
+        :param recovery_days:
+        :type recovery_days:
+        :param recovered_expire_days:
+        :type recovered_expire_days:
+        :param num_contacts_per_day:
+        :type num_contacts_per_day:
         """
         self.model = model
         self.name = name
 
         # counts for each disease state - start off clear of the disease
         self.susceptible = population
-        self.infected = 0
-        self.recovered = 0
+        self.infected = [0] * recovery_days * STEPS_PER_DAY  # each list item is count for number of steps infected
+        # each list item is count for number of steps recovered
+        self.recovered = [0] * recovered_expire_days * STEPS_PER_DAY
 
         # model parameters
         self.infection_prob = infection_probability
-        self.recovery_prob = 1 / recovery_steps
-        self.recovered_expire_prob = 1 / recovered_expire_steps
-        self.num_contacts = num_contacts
+        self.num_contacts_per_step = round(num_contacts_per_day / STEPS_PER_DAY)
 
     @property
     def population(self):
@@ -49,7 +48,7 @@ class SIRModel(object):
         :return: Number of entities
         :rtype: int
         """
-        return self.susceptible + self.infected + self.recovered
+        return self.susceptible + sum(self.infected) + sum(self.recovered)
 
     @property
     def proportion_susceptible(self):
@@ -67,29 +66,48 @@ class SIRModel(object):
         :return: Proportion of the population that is infected.
         :rtype: float
         """
-        return self.infected / self.population
+        return sum(self.infected) / self.population
 
     def progress_infection(self):
         """
-        Progress one step of the disease
+        Progress one step of the disease.
         - infected can infect susceptible
         - infected recover
         - recovery immunity expires
         """
-        potential_new_infections = np.random.binomial(self.num_contacts * self.infected, self.proportion_susceptible)
-
+        potential_new_infections = np.random.binomial(
+            self.num_contacts_per_step * sum(self.infected), self.proportion_susceptible
+        )
         new_infected = min(self.susceptible, np.random.binomial(potential_new_infections, self.infection_prob))
-        new_recovered = np.random.binomial(self.infected, self.recovery_prob)
-        new_recovery_ended = np.random.binomial(self.recovered, self.recovered_expire_prob)
+
+        new_recovered = self.infected[-1]
+        new_recovery_ended = self.recovered[-1]
 
         # adjust the state counts
-        self.susceptible -= min(new_infected, self.susceptible)
+        self.susceptible -= new_infected
         self.susceptible += new_recovery_ended
-        self.infected += new_infected
-        self.infected -= new_recovered
-        self.recovered += new_recovered
-        self.recovered -= new_recovery_ended
-        # print('  S: {}\n  I: {}\n  R: {}\n'.format(self.susceptible, self.infected, self.recovered))
+
+        self.infected = self.progress_state_list_one_step(self.infected)
+        self.infected[0] = new_infected
+
+        self.recovered = self.progress_state_list_one_step(self.recovered)
+        self.recovered[0] = new_recovered
+
+    def progress_state_list_one_step(self, state_list):
+        """
+        Progresses a list one step forward, e.g. state_list[1] -> state_list[2], state_list[0] -> state_list[1]
+        Assume the last list member is not needed
+
+        :param state_list: The list to be progressed
+        :type state_list: list
+        :return: The list with all elements moved one index up
+        :rtype: list
+        """
+        # go through the list in reverse so no items are overwritten before being copied
+        # start at the second last item as the last one isn't needed (and would "fall off" the end anyway)
+        for i in range(len(state_list) - 2, -1, -1):
+            state_list[i + 1] = state_list[i]
+        return state_list
 
     def infect_susceptible(self, num_to_infect, infection_path=[]):
         """
@@ -106,7 +124,7 @@ class SIRModel(object):
         """
         num_infected = min(self.susceptible, num_to_infect)
         self.susceptible -= num_infected
-        self.infected += num_infected
+        self.infected[0] += num_infected
 
         # add the infection path, need to append this SIR model name
         path = infection_path + [self.name]

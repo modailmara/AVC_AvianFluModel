@@ -6,7 +6,7 @@ from SIRModel import SIRModel
 from constants import CHANCE_FARM_NEEDS_VET, FarmVetVisitState, Location, DiseaseState, HospitalDepartment, \
     HUMAN_INFECTED_STEPS, HUMAN_RECOVERED_STEPS, HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECT_CATTLE_PROB, \
     CATTLE_INFECT_HUMAN_PROB, BIRD_INFECT_COW_PROB, CATTLE_INFECT_CATTLE_PROB, \
-    DEFAULT_DAIRY_HERD_SIZE, CATTLE_CATTLE_CONTACTS_PER_STEP, CATTLE_RECOVERY_STEPS, CATTLE_RECOVERY_END_STEPS, \
+    DEFAULT_DAIRY_HERD_SIZE, CATTLE_CATTLE_CONTACTS_PER_DAY, CATTLE_INFECTED_DAYS, CATTLE_RECOVERED_DAYS, \
     CATTLE_FARMER_CONTACTS_PER_STEP, CATTLE_VET_CONTACTS_PER_STEP, \
     COMMUNITY_CONTACTS_PER_STEP
 
@@ -454,9 +454,9 @@ class DairyFarmAgent(LocationAgent):
         self.cattle_model = SIRModel(model=self.model, name='farm',
                                      population=susceptible_cattle,
                                      infection_probability=cattle_infect_cattle_prob,
-                                     recovery_steps=CATTLE_RECOVERY_STEPS,
-                                     recovered_expire_steps=CATTLE_RECOVERY_END_STEPS,
-                                     num_contacts=CATTLE_CATTLE_CONTACTS_PER_STEP)
+                                     recovery_days=CATTLE_INFECTED_DAYS,
+                                     recovered_expire_days=CATTLE_RECOVERED_DAYS,
+                                     num_contacts_per_day=CATTLE_CATTLE_CONTACTS_PER_DAY)
 
         self.name = self.cattle_model.name
 

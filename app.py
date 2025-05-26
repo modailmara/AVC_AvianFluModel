@@ -78,13 +78,6 @@ model_params = {
     #     'value': 42,
     #     'label': 'Random Seed'
     # },
-    'num_infected_farms': Slider(
-        label="# infected farms",
-        value=0,
-        min=0,
-        max=20,
-        step=1,
-    ),
     'human_infect_human_prob': Slider(
         label='Prob: Person infect Person',
         value=HUMAN_INFECT_HUMAN_PROB,
@@ -120,7 +113,6 @@ model_params = {
         max=.5,
         step=.01,
     ),
-
 }
 
 
