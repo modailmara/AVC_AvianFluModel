@@ -26,8 +26,6 @@ class PersonAgent(CellAgent):
         """
         super().__init__(model)
 
-        self.name = type(self).__name__
-
         self.farm = None
 
         # disease information
@@ -43,6 +41,10 @@ class PersonAgent(CellAgent):
         self.location = Location.COMMUNITY
 
         self.cell = cell
+
+    @property
+    def name(self):
+        return 'person'
 
     def progress_disease(self):
         """
@@ -90,7 +92,6 @@ class PersonAgent(CellAgent):
             lambda cell: any(isinstance(agent, HospitalAgent) for agent in cell.agents)
         )
         return neighbourhood
-        # raise NotImplementedError("This method must be overridden by child classes.")
 
     def step(self):
         """
@@ -106,10 +107,12 @@ class PersonAgent(CellAgent):
                                                               infection_path=self.current_infection_path)
             else:
                 # try to infect other people in the same cell
-                local_susceptible_people = [vet for vet in self.cell.agents if isinstance(vet, PersonAgent)]
+                local_susceptible_people = [vet for vet in self.cell.agents
+                                            if isinstance(vet, PersonAgent)
+                                            and vet.disease_state == DiseaseState.SUSCEPTIBLE]
                 for person in local_susceptible_people:
                     if self.random.random() < self.human_infect_human_prob:
-                        person.infect(infection_path=self.current_infection_path + [self.name])
+                        person.infect(infection_path=self.current_infection_path)
                 if self.location == Location.FARM:
                     # try to infect a cow in the farm's herd
                     if isinstance(self, Farmer):
@@ -122,7 +125,7 @@ class PersonAgent(CellAgent):
                             self.farm.cattle_model.proportion_susceptible)
                     infections = np.random.binomial(possible_infections, HUMAN_INFECT_CATTLE_PROB)
                     self.farm.cattle_model.infect_susceptible(
-                        infections, infection_path=self.current_infection_path + [self.name])
+                        infections, infection_path=self.current_infection_path)
         elif self.disease_state == DiseaseState.SUSCEPTIBLE:
             # may get infected from an SIR model. Note that infections from other agents happen by sharing a cell
             if self.location in [Location.FARM, Location.COMMUNITY]:
@@ -147,14 +150,14 @@ class PersonAgent(CellAgent):
         # move depending on location
         self.move()
 
-    def infect(self, infection_path=[]):
+    def infect(self, infection_path):
         """
         Get infected by avian influenza
         """
         self.disease_state = DiseaseState.INFECTED
         self.steps_current_disease_state = 0
-        self.current_infection_path = infection_path
-        self.model.infection_paths.add_path(infection_path + [self.name])
+        self.current_infection_path = infection_path + [self.name]
+        self.model.infection_paths.add_path(self.current_infection_path)
 
     def go_home(self):
         """
@@ -196,9 +199,12 @@ class FarmServicesVet(PersonAgent):
                          human_infect_human_prob=human_infect_human_prob,
                          human_infect_cattle_prob=human_infect_cattle_prob)
 
-        self.name = 'fs clinician'
         self.farm = None
         self.steps_at_farm = 0
+
+    @property
+    def name(self):
+        return 'FS vet'
 
     def visit_farm(self, farm):
         """
@@ -264,6 +270,10 @@ class FarmServicesTechnician(PersonAgent):
     farm services technicians (2) (stay at farm services area)
     """
 
+    @property
+    def name(self):
+        return 'FS tech'
+
     def get_hospital_neighbour_cells(self):
         """
         This type of agent can move within the farm services area in the hospital
@@ -289,6 +299,10 @@ class LargeAnimalVet(PersonAgent):
     Large animal clinic, farm services
     """
 
+    @property
+    def name(self):
+        return 'LA vet'
+
     def get_hospital_neighbour_cells(self):
         """
         This type of agent can move within the farm services area in the hospital
@@ -313,8 +327,12 @@ class LargeAnimalVet(PersonAgent):
 
 class SmallAnimalVet(PersonAgent):
     """
-    farm services technicians (2) (stay at farm services area)
+    Small Animal Clinic vet
     """
+
+    @property
+    def name(self):
+        return 'SA vet'
 
     def get_hospital_neighbour_cells(self):
         """
@@ -340,6 +358,10 @@ class FloatingStaff(PersonAgent):
     """
     Floating staff: small animal and large animal
     """
+
+    @property
+    def name(self):
+        return 'float'
 
     def get_hospital_neighbour_cells(self):
         """
@@ -382,6 +404,10 @@ class Farmer(PersonAgent):
         # farmers are always on the same farm
         self.farm = farm
         self.steps_at_farm = 0
+
+    @property
+    def name(self):
+        return 'farmer'
 
     def move(self):
         """

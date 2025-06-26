@@ -44,16 +44,16 @@ NUM_FLOATING_STAFF = 28  # floating vets (3), staff (7), and students (18)
 NUM_FARMS = 10
 
 # vet visits to farms
-CHANCE_FARM_NEEDS_VET = .2
-VET_DAYS_AT_FARM = 1 / 6
+CHANCE_FARM_NEEDS_VET = .2  # prob a farm will request a vet visit
+VET_DAYS_AT_FARM = 1 / 6  # num days the vet stays at the farm during a visit
 VET_STEPS_AT_FARM = round(VET_DAYS_AT_FARM / STEPS_PER_DAY)
 
 # avian flu disease parameters
-HUMAN_INFECT_CATTLE_PROB = .1
-HUMAN_INFECT_HUMAN_PROB = .1
-HUMAN_INFECTED_DAYS = 10
+HUMAN_INFECT_CATTLE_PROB = 0  # prob of a human infecting a cow assuming contact
+HUMAN_INFECT_HUMAN_PROB = .1  # prog of a human infecting another human assuming contact
+HUMAN_INFECTED_DAYS = 10  # num days a human stays in Infected state
 HUMAN_INFECTED_STEPS = HUMAN_INFECTED_DAYS * STEPS_PER_DAY
-HUMAN_RECOVERED_DAYS = 20
+HUMAN_RECOVERED_DAYS = 20  # num days a human stays in Recovered state
 HUMAN_RECOVERED_STEPS = HUMAN_RECOVERED_DAYS * STEPS_PER_DAY
 
 CATTLE_INFECT_HUMAN_PROB = .1
@@ -65,7 +65,7 @@ CATTLE_RECOVERED_STEPS = CATTLE_RECOVERED_DAYS * STEPS_PER_DAY
 
 
 # -----------------------------
-# STATES
+# Enums
 
 class Time(Enum):
     DAY = 0  # at work
@@ -110,4 +110,24 @@ class HospitalDepartment(Enum):
     LARGE_ANIMAL = "large_animal"
     SMALL_ANIMAL = "small_animal"
     FARM_SERVICES = "farm_services"
+
+
+class FarmMilkingSystem(Enum):
+    """
+    Types of dairy farm milking systems
+    """
+    PARLOUR = 'parlour'
+    AMS = 'ams'
+    PIPELINE = 'pipeline'
+    ROTARY_PARLOUR = 'rotary parlour'
+
+
+class FarmHousing(Enum):
+    """
+    Types of housing on dairy farms
+    """
+    FREESTALL = 'freestall'
+    TIE_STALL = 'tie stall'
+    STRAW_PACK = 'straw pack'
+    TIE_AND_STRAW = 'tie stall and straw pack'
 

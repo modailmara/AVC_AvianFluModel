@@ -109,7 +109,7 @@ class SIRModel(object):
             state_list[i + 1] = state_list[i]
         return state_list
 
-    def infect_susceptible(self, num_to_infect, infection_path=[]):
+    def infect_susceptible(self, num_to_infect, infection_path):
         """
         Changes some of the model entities from susceptible to infected. If there are less susceptible than the number
         specified, will only infect the number of susceptible.
@@ -128,6 +128,8 @@ class SIRModel(object):
 
         # add the infection path, need to append this SIR model name
         path = infection_path + [self.name]
+        if 'bird' not in path:
+            pass
         self.model.infection_paths.add_path(path, num_infected)
 
         return num_infected

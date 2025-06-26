@@ -79,8 +79,8 @@ class MainModel(mesa.Model):
                  bird_infect_cattle_prob=BIRD_INFECT_COW_PROB,
                  ):
         super().__init__(seed=seed)
-        self.simulator = simulator
-        self.simulator.setup(self)
+        # self.simulator = simulator
+        # self.simulator.setup(self)
 
         # store a list of all the Person agent types - seems this gets used a bit
         self.person_agent_types = [cls for cls in inspect.getmembers(Agents, inspect.isclass)
@@ -112,7 +112,7 @@ class MainModel(mesa.Model):
             if cell.coordinate[0] < 10:
                 # Hospital covers the left of the space
                 if cell.coordinate[1] <= int(self.height / 3):
-                    # farm services at the top
+                    # farm services at the bottom
                     HospitalAgent(self, HospitalDepartment.FARM_SERVICES, cell=cell)
                     self.farm_services_cells.append(cell)
                 elif int(self.height / 3) < cell.coordinate[1] <= 2 * int(self.height / 3):
@@ -120,7 +120,7 @@ class MainModel(mesa.Model):
                     HospitalAgent(self, HospitalDepartment.LARGE_ANIMAL, cell=cell)
                     self.large_animal_cells.append(cell)
                 elif cell.coordinate[1] > 2 * int(self.height / 3):
-                    # small animal at the bottom
+                    # small animal at the top
                     HospitalAgent(self, HospitalDepartment.SMALL_ANIMAL, cell=cell)
                     self.small_animal_cells.append(cell)
                 # print("  hospital")
@@ -187,7 +187,8 @@ class MainModel(mesa.Model):
                 lambda model: number_state(model, DiseaseState.INFECTED, [FloatingStaff]) /
                               number_people(model, FloatingStaff),
             "Farmer": lambda model: number_state(model, DiseaseState.INFECTED, [Farmer]) / number_people(model, Farmer),
-            "Community": lambda model: model.community_model.proportion_infected
+            "Community": lambda model: model.community_model.proportion_infected,
+            'paths': lambda model: model.infection_paths._path_dict
         }
         # add in a model reporter for each farm
         agent_reporters = {DairyFarmAgent: {'Infection': 'infection_level'}}
