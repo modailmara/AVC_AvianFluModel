@@ -1,14 +1,9 @@
 from mesa.experimental.cell_space import CellAgent, FixedAgent, CellCollection
 import numpy as np
 
-from SIRModel import SIRModel
-
-from constants import CHANCE_FARM_NEEDS_VET, FarmVetVisitState, Location, DiseaseState, HospitalDepartment, \
-    HUMAN_INFECTED_STEPS, HUMAN_RECOVERED_STEPS, HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECT_CATTLE_PROB, \
-    CATTLE_INFECT_HUMAN_PROB, BIRD_INFECT_COW_PROB, CATTLE_INFECT_CATTLE_PROB, \
-    DEFAULT_DAIRY_HERD_SIZE, CATTLE_CATTLE_CONTACTS_PER_DAY, CATTLE_INFECTED_DAYS, CATTLE_RECOVERED_DAYS, \
-    CATTLE_FARMER_CONTACTS_PER_STEP, CATTLE_VET_CONTACTS_PER_STEP, \
-    COMMUNITY_CONTACTS_PER_STEP
+from constants import HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECT_CATTLE_PROB, DiseaseState, Location, HUMAN_INFECTED_STEPS, \
+    HUMAN_RECOVERED_STEPS, COMMUNITY_CONTACTS_PER_STEP, CATTLE_VET_CONTACTS_PER_STEP, CATTLE_FARMER_CONTACTS_PER_STEP, \
+    CATTLE_INFECT_HUMAN_PROB, HospitalDepartment
 
 
 class PersonAgent(CellAgent):
@@ -455,7 +450,7 @@ class LocationAgent(FixedAgent):
 class HospitalAgent(LocationAgent):
     """
     Agent for a part of the teaching hospital.
-    Has a fixed location. Home base for the vets which visit the dairy farms.
+    Has a fixed location.
     """
 
     def __init__(self, model, department, cell=None):
@@ -464,81 +459,3 @@ class HospitalAgent(LocationAgent):
         self.department = department
 
 
-class DairyFarmAgent(LocationAgent):
-    """
-    Agent for a dairy farm.
-
-    Maybe keep an internal network model for infected herd?
-    """
-    def __init__(self, model, cell=None, susceptible_cattle=DEFAULT_DAIRY_HERD_SIZE, infected_cattle=0,
-                 cattle_infect_human_prob=CATTLE_INFECT_HUMAN_PROB,
-                 cattle_infect_cattle_prob=CATTLE_INFECT_CATTLE_PROB,
-                 bird_infect_cattle_prob=BIRD_INFECT_COW_PROB):
-        super().__init__(model, cell)
-
-        # SIR model for the cattle herd
-        self.cattle_model = SIRModel(model=self.model, name='farm',
-                                     population=susceptible_cattle,
-                                     infection_probability=cattle_infect_cattle_prob,
-                                     recovery_days=CATTLE_INFECTED_DAYS,
-                                     recovered_expire_days=CATTLE_RECOVERED_DAYS,
-                                     num_contacts_per_day=CATTLE_CATTLE_CONTACTS_PER_DAY)
-
-        self.name = self.cattle_model.name
-
-        # infection parameters
-        self.cattle_infect_human_prob = cattle_infect_human_prob
-        self.bird_infect_cattle_prob = bird_infect_cattle_prob
-
-        # sometimes the vet visits
-        self.vet_state = FarmVetVisitState.OK
-        self.visiting_vet = None
-
-    @property
-    def herd_count(self):
-        """
-        Get the total number of cattle in this farm's herd.
-        :return: Total number of cattle
-        :rtype: int
-        """
-        return self.cattle_model.population
-
-    @property
-    def infection_level(self):
-        """
-        Get the proportion of infected cattle in the herd
-        :return: #infected / #total
-        :rtype: float
-        """
-        return self.cattle_model.proportion_infected
-
-    def step(self):
-        # progress the system dynamics model on the farm
-        self.cattle_model.progress_infection()
-
-        # does the farm need a vet?
-        if self.vet_state == FarmVetVisitState.OK and self.random.random() <= CHANCE_FARM_NEEDS_VET:
-            # need a vet and don't have one - request a vet
-            self.vet_state = FarmVetVisitState.NEED_VET
-            self.model.request_vet_visit(self)
-
-        # see if any cows get infected from wild birds
-        num_infect = sum(self.random.random() < self.bird_infect_cattle_prob
-                         for _ in range(self.cattle_model.susceptible))
-        self.cattle_model.infect_susceptible(num_infect, infection_path=['bird'])
-
-    def visit_from_vet(self, vet):
-        """
-        A vet has come to visit the herd
-        :param vet: The vet agent that is visiting the farm
-        :type vet: FarmServicesVet object
-        """
-        self.visiting_vet = vet
-        self.vet_state = FarmVetVisitState.VET_PRESENT
-
-    def vet_leaving(self):
-        """
-        The vet that came to visit has finished and is now leaving
-        """
-        self.vet_state = FarmVetVisitState.OK
-        self.visiting_vet = None

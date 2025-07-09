@@ -123,14 +123,14 @@ class SIRModel(object):
         :rtype: int
         """
         num_infected = min(self.susceptible, num_to_infect)
-        self.susceptible -= num_infected
-        self.infected[0] += num_infected
+        if num_infected > 0:
+            self.susceptible -= num_infected
+            self.infected[0] += num_infected
 
-        # add the infection path, need to append this SIR model name
-        path = infection_path + [self.name]
-        if 'bird' not in path:
-            pass
-        self.model.infection_paths.add_path(path, num_infected)
+            # add the infection path, need to append this SIR model name
+            path = infection_path + [self.name]
+
+            self.model.infection_paths.add_path(path, num_infected)
 
         return num_infected
 

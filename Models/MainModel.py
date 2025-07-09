@@ -2,16 +2,21 @@ import inspect
 import mesa
 import math
 from mesa.experimental.cell_space import OrthogonalVonNeumannGrid
+import pandas as pd
 
-from SIRModel import SIRModel
+from support_functions import get_input_data_dir
+from constants import convert_days_to_steps
+from Models.SIRModel import SIRModel
 from InfectionPaths import InfectionPaths
-import Agents
-from Agents import HospitalAgent, DairyFarmAgent, PersonAgent, FarmServicesVet, FarmServicesTechnician, \
+
+import Models
+from Models.Agents import HospitalAgent, PersonAgent, FarmServicesVet, FarmServicesTechnician, \
     LargeAnimalVet, SmallAnimalVet, FloatingStaff, Farmer
-from constants import Location, Time, DiseaseState, HospitalDepartment, VET_STEPS_AT_FARM, NUM_FARM_SERVICES_VETS, \
+from Models.FarmAgent import DairyFarmAgent
+from constants import FARM_INPUT_FILENAME, Location, DiseaseState, HospitalDepartment, NUM_FARM_SERVICES_VETS, \
     NUM_FARM_SERVICES_TECHS, NUM_FLOATING_STAFF, NUM_LARGE_ANIMAL_VETS, NUM_SMALL_ANIMAL_VETS, \
     HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECT_CATTLE_PROB, CATTLE_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB, \
-    BIRD_INFECT_COW_PROB, STEPS_PER_DAY, WORK_DAY_STEPS, COMMUNITY_STEPS
+    WORK_DAY_STEPS, COMMUNITY_STEPS, VET_DAYS_AT_FARM, STEPS_PER_DAY
 
 
 def number_state(model, disease_state, agent_types=None):
@@ -76,14 +81,14 @@ class MainModel(mesa.Model):
                  human_infect_cattle_prob=HUMAN_INFECT_CATTLE_PROB,
                  cattle_infect_human_prob=CATTLE_INFECT_HUMAN_PROB,
                  cattle_infect_cattle_prob=CATTLE_INFECT_CATTLE_PROB,
-                 bird_infect_cattle_prob=BIRD_INFECT_COW_PROB,
                  ):
         super().__init__(seed=seed)
-        # self.simulator = simulator
-        # self.simulator.setup(self)
+        if simulator is not None:
+            self.simulator = simulator
+            self.simulator.setup(self)
 
         # store a list of all the Person agent types - seems this gets used a bit
-        self.person_agent_types = [cls for cls in inspect.getmembers(Agents, inspect.isclass)
+        self.person_agent_types = [cls for cls in inspect.getmembers(Models.Agents, inspect.isclass)
                                    if issubclass(cls[1], PersonAgent) and cls[1] != PersonAgent]
 
         self.width = width
@@ -101,6 +106,8 @@ class MainModel(mesa.Model):
         self.farm_request_queue = []
         self.available_farm_clinicians = []
 
+        self.infection_paths = InfectionPaths()
+
         self.hospital_cells = []  # keep a list of cells that are hospital
         self.farm_services_cells = []
         self.large_animal_cells = []
@@ -108,7 +115,6 @@ class MainModel(mesa.Model):
         self.farm_cells = []
         # create the hospital agents and farm agents
         for cell in self.grid:
-            # print("{}".format(cell.coordinate))
             if cell.coordinate[0] < 10:
                 # Hospital covers the left of the space
                 if cell.coordinate[1] <= int(self.height / 3):
@@ -123,21 +129,30 @@ class MainModel(mesa.Model):
                     # small animal at the top
                     HospitalAgent(self, HospitalDepartment.SMALL_ANIMAL, cell=cell)
                     self.small_animal_cells.append(cell)
-                # print("  hospital")
 
                 self.hospital_cells.append(cell)
-            elif cell.coordinate[0] in range(height - 4, height, 2) and cell.coordinate[1] % 2 == 0:
-                # farms are every second cell along the right edge of the space
-                # print("  farm")
-                farm = DairyFarmAgent(self, cell=cell,
-                                      cattle_infect_human_prob=cattle_infect_human_prob,
-                                      cattle_infect_cattle_prob=cattle_infect_cattle_prob,
-                                      bird_infect_cattle_prob=bird_infect_cattle_prob)
-                self.farm_cells.append(cell)
-                # one farmer per farm
-                Farmer(self, farm, cell=None,
-                       human_infect_human_prob=human_infect_human_prob,
-                       human_infect_cattle_prob=human_infect_cattle_prob)
+
+        # add the farm cells, starting top right and every second cell to bottom then left
+        farm_df = pd.read_excel(get_input_data_dir() / FARM_INPUT_FILENAME)
+        cell_x = self.width - 1  # all the way right
+        cell_y = 0  # top
+        for _, farm_row in farm_df.iterrows():
+            cell = self.grid[cell_x, cell_y]
+            farm = DairyFarmAgent(self, farm_row.farm_id, farm_row.herd_size, farm_row.visit_frequency_days,
+                                  farm_row.milking_system, farm_row.housing, farm_row.pasture, farm_row.num_infected,
+                                  cell)
+            self.farm_cells.append(cell)
+
+            # one farmer per farm
+            Farmer(self, farm, cell=None,
+                   human_infect_human_prob=human_infect_human_prob,
+                   human_infect_cattle_prob=human_infect_cattle_prob)
+
+            # increment the cell coordinates
+            cell_y += 2
+            if cell_y >= self.height:
+                cell_y = 0
+                cell_x -= 2
 
         # create vets and start them at the hospital
         for _ in range(NUM_FARM_SERVICES_TECHS):
@@ -163,7 +178,6 @@ class MainModel(mesa.Model):
                           human_infect_cattle_prob=human_infect_cattle_prob)
 
         self.community_model = SIRModel(self, 'community')
-        self.infection_paths = InfectionPaths()
 
         # add collecters for the people infection trackers
         model_reporters = {
@@ -214,10 +228,9 @@ class MainModel(mesa.Model):
             farm_services_vet.visit_farm(farm)
 
         # manage vets that have finished their visit at a farm and are returning to the hospital
-        vets_at_farms = self.agents_by_type[FarmServicesVet].select(
-            lambda a: a.location == Location.FARM and isinstance(a, FarmServicesVet))
+        vets_at_farms = self.agents_by_type[FarmServicesVet].select(lambda a: a.location == Location.FARM)
         for farm_services_vet in vets_at_farms:
-            if farm_services_vet.steps_at_farm > VET_STEPS_AT_FARM:
+            if farm_services_vet.steps_at_farm > convert_days_to_steps(VET_DAYS_AT_FARM):
                 # been there long enough - time to go back to the hospital
                 farm_services_vet.farm.vet_leaving()
                 farm_services_vet.leave_farm()

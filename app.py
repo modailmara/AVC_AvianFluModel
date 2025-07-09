@@ -10,12 +10,12 @@ from mesa.experimental.devs import ABMSimulator
 from mesa.visualization.utils import update_counter
 
 
-from Agents import PersonAgent, HospitalAgent, DairyFarmAgent, FarmServicesVet, FarmServicesTechnician, FloatingStaff, \
-    LargeAnimalVet, SmallAnimalVet
-from MainModel import MainModel
+from Models.Agents import HospitalAgent, PersonAgent, FarmServicesVet, FarmServicesTechnician, \
+    LargeAnimalVet, SmallAnimalVet, FloatingStaff, Farmer
+from Models.FarmAgent import DairyFarmAgent
+from Models.MainModel import MainModel
 from constants import FarmVetVisitState, DiseaseState, HospitalDepartment, \
-    HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB, CATTLE_INFECT_CATTLE_PROB, \
-    BIRD_INFECT_COW_PROB
+    HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB, CATTLE_INFECT_CATTLE_PROB
 
 
 def vet_location_portrayal(agent):
@@ -85,13 +85,7 @@ model_params = {
         max=.5,
         step=.01,
     ),
-    'human_infect_cattle_prob': Slider(
-        label='Prob: Person infect Cow',
-        value=HUMAN_INFECT_CATTLE_PROB,
-        min=0,
-        max=.5,
-        step=.01,
-    ),
+
     'cattle_infect_human_prob': Slider(
         label='Prob: Cow infect Person',
         value=CATTLE_INFECT_HUMAN_PROB,
@@ -106,13 +100,7 @@ model_params = {
         max=.5,
         step=.01,
     ),
-    'bird_infect_cattle_prob': Slider(
-        label='Prob: Bird infect Cow',
-        value=BIRD_INFECT_COW_PROB,
-        min=0,
-        max=.5,
-        step=.01,
-    ),
+
 }
 
 

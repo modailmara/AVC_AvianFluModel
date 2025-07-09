@@ -1,15 +1,17 @@
 from mesa.batchrunner import batch_run
-from VisualiseResults import visualise_paths
+from mesa.experimental.devs import ABMSimulator
 
-from MainModel import MainModel
+from VisualiseResults import visualise_paths
+from Models.MainModel import MainModel
 
 
 if __name__ == "__main__":
+    # simulator = ABMSimulator()
     results = batch_run(
         MainModel,
         parameters={'width': 20, 'height': 20},
         iterations=100,
-        max_steps=60,
+        max_steps=600,
         number_processes=5,
         data_collection_period=-1,
         display_progress=True
