@@ -12,8 +12,8 @@ class DairyFarmAgent(LocationAgent):
 
     Maybe keep an internal network model for infected herd?
     """
-    def __init__(self, model, farm_id, herd_size, visit_frequency, milking_system, housing, pasture, infected_cattle=0,
-                 cell=None):
+    def __init__(self, model, cell, farm_id, herd_size, visit_frequency, milking_system, housing, pasture,
+                 infected_cattle=0):
         """
 
         :param model: The model that this agent belongs to

@@ -9,9 +9,9 @@ if __name__ == "__main__":
     # simulator = ABMSimulator()
     results = batch_run(
         MainModel,
-        parameters={'width': 20, 'height': 20},
-        iterations=100,
-        max_steps=600,
+        parameters={},  # {'width': 20, 'height': 20},
+        iterations=1,
+        max_steps=60,
         number_processes=5,
         data_collection_period=-1,
         display_progress=True
@@ -22,4 +22,4 @@ if __name__ == "__main__":
     #             print('{}: {}'.format(name, anything))
     #     print('---')
 
-    visualise_paths(results)
+    # visualise_paths(results)

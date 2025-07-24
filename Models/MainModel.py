@@ -1,7 +1,7 @@
 import inspect
 import mesa
 import math
-from mesa.experimental.cell_space import OrthogonalVonNeumannGrid
+from mesa.experimental.cell_space import OrthogonalMooreGrid
 import pandas as pd
 
 from support_functions import get_input_data_dir
@@ -10,13 +10,12 @@ from Models.SIRModel import SIRModel
 from InfectionPaths import InfectionPaths
 
 import Models
-from Models.Agents import HospitalAgent, PersonAgent, FarmServicesVet, FarmServicesTechnician, \
-    LargeAnimalVet, SmallAnimalVet, FloatingStaff, Farmer
+from Models.Agents import HospitalAgent, PersonAgent, FarmerAgent
 from Models.FarmAgent import DairyFarmAgent
 from constants import FARM_INPUT_FILENAME, Location, DiseaseState, HospitalDepartment, NUM_FARM_SERVICES_VETS, \
     NUM_FARM_SERVICES_TECHS, NUM_FLOATING_STAFF, NUM_LARGE_ANIMAL_VETS, NUM_SMALL_ANIMAL_VETS, \
     HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECT_CATTLE_PROB, CATTLE_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB, \
-    WORK_DAY_STEPS, COMMUNITY_STEPS, VET_DAYS_AT_FARM, STEPS_PER_DAY
+    WORK_DAY_STEPS, COMMUNITY_STEPS, VET_DAYS_AT_FARM, STEPS_PER_DAY, PEOPLE_INPUT_FILENAME, PersonRole
 
 
 def number_state(model, disease_state, agent_types=None):
@@ -76,7 +75,7 @@ class MainModel(mesa.Model):
     The model that coordinates the agents and environment for a Hub and Spoke model of Avian Influenza.
     """
 
-    def __init__(self, width=20, height=20, seed=None, simulator=None,
+    def __init__(self, seed=None, simulator=None,
                  human_infect_human_prob=HUMAN_INFECT_HUMAN_PROB,
                  human_infect_cattle_prob=HUMAN_INFECT_CATTLE_PROB,
                  cattle_infect_human_prob=CATTLE_INFECT_HUMAN_PROB,
@@ -91,11 +90,11 @@ class MainModel(mesa.Model):
         self.person_agent_types = [cls for cls in inspect.getmembers(Models.Agents, inspect.isclass)
                                    if issubclass(cls[1], PersonAgent) and cls[1] != PersonAgent]
 
-        self.width = width
-        self.height = height
+        self.width = 20
+        self.height = 20
 
         # Create grid using experimental cell space
-        self.grid = OrthogonalVonNeumannGrid(
+        self.grid = OrthogonalMooreGrid(
             [self.height, self.width],
             torus=False,
             capacity=math.inf,
@@ -108,45 +107,72 @@ class MainModel(mesa.Model):
 
         self.infection_paths = InfectionPaths()
 
-        self.hospital_cells = []  # keep a list of cells that are hospital
-        self.farm_services_cells = []
-        self.large_animal_cells = []
-        self.small_animal_cells = []
+        # keep references to the different types of locations
+        self.hospital_cells = {HospitalDepartment.FARM_SERVICES: [], HospitalDepartment.SMALL_ANIMAL: [],
+                               HospitalDepartment.LARGE_ANIMAL: [], HospitalDepartment.COMMON: []}
         self.farm_cells = []
-        # create the hospital agents and farm agents
-        for cell in self.grid:
-            if cell.coordinate[0] < 10:
-                # Hospital covers the left of the space
-                if cell.coordinate[1] <= int(self.height / 3):
-                    # farm services at the bottom
-                    HospitalAgent(self, HospitalDepartment.FARM_SERVICES, cell=cell)
-                    self.farm_services_cells.append(cell)
-                elif int(self.height / 3) < cell.coordinate[1] <= 2 * int(self.height / 3):
-                    # large animal in the middle
-                    HospitalAgent(self, HospitalDepartment.LARGE_ANIMAL, cell=cell)
-                    self.large_animal_cells.append(cell)
-                elif cell.coordinate[1] > 2 * int(self.height / 3):
-                    # small animal at the top
-                    HospitalAgent(self, HospitalDepartment.SMALL_ANIMAL, cell=cell)
-                    self.small_animal_cells.append(cell)
 
-                self.hospital_cells.append(cell)
+        # --------------------------
+        # create the hospital
 
-        # add the farm cells, starting top right and every second cell to bottom then left
+        hospital_width = 9
+
+        # large animal clinic
+        for cell_x in range(hospital_width):
+            for cell_y in range(13, 20):
+                cell = self.grid[cell_x, cell_y]
+                HospitalAgent(self, HospitalDepartment.LARGE_ANIMAL, cell=cell)
+                self.hospital_cells[HospitalDepartment.LARGE_ANIMAL].append(cell)
+        # add a partial row for where farm services overlaps
+        for cell_x in range(4, hospital_width):
+            cell_y = 12
+            cell = self.grid[cell_x, cell_y]
+            HospitalAgent(self, HospitalDepartment.LARGE_ANIMAL, cell=cell)
+            self.hospital_cells[HospitalDepartment.LARGE_ANIMAL].append(cell)
+
+        # small animal clinic + ???
+        for cell_x in range(hospital_width):
+            for cell_y in range(9):
+                cell = self.grid[cell_x, cell_y]
+                HospitalAgent(self, HospitalDepartment.SMALL_ANIMAL, cell=cell)
+                self.hospital_cells[HospitalDepartment.SMALL_ANIMAL].append(cell)
+        # extra partial row for where farm services overlaps
+        for cell_x in range(4, hospital_width):
+            cell_y = 9
+            cell = self.grid[cell_x, cell_y]
+            HospitalAgent(self, HospitalDepartment.SMALL_ANIMAL, cell=cell)
+            self.hospital_cells[HospitalDepartment.SMALL_ANIMAL].append(cell)
+
+        # farm services area
+        for cell_x in range(4):
+            for cell_y in range(9, 13):
+                cell = self.grid[cell_x, cell_y]
+                HospitalAgent(self, HospitalDepartment.FARM_SERVICES, cell=cell)
+                self.hospital_cells[HospitalDepartment.FARM_SERVICES].append(cell)
+
+        # common area
+        for cell_x in range(hospital_width, 12):
+            for cell_y in range(6, 10):
+                cell = self.grid[cell_x, cell_y]
+                HospitalAgent(self, HospitalDepartment.COMMON, cell=cell)
+                self.hospital_cells[HospitalDepartment.COMMON].append(cell)
+
+        # ------------------------- end hospital space definition
+
+        # load the farm file to define farms and farmers
         farm_df = pd.read_excel(get_input_data_dir() / FARM_INPUT_FILENAME)
+        # add the farm cells, starting top right and every second cell to bottom then left
         cell_x = self.width - 1  # all the way right
         cell_y = 0  # top
         for _, farm_row in farm_df.iterrows():
             cell = self.grid[cell_x, cell_y]
-            farm = DairyFarmAgent(self, farm_row.farm_id, farm_row.herd_size, farm_row.visit_frequency_days,
-                                  farm_row.milking_system, farm_row.housing, farm_row.pasture, farm_row.num_infected,
-                                  cell)
+            farm = DairyFarmAgent(self, cell,
+                                  farm_row.farm_id, farm_row.herd_size, farm_row.visit_frequency_days,
+                                  farm_row.milking_system, farm_row.housing, farm_row.pasture, farm_row.num_infected)
             self.farm_cells.append(cell)
 
             # one farmer per farm
-            Farmer(self, farm, cell=None,
-                   human_infect_human_prob=human_infect_human_prob,
-                   human_infect_cattle_prob=human_infect_cattle_prob)
+            FarmerAgent(self, farm)
 
             # increment the cell coordinates
             cell_y += 2
@@ -154,28 +180,26 @@ class MainModel(mesa.Model):
                 cell_y = 0
                 cell_x -= 2
 
-        # create vets and start them at the hospital
-        for _ in range(NUM_FARM_SERVICES_TECHS):
-            FarmServicesTechnician(self, cell=None,
-                                   human_infect_human_prob=human_infect_human_prob,
-                                   human_infect_cattle_prob=human_infect_cattle_prob)
-        for _ in range(NUM_FARM_SERVICES_VETS):
-            FarmServicesVet(self, cell=None,
-                            human_infect_human_prob=human_infect_human_prob,
-                            human_infect_cattle_prob=human_infect_cattle_prob)
-        for _ in range(NUM_LARGE_ANIMAL_VETS):
-            LargeAnimalVet(self, cell=None,
-                           human_infect_human_prob=human_infect_human_prob,
-                           human_infect_cattle_prob=human_infect_cattle_prob)
-        for _ in range(NUM_SMALL_ANIMAL_VETS):
-            # self.random.choice(self.)
-            SmallAnimalVet(self, cell=None,
-                           human_infect_human_prob=human_infect_human_prob,
-                           human_infect_cattle_prob=human_infect_cattle_prob)
-        for _ in range(NUM_FLOATING_STAFF):
-            FloatingStaff(self, cell=None,
-                          human_infect_human_prob=human_infect_human_prob,
-                          human_infect_cattle_prob=human_infect_cattle_prob)
+        # load the people file to define hospital locations and staff/clinicians/students
+        people_df = pd.read_excel(get_input_data_dir() / PEOPLE_INPUT_FILENAME)
+        people_df.columns = people_df.columns.str.lower()
+        area_names = [name.split(':')[1].strip()
+                      for name in people_df.columns if name.startswith('area:')]
+
+        for _, role_def_row in people_df.iterrows():
+            role_name = role_def_row.type.lower().strip()
+            person_role = PersonRole(role_name)
+            num_role = int(role_def_row.num)
+
+            area_weights = []
+            for name in area_names:
+                area = HospitalDepartment(name)
+                area_weights.append((area, float(role_def_row['area: ' + name])))
+
+            for i in range(num_role):
+                PersonAgent(self, "{}_{}".format(person_role, i),
+                            cell=None, role=person_role, area_weights=area_weights)
+                # person.move()
 
         self.community_model = SIRModel(self, 'community')
 
@@ -185,24 +209,10 @@ class MainModel(mesa.Model):
             "Susceptible": number_vet_susceptible,
             "Recovered": number_vet_recovered,
             # FarmServicesVet, FarmServicesTechnician, LargeAnimalVet, SmallAnimalVet, FloatingStaff
-            "FarmServicesVet":
-                lambda model: number_state(model, DiseaseState.INFECTED, [FarmServicesVet]) /
-                              number_people(model, FarmServicesVet),
-            "FarmServicesTechnician":
-                lambda model: number_state(model, DiseaseState.INFECTED, [FarmServicesTechnician]) /
-                              number_people(model, FarmServicesTechnician),
-            "LargeAnimalVet":
-                lambda model: number_state(model, DiseaseState.INFECTED, [LargeAnimalVet]) /
-                              number_people(model, LargeAnimalVet),
-            "SmallAnimalVet":
-                lambda model: number_state(model, DiseaseState.INFECTED, [SmallAnimalVet]) /
-                              number_people(model, SmallAnimalVet),
-            "FloatingStaff":
-                lambda model: number_state(model, DiseaseState.INFECTED, [FloatingStaff]) /
-                              number_people(model, FloatingStaff),
-            "Farmer": lambda model: number_state(model, DiseaseState.INFECTED, [Farmer]) / number_people(model, Farmer),
+
+            "FarmerAgent": lambda model: number_state(model, DiseaseState.INFECTED, [FarmerAgent]) / number_people(model, FarmerAgent),
             "Community": lambda model: model.community_model.proportion_infected,
-            'paths': lambda model: model.infection_paths._path_dict
+            # 'paths': lambda model: model.infection_paths._path_dict
         }
         # add in a model reporter for each farm
         agent_reporters = {DairyFarmAgent: {'Infection': 'infection_level'}}
@@ -218,31 +228,23 @@ class MainModel(mesa.Model):
         Execute one step of the model
         """
         # fill any farm requests for vets
-        available_vets = list(self.agents_by_type[FarmServicesVet].select(lambda a: a.location == Location.HOSPITAL))
-        min_vets_farms = min(len(available_vets), len(self.farm_request_queue))
-        for _ in range(min_vets_farms):
-            farm = self.farm_request_queue.pop(0)
-            farm_services_vet = available_vets.pop(0)
-
-            farm.visit_from_vet(farm_services_vet)
-            farm_services_vet.visit_farm(farm)
+        # available_vets = list(self.agents_by_type[PersonAgent].select(lambda a: a.location == Location.HOSPITAL and
+        #                                                                         a.role == PersonRole.FARM_SERVICES_VET))
+        # min_vets_farms = min(len(available_vets), len(self.farm_request_queue))
+        # for _ in range(min_vets_farms):
+        #     farm = self.farm_request_queue.pop(0)
+        #     farm_services_vet = available_vets.pop(0)
+        #
+        #     farm.visit_from_vet(farm_services_vet)
+        #     farm_services_vet.visit_farm(farm)
 
         # manage vets that have finished their visit at a farm and are returning to the hospital
-        vets_at_farms = self.agents_by_type[FarmServicesVet].select(lambda a: a.location == Location.FARM)
-        for farm_services_vet in vets_at_farms:
-            if farm_services_vet.steps_at_farm > convert_days_to_steps(VET_DAYS_AT_FARM):
-                # been there long enough - time to go back to the hospital
-                farm_services_vet.farm.vet_leaving()
-                farm_services_vet.leave_farm()
-
-        # agents do all their steps
-        for name, agent_class in self.person_agent_types:
-            if self.steps % STEPS_PER_DAY == WORK_DAY_STEPS[0]:
-                # start of the work day
-                self.agents_by_type[agent_class].shuffle_do('start_work')
-            elif self.steps % STEPS_PER_DAY == COMMUNITY_STEPS[0]:
-                # time to go home
-                self.agents_by_type[agent_class].shuffle_do('go_home')
+        # vets_at_farms = self.agents_by_type[PersonAgent].select(lambda a: a.location == Location.FARM)
+        # for farm_services_vet in vets_at_farms:
+        #     if farm_services_vet.steps_at_farm > convert_days_to_steps(VET_DAYS_AT_FARM):
+        #         # been there long enough - time to go back to the hospital
+        #         farm_services_vet.farm.vet_leaving()
+        #         farm_services_vet.leave_farm()
 
         self.agents.shuffle_do('step')
 

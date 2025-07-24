@@ -10,8 +10,7 @@ from mesa.experimental.devs import ABMSimulator
 from mesa.visualization.utils import update_counter
 
 
-from Models.Agents import HospitalAgent, PersonAgent, FarmServicesVet, FarmServicesTechnician, \
-    LargeAnimalVet, SmallAnimalVet, FloatingStaff, Farmer
+from Models.Agents import HospitalAgent, PersonAgent, FarmerAgent
 from Models.FarmAgent import DairyFarmAgent
 from Models.MainModel import MainModel
 from constants import FarmVetVisitState, DiseaseState, HospitalDepartment, \
@@ -22,26 +21,15 @@ def vet_location_portrayal(agent):
     if agent is None:
         return
 
-    portrayal = {'size': 35, 'edgecolors': 'black', 'linewidths': 0}
+    portrayal = {'size': 20, 'edgecolors': 'xkcd:grey', 'linewidths': 1}
 
     # marker and size by type
     if isinstance(agent, PersonAgent):
-        portrayal['linewidths'] = .5
+        portrayal['linewidths'] = 1
         portrayal['marker'] = 'o'
         portrayal['zorder'] = 2
 
-        if isinstance(agent, FarmServicesVet):
-            portrayal['color'] = 'xkcd:brown'
-        elif isinstance(agent, FarmServicesTechnician):
-            portrayal['color'] = 'xkcd:slate grey'
-        elif isinstance(agent, FloatingStaff):
-            portrayal['color'] = 'xkcd:apricot'
-        elif isinstance(agent, LargeAnimalVet):
-            portrayal['color'] = 'xkcd:blue'
-        elif isinstance(agent, SmallAnimalVet):
-            portrayal['color'] = 'xkcd:drab green'
-        else:  # farmer
-            portrayal['color'] = 'xkcd:green'
+        portrayal['color'] = 'xkcd:green'
 
         if agent.disease_state == DiseaseState.INFECTED:
             portrayal['edgecolors'] = 'xkcd:red'
@@ -52,16 +40,18 @@ def vet_location_portrayal(agent):
 
     elif isinstance(agent, HospitalAgent):
         portrayal['marker'] = 's'
-        portrayal['size'] = 500
+        portrayal['size'] = 180
         if agent.department == HospitalDepartment.FARM_SERVICES:
             portrayal['color'] = 'xkcd:light grey'
         elif agent.department == HospitalDepartment.LARGE_ANIMAL:
             portrayal['color'] = 'xkcd:eggshell'
-        else:  # small animal
+        elif agent.department == HospitalDepartment.SMALL_ANIMAL:
             portrayal['color'] = 'xkcd:ice blue'
-    else:  # farm
+        elif agent.department == HospitalDepartment.COMMON:
+            portrayal['color'] = 'xkcd:peach'
+    elif isinstance(agent, DairyFarmAgent):  # farm
         portrayal['marker'] = 's'
-        portrayal['size'] = 100
+        portrayal['size'] = 150
 
         # disease state
         if agent.infection_level > 0:
@@ -183,10 +173,10 @@ community_plot = make_plot_component(
 
 def post_process_farmer_lineplot(ax):
     post_process_vet_staff_lineplot(ax)
-    ax.set_title("Farmer")
+    ax.set_title("FarmerAgent")
 
 farmer_plot = make_plot_component(
-    {"Farmer": "xkcd:red"}, post_process=post_process_farmer_lineplot,
+    {"FarmerAgent": "xkcd:red"}, post_process=post_process_farmer_lineplot,
 )
 
 

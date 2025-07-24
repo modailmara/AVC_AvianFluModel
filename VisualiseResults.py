@@ -32,19 +32,31 @@ def visualise_paths(result_list):
                     not_start_comm_end_comm_path_dict['iteration'].append(iteration_dict['iteration'])
                     not_start_comm_end_comm_path_dict['count'].append(path_count)
 
-    path_df = pd.DataFrame(data=path_dict)
+    # path_df = pd.DataFrame(data=path_dict)
+    print('path: {}'.format(path_dict))
+    print('end: {}'.format(end_comm_path_dict))
+    print('not start: {}'.format(not_start_comm_end_comm_path_dict))
 
     # make charts
     sns.set_theme(rc={'figure.figsize': (10, 50)})
 
-    path_plot = sns.catplot(data=path_df, x='count', y='path', kind='box',
-                            height=20, aspect=1)
-    path_plot.savefig('./visualisations/path_barplot_all.png')
+    if len(path_dict['path']) > 0:
+        path_plot = sns.catplot(data=path_dict, x='count', y='path', kind='box',
+                                height=20, aspect=1)
+        path_plot.savefig('./visualisations/path_barplot_all.png')
+    else:
+        print('No paths')
 
-    path_plot = sns.catplot(data=end_comm_path_dict, x='count', y='path', kind='box',
-                            height=20, aspect=1)
-    path_plot.savefig('./visualisations/path_barplot_community.png')
+    if len(end_comm_path_dict['path']) > 0:
+        path_plot = sns.catplot(data=end_comm_path_dict, x='count', y='path', kind='box',
+                                height=20, aspect=1)
+        path_plot.savefig('./visualisations/path_barplot_community.png')
+    else:
+        print('No paths ending in community')
 
-    path_plot = sns.catplot(data=not_start_comm_end_comm_path_dict, x='count', y='path', kind='box',
-                            height=20, aspect=1)
-    path_plot.savefig('./visualisations/path_barplot_not_start_community.png')
+    if len(not_start_comm_end_comm_path_dict['path']) > 0:
+        path_plot = sns.catplot(data=not_start_comm_end_comm_path_dict, x='count', y='path', kind='box',
+                                height=20, aspect=1)
+        path_plot.savefig('./visualisations/path_barplot_not_start_community.png')
+    else:
+        print('No paths not starting in community, but ending in community')

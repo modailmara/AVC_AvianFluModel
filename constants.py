@@ -5,13 +5,12 @@ Enum classes for the state-transition models
 """
 from enum import Enum
 
-# CONSTANTS
-
 FARM_INPUT_FILENAME = "farms.xlsx"
+PEOPLE_INPUT_FILENAME = "people.xlsx"
 
 # time
 # total steps from midnight to midnight
-STEPS_PER_DAY = 6
+STEPS_PER_DAY = 16  # 1 step = 1.5 hours
 # step numbers that are part of the working day - all VTH staff are at the hospital or farms, farmers are at farms
 DAYTIME_STEPS = round(1 / 3 * STEPS_PER_DAY)
 WORK_DAY_STEPS = list(range(1, DAYTIME_STEPS + 1))
@@ -22,14 +21,14 @@ COMMUNITY_STEPS = list(range(DAYTIME_STEPS + 1, STEPS_PER_DAY + 1))
 
 def convert_per_day_to_per_step(num_per_day):
     """
-    Converts a number of events per day into a number of steps per day. Rounds to the nearest integer.
+    Converts a number of events per day into a number of events per step. Rounds to the nearest integer.
 
     :param num_per_day: Number of events per day
     :type num_per_day: int
-    :return: Number of steps per day
+    :return: Number of events per step
     :rtype: int
     """
-    return round(num_per_day / STEPS_PER_DAY)
+    return max(1, round(num_per_day / STEPS_PER_DAY))
 
 
 def convert_days_to_steps(num_days):
@@ -78,8 +77,9 @@ HUMAN_INFECTED_STEPS = convert_days_to_steps(HUMAN_INFECTED_DAYS)
 HUMAN_RECOVERED_DAYS = 20  # num days a human stays in Recovered state
 HUMAN_RECOVERED_STEPS = convert_days_to_steps(HUMAN_RECOVERED_DAYS)
 
-CATTLE_INFECT_HUMAN_PROB = 0.0000083
-CATTLE_INFECT_CATTLE_PROB = .05
+CATTLE_INFECT_HUMAN_PROB = 0.9
+# CATTLE_INFECT_HUMAN_PROB = 0.0000083
+CATTLE_INFECT_CATTLE_PROB = .9  # .05
 CATTLE_INFECTED_DAYS = 10
 CATTLE_INFECTED_STEPS = convert_days_to_steps(CATTLE_INFECTED_DAYS)
 CATTLE_RECOVERED_DAYS = 100
@@ -101,6 +101,25 @@ class Location(Enum):
     HOSPITAL = 0
     FARM = 1
     COMMUNITY = 2
+
+
+class PersonRole(Enum):
+    """
+    Roles of people agents in the hospital.
+    """
+    FARM_SERVICES_VET = 'farm services vet'
+    FARM_SERVICES_TECH = 'farm services technician'
+    FARM_SERVICES_STUDENT = 'farm services student'
+    LARGE_ANIMAL_VET = 'large animal vet'
+    LARGE_ANIMAL_STAFF = 'large animal staff'
+    LARGE_ANIMAL_STUDENT = 'large animal student'
+    SMALL_ANIMAL_VET = 'small animal vet'
+    SMALL_ANIMAL_STAFF = 'small animal staff'
+    SMALL_ANIMAL_STUDENT = 'small animal student'
+    FLOATING_VET = 'floating vet'
+    FLOATING_STAFF = 'floating staff'
+    FLOATING_STUDENT = 'floating student'
+    FARMER = 'farmer'
 
 
 class DiseaseState(Enum):
@@ -129,9 +148,10 @@ class HospitalDepartment(Enum):
     """
     Department in the veterinary hospital
     """
-    LARGE_ANIMAL = "large_animal"
-    SMALL_ANIMAL = "small_animal"
-    FARM_SERVICES = "farm_services"
+    LARGE_ANIMAL = "large animal"
+    SMALL_ANIMAL = "small animal"
+    FARM_SERVICES = "farm services"
+    COMMON = 'common'
 
 
 class FarmMilkingSystem(Enum):
