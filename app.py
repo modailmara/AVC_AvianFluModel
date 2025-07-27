@@ -10,7 +10,7 @@ from mesa.experimental.devs import ABMSimulator
 from mesa.visualization.utils import update_counter
 
 
-Addfrom Models.PeopleAgents import PersonAgent, FarmerAgent
+from Models.PeopleAgents import PersonAgent, FarmerAgent
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent
 from Models.MainModel import MainModel
 from constants import FarmVetVisitState, DiseaseState, HospitalDepartment, \
