@@ -1,9 +1,44 @@
-from Models.Agents import LocationAgent
+from mesa.experimental.cell_space import FixedAgent
+
 from Models.SIRModel import SIRModel
 from constants import convert_days_to_steps
 
-from constants import CATTLE_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB, CATTLE_INFECTED_DAYS, \
-    CATTLE_RECOVERED_DAYS, CATTLE_CATTLE_CONTACTS_PER_DAY, FarmMilkingSystem, FarmHousing, FarmVetVisitState
+from constants import CATTLE_INFECT_CATTLE_PROB, CATTLE_INFECTED_DAYS, \
+    CATTLE_RECOVERED_DAYS, FarmMilkingSystem, FarmHousing, FarmVetVisitState, CATTLE_CONTACTS_PER_STEP, \
+    NUM_MILKING_CONTACTS
+
+
+class LocationAgent(FixedAgent):
+    """
+    An agent that primarily represents a location
+    """
+
+    def __init__(self, model, cell=None):
+        """
+
+        :param model: Model instance
+        :type model: MainModel objectF
+        :param cell: Cell
+        :type cell:
+        """
+        super().__init__(model)
+
+        self.cell = cell
+
+    def step(self):
+        pass
+
+
+class HospitalAgent(LocationAgent):
+    """
+    Agent for a part of the teaching hospital.
+    Has a fixed location.
+    """
+
+    def __init__(self, model, department, cell=None):
+        super().__init__(model, cell)
+
+        self.department = department
 
 
 class DairyFarmAgent(LocationAgent):
@@ -40,8 +75,13 @@ class DairyFarmAgent(LocationAgent):
         self.farm_id = farm_id
         self.visit_frequency_steps = convert_days_to_steps(visit_frequency)
         self.steps_since_last_visit = self.random.randint(0, self.visit_frequency_steps)
+
         self.milking_system = FarmMilkingSystem(milking_system.lower().strip())
+        self.num_milking_contacts = NUM_MILKING_CONTACTS[self.milking_system]
+
         self.housing = FarmHousing(housing.lower().strip())
+        self.cattle_contacts_per_step = CATTLE_CONTACTS_PER_STEP[self.housing]
+
         self.pasture = pasture.lower().strip()
 
         # sometimes the vet visits
@@ -54,9 +94,27 @@ class DairyFarmAgent(LocationAgent):
                                      infection_probability=CATTLE_INFECT_CATTLE_PROB,
                                      recovery_days=CATTLE_INFECTED_DAYS,
                                      recovered_expire_days=CATTLE_RECOVERED_DAYS,
-                                     num_contacts_per_day=CATTLE_CATTLE_CONTACTS_PER_DAY)
+                                     num_contacts_per_day=self.cattle_contacts_per_step)
 
         self.cattle_model.infect_susceptible(infected_cattle, [])
+
+    @property
+    def susceptible(self):
+        """
+
+        :return:
+        :rtype:
+        """
+        return self.cattle_model.susceptible
+
+    @property
+    def infected(self):
+        """
+
+        :return:
+        :rtype:
+        """
+        return sum(self.cattle_model.infected)
 
     @property
     def herd_count(self):

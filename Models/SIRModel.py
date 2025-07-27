@@ -1,7 +1,7 @@
 import numpy as np
 
 from constants import COMMUNITY_POPULATION, HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECTED_DAYS, HUMAN_RECOVERED_DAYS, \
-    COMMUNITY_CONTACTS_PER_DAY, STEPS_PER_DAY
+    STEPS_PER_DAY, COMMUNITY_CONTACTS_PER_STEP
 
 
 class SIRModel(object):
@@ -12,7 +12,7 @@ class SIRModel(object):
     def __init__(self, model, name,
                  population=COMMUNITY_POPULATION, infection_probability=HUMAN_INFECT_HUMAN_PROB,
                  recovery_days=HUMAN_INFECTED_DAYS, recovered_expire_days=HUMAN_RECOVERED_DAYS,
-                 num_contacts_per_day=COMMUNITY_CONTACTS_PER_DAY):
+                 num_contacts_per_day=COMMUNITY_CONTACTS_PER_STEP):
         """
 
         :param name: Name of this model. Identifies what this model represents.
@@ -39,7 +39,7 @@ class SIRModel(object):
 
         # model parameters
         self.infection_prob = infection_probability
-        self.num_contacts_per_step = round(num_contacts_per_day / STEPS_PER_DAY)
+        self.num_contacts_per_step = num_contacts_per_day
 
     @property
     def population(self):

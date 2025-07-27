@@ -10,8 +10,8 @@ from mesa.experimental.devs import ABMSimulator
 from mesa.visualization.utils import update_counter
 
 
-from Models.Agents import HospitalAgent, PersonAgent, FarmerAgent
-from Models.FarmAgent import DairyFarmAgent
+Addfrom Models.PeopleAgents import PersonAgent, FarmerAgent
+from Models.LocationAgents import DairyFarmAgent, HospitalAgent
 from Models.MainModel import MainModel
 from constants import FarmVetVisitState, DiseaseState, HospitalDepartment, \
     HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB, CATTLE_INFECT_CATTLE_PROB
@@ -39,6 +39,7 @@ def vet_location_portrayal(agent):
             portrayal['edgecolors'] = 'xkcd:green'
 
     elif isinstance(agent, HospitalAgent):
+        # fixed agents for the hospital areas
         portrayal['marker'] = 's'
         portrayal['size'] = 180
         if agent.department == HospitalDepartment.FARM_SERVICES:

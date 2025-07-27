@@ -2,12 +2,28 @@
 Constants about behaviour of agents and disease epidemiology.
 
 Enum classes for the state-transition models
+
+Info from "Reilly Comper" <reillycomper@trentu.ca>
+---------------------------------------------------
+Import
+Infection probability (neg. binom. function applied to # of imports) = 0.05
+
+Disease model
+Beta (rate of infection) = 0.15
+Gamma (rate of recovery) = 0.125
+
+Human spillover parameters
+Spillover efficiency (probability of infection given contact)  = 0.0000083
+Contacts with infectious cow (robotic milking system) = 1/day
+Contacts with infectious cow  (manual milking) = 2/day
+Number of workers = variable, depending on herd size IQR  = [2,8], med = 4
 """
 from enum import Enum
 
 FARM_INPUT_FILENAME = "farms.xlsx"
 PEOPLE_INPUT_FILENAME = "people.xlsx"
 
+# -----------------------------------------------------------
 # time
 # total steps from midnight to midnight
 STEPS_PER_DAY = 16  # 1 step = 1.5 hours
@@ -43,33 +59,56 @@ def convert_days_to_steps(num_days):
     return round(num_days * STEPS_PER_DAY)
 
 
+# -----------------------------------------------------------
 # community
 COMMUNITY_POPULATION = 3000
-COMMUNITY_CONTACTS_PER_DAY = 12
-COMMUNITY_CONTACTS_PER_STEP = convert_per_day_to_per_step(COMMUNITY_CONTACTS_PER_DAY)
+COMMUNITY_CONTACTS_PER_STEP = 10
 
+# -----------------------------------------------------------
 # farm
 DEFAULT_DAIRY_HERD_SIZE = 50
-CATTLE_CATTLE_CONTACTS_PER_DAY = 30
-CATTLE_CATTLE_CONTACTS_PER_STEP = convert_per_day_to_per_step(CATTLE_CATTLE_CONTACTS_PER_DAY)
-CATTLE_FARMER_CONTACTS_PER_DAY = 2
-CATTLE_FARMER_CONTACTS_PER_STEP = convert_per_day_to_per_step(CATTLE_FARMER_CONTACTS_PER_DAY)
-CATTLE_VET_CONTACTS_PER_DAY = 2
-CATTLE_VET_CONTACTS_PER_STEP = convert_per_day_to_per_step(CATTLE_VET_CONTACTS_PER_DAY)
 
-# numbers of agents
-NUM_FARM_SERVICES_VETS = 11  # vets (5) and students (6)
-NUM_FARM_SERVICES_TECHS = 2
-NUM_LARGE_ANIMAL_VETS = 21  # includes vets (3), staff(6), and students (12)
-NUM_SMALL_ANIMAL_VETS = 60  # small animal vets (10), staff (20), and students (30)
-NUM_FLOATING_STAFF = 28  # floating vets (3), staff (7), and students (18)
+VET_STEPS_AT_FARM = 1
+VET_CONTACTS_PER_STEP = 1  # number of cows they see
 
-# vet visits to farms
-CHANCE_FARM_NEEDS_VET = .2  # prob a farm will request a vet visit
-VET_DAYS_AT_FARM = 1 / 6  # num days the vet stays at the farm during a visit
-VET_STEPS_AT_FARM = convert_days_to_steps(VET_DAYS_AT_FARM)
 
-# avian flu disease parameters
+class FarmHousing(Enum):
+    """
+    Types of housing on dairy farms
+    """
+    FREE_STALL = 'freestall'
+    TIE_STALL = 'tie stall'
+    STRAW_PACK = 'straw pack'
+    TIE_AND_STRAW = 'tie stall and straw pack'
+
+
+CATTLE_CONTACTS_PER_STEP = {
+    FarmHousing.FREE_STALL: 10,
+    FarmHousing.TIE_STALL: 10,
+    FarmHousing.STRAW_PACK: 10,
+    FarmHousing.TIE_AND_STRAW: 10
+}
+
+
+class FarmMilkingSystem(Enum):
+    """
+    Types of dairy farm milking systems
+    """
+    PARLOUR = 'parlour'
+    AMS = 'ams'
+    PIPELINE = 'pipeline'
+    ROTARY_PARLOUR = 'rotary parlour'
+
+
+NUM_MILKING_CONTACTS = {
+    FarmMilkingSystem.PARLOUR: 2,
+    FarmMilkingSystem.AMS: 1,
+    FarmMilkingSystem.PIPELINE: 2,
+    FarmMilkingSystem.ROTARY_PARLOUR: 2
+}
+
+# -----------------------------------------------------------
+# flu disease parameters
 HUMAN_INFECT_CATTLE_PROB = 0  # prob of a human infecting a cow assuming contact
 HUMAN_INFECT_HUMAN_PROB = .1  # prog of a human infecting another human assuming contact
 HUMAN_INFECTED_DAYS = 10  # num days a human stays in Infected state
@@ -77,7 +116,7 @@ HUMAN_INFECTED_STEPS = convert_days_to_steps(HUMAN_INFECTED_DAYS)
 HUMAN_RECOVERED_DAYS = 20  # num days a human stays in Recovered state
 HUMAN_RECOVERED_STEPS = convert_days_to_steps(HUMAN_RECOVERED_DAYS)
 
-CATTLE_INFECT_HUMAN_PROB = 0.9
+CATTLE_INFECT_HUMAN_PROB = 0.9  # per step
 # CATTLE_INFECT_HUMAN_PROB = 0.0000083
 CATTLE_INFECT_CATTLE_PROB = .9  # .05
 CATTLE_INFECTED_DAYS = 10
@@ -153,23 +192,4 @@ class HospitalDepartment(Enum):
     FARM_SERVICES = "farm services"
     COMMON = 'common'
 
-
-class FarmMilkingSystem(Enum):
-    """
-    Types of dairy farm milking systems
-    """
-    PARLOUR = 'parlour'
-    AMS = 'ams'
-    PIPELINE = 'pipeline'
-    ROTARY_PARLOUR = 'rotary parlour'
-
-
-class FarmHousing(Enum):
-    """
-    Types of housing on dairy farms
-    """
-    FREESTALL = 'freestall'
-    TIE_STALL = 'tie stall'
-    STRAW_PACK = 'straw pack'
-    TIE_AND_STRAW = 'tie stall and straw pack'
 
