@@ -13,23 +13,31 @@ from mesa.visualization.utils import update_counter
 from Models.PeopleAgents import PersonAgent, FarmerAgent
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent
 from Models.MainModel import MainModel
-from constants import FarmVetVisitState, DiseaseState, HospitalDepartment, \
-    HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB, CATTLE_INFECT_CATTLE_PROB
+from constants import DiseaseState, HospitalDepartment, PersonRole
 
 
 def vet_location_portrayal(agent):
     if agent is None:
         return
 
-    portrayal = {'size': 20, 'edgecolors': 'xkcd:grey', 'linewidths': 1}
+    portrayal = {'size': 30, 'edgecolors': 'xkcd:grey', 'linewidths': 1}
 
     # marker and size by type
     if isinstance(agent, PersonAgent):
         portrayal['linewidths'] = 1
         portrayal['marker'] = 'o'
-        portrayal['zorder'] = 2
+        portrayal['zorder'] = 3
 
-        portrayal['color'] = 'xkcd:green'
+        if agent.role == PersonRole.FARMER:
+            portrayal['color'] = 'xkcd:brown'
+            portrayal['zorder'] = 2
+            portrayal['size'] = 10
+        elif agent.role == PersonRole.FARM_SERVICES_VET:
+            portrayal['color'] = 'xkcd:light brown'
+        elif agent.role == PersonRole.FARM_SERVICES_STUDENT:
+            portrayal['color'] = 'xkcd:beige'
+        else:
+            portrayal['color'] = 'xkcd:green'
 
         if agent.disease_state == DiseaseState.INFECTED:
             portrayal['edgecolors'] = 'xkcd:red'
@@ -63,36 +71,37 @@ def vet_location_portrayal(agent):
     return portrayal
 
 
-model_params = {
-    # 'seed': {
-    #     'type': 'InputText',
-    #     'value': 42,
-    #     'label': 'Random Seed'
-    # },
-    'human_infect_human_prob': Slider(
-        label='Prob: Person infect Person',
-        value=HUMAN_INFECT_HUMAN_PROB,
-        min=0,
-        max=.5,
-        step=.01,
-    ),
-
-    'cattle_infect_human_prob': Slider(
-        label='Prob: Cow infect Person',
-        value=CATTLE_INFECT_HUMAN_PROB,
-        min=0,
-        max=.5,
-        step=.01,
-    ),
-    'cattle_infect_cattle_prob': Slider(
-        label='Prob: Cow infect Cow',
-        value=CATTLE_INFECT_CATTLE_PROB,
-        min=0,
-        max=.5,
-        step=.01,
-    ),
-
-}
+model_params = {}
+# model_params = {
+#     # 'seed': {
+#     #     'type': 'InputText',
+#     #     'value': 42,
+#     #     'label': 'Random Seed'
+#     # },
+#     'human_infect_human_prob': Slider(
+#         label='Prob: Person infect Person',
+#         value=HUMAN_INFECT_HUMAN_PROB,
+#         min=0,
+#         max=.5,
+#         step=.01,
+#     ),
+#
+#     'cattle_infect_human_prob': Slider(
+#         label='Prob: Cow infect Person',
+#         value=CATTLE_INFECT_HUMAN_PROB,
+#         min=0,
+#         max=.5,
+#         step=.01,
+#     ),
+#     'cattle_infect_cattle_prob': Slider(
+#         label='Prob: Cow infect Cow',
+#         value=CATTLE_INFECT_CATTLE_PROB,
+#         min=0,
+#         max=.5,
+#         step=.01,
+#     ),
+#
+# }
 
 
 def post_process_space(ax):
