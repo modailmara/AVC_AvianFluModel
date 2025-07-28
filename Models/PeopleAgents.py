@@ -186,7 +186,6 @@ class FarmVisitorAgent(FarmPersonAgent):
         :param farm:
         :type farm:
         """
-        print("  ({}) {} visiting {}".format(self.model.steps, self.name, farm.farm_id))
         self.farm = farm
         self.cell = farm.cell
         self.location = Location.FARM
@@ -200,7 +199,6 @@ class FarmVisitorAgent(FarmPersonAgent):
         """
         Leave the farm and return to the hospital
         """
-        print("  ({}) {} leaving {}".format(self.model.steps, self.name, self.farm.farm_id))
         if self.role == PersonRole.FARM_SERVICES_VET:
             # visiting vet so de-register with the farm
             self.farm.vet_leaving()
@@ -231,7 +229,7 @@ class FarmVisitorAgent(FarmPersonAgent):
         """
         num_susceptible_cows_contacted = min(self.farm.susceptible,
                                              np.random.binomial(VET_CONTACTS_PER_STEP,
-                                                                 self.farm.proportion_susceptible))
+                                                                self.farm.cattle_model.proportion_susceptible))
         num_infected = np.random.binomial(num_susceptible_cows_contacted, HUMAN_INFECT_CATTLE_PROB)
 
         self.farm.cattle_model.infect_susceptible(num_infected, self.current_infection_path)

@@ -13,7 +13,7 @@ import Models
 from Models.PeopleAgents import PersonAgent, FarmerAgent, FarmVisitorAgent
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent
 from constants import FARM_INPUT_FILENAME, HospitalDepartment, PEOPLE_INPUT_FILENAME, PersonRole, STEPS_PER_DAY, \
-    WORK_DAY_STEPS
+    WORK_DAY_STEPS, DiseaseState
 
 
 class MainModel(mesa.Model):
@@ -124,10 +124,12 @@ class MainModel(mesa.Model):
         area_names = [name.split(':')[1].strip()
                       for name in people_df.columns if name.startswith('area:')]
 
+        self.total_people = 0  # count the number of people, remains constant
         for _, role_def_row in people_df.iterrows():
             role_name = role_def_row.type.lower().strip()
             person_role = PersonRole(role_name)
             num_role = int(role_def_row.num)
+            self.total_people += num_role
 
             area_weights = []
             for name in area_names:
@@ -153,7 +155,9 @@ class MainModel(mesa.Model):
 
         # add collecters for the people infection trackers
         model_reporters = {
-            "Community": lambda model: model.community_model.proportion_infected,
+            'Infected': lambda model: model.infected_proportion(),
+            'Susceptible': lambda model: model.susceptible_proportion(),
+            'Recovered': lambda model: model.recovered_proportion(),
             # 'paths': lambda model: model.infection_paths._path_dict
         }
         # add in a model reporter for each farm
@@ -207,3 +211,37 @@ class MainModel(mesa.Model):
         :type farm: DairyFarmAgent object
         """
         self.farm_request_queue.append(farm)
+
+    def susceptible_proportion(self):
+        """
+        Proportion of people that are susceptible
+        :return: Proportion (0-1) of the people agents with disease state INFECTED
+        :rtype:
+        """
+        susceptible_people = [agent for agent in self.agents
+                              if isinstance(agent, PersonAgent) and agent.disease_state == DiseaseState.SUSCEPTIBLE]
+
+        return len(susceptible_people) / self.total_people
+
+    def infected_proportion(self):
+        """
+        Proportion of people that are infected
+        :return: Proportion (0-1) of the people agents with disease state INFECTED
+        :rtype:
+        """
+        infected_people = [agent for agent in self.agents
+                           if isinstance(agent, PersonAgent) and agent.disease_state == DiseaseState.INFECTED]
+
+        return len(infected_people) / self.total_people
+
+    def recovered_proportion(self):
+        """
+        Proportion of people that are susceptible
+        :return: Proportion (0-1) of the people agents with disease state INFECTED
+        :rtype:
+        """
+        recovered_people = [agent for agent in self.agents
+                            if isinstance(agent, PersonAgent) and agent.disease_state == DiseaseState.RECOVERED]
+
+        return len(recovered_people) / self.total_people
+

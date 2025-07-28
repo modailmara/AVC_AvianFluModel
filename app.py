@@ -115,10 +115,11 @@ space_component = make_space_component(
 
 
 def post_process_vet_staff_lineplot(ax):
-    ax.set_title("Infections in Vet Hospital Staff")
+    ax.set_title("SIR proportions for people agents")
     ax.set_ylim(ymin=-0.05, ymax=1.05)
     ax.set_ylabel("Proportion Population")
     # ax.legend(bbox_to_anchor=(1.05, 1.0), loc="upper left")
+
 
 person_infection_plot = make_plot_component(
     {"Infected": "xkcd:red", "Susceptible": "xkcd:green", "Recovered": "xkcd:black"},
@@ -233,9 +234,11 @@ def dairy_farm_lineplot(model):
         ax.plot(list(range(max_step+1)), agent_history)
 
     ax.set_title("Infection Proportion on Dairy Farms")
-    ax.set_ylim(ymin=0, ymax=1)
+    ax.set_ylim(ymin=-0.05, ymax=1.05)
     ax.set_ylabel("infected / total")
-    ax.set_xlabel('Step')
+    # ax.set_xlabel('Step')
+
+    fig.tight_layout()
 
     solara.FigureMatplotlib(fig)
 
@@ -274,8 +277,8 @@ main_model = MainModel(simulator=simulator)
 
 page = SolaraViz(
     main_model,
-    components=[space_component, dairy_farm_lineplot, infection_path_vis, community_plot],
-    # components=[space_component, dairy_farm_lineplot,
+    components=[space_component, dairy_farm_lineplot, person_infection_plot],
+    # components=[space_component, dairy_farm_lineplot, infection_path_vis, community_plot
     #             fs_vet_plot, fs_tech_plot, large_vet_plot, small_vet_plot, float_staff_plot, farmer_plot],
     model_params=model_params,
     name="Avian Flu in the Veterinary Teaching Hospital",

@@ -141,9 +141,9 @@ class DairyFarmAgent(LocationAgent):
         # does the farm need a vet?
         if self.vet_state == FarmVetVisitState.OK:
             if self.steps_since_last_visit >= self.visit_frequency_steps:
-                # need a vet and don't have one - request a vet
+                # time for a regular visit - request a vet
                 self.vet_state = FarmVetVisitState.NEED_VET
-                print("{} ({}): request vet visit".format(self.farm_id, self.model.steps))
+                # print("({}) {}: request vet visit".format(self.model.steps, self.farm_id))
                 self.model.request_vet_visit(self)
             else:
                 # don't need a vet yet
@@ -155,6 +155,7 @@ class DairyFarmAgent(LocationAgent):
         :param vet: The vet agent that is visiting the farm
         :type vet: FarmServicesVet object
         """
+        # print("({}): {} visiting {}".format(self.model.steps, vet.name, self.farm_id))
         self.visiting_vet = vet
         self.vet_state = FarmVetVisitState.VET_PRESENT
 
