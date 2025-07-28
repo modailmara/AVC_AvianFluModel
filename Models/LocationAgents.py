@@ -143,6 +143,7 @@ class DairyFarmAgent(LocationAgent):
             if self.steps_since_last_visit >= self.visit_frequency_steps:
                 # need a vet and don't have one - request a vet
                 self.vet_state = FarmVetVisitState.NEED_VET
+                print("{} ({}): request vet visit".format(self.farm_id, self.model.steps))
                 self.model.request_vet_visit(self)
             else:
                 # don't need a vet yet
@@ -156,11 +157,11 @@ class DairyFarmAgent(LocationAgent):
         """
         self.visiting_vet = vet
         self.vet_state = FarmVetVisitState.VET_PRESENT
-        self.steps_since_last_visit = 0
 
     def vet_leaving(self):
         """
         The vet that came to visit has finished and is now leaving
         """
         self.vet_state = FarmVetVisitState.OK
+        self.steps_since_last_visit = 0
         self.visiting_vet = None

@@ -186,15 +186,25 @@ class FarmVisitorAgent(FarmPersonAgent):
         :param farm:
         :type farm:
         """
+        print("  ({}) {} visiting {}".format(self.model.steps, self.name, farm.farm_id))
         self.farm = farm
         self.cell = farm.cell
         self.location = Location.FARM
         self.steps_at_farm = 0
 
+        if self.role == PersonRole.FARM_SERVICES_VET:
+            # visiting vet so register with the farm
+            self.farm.visit_from_vet(self)
+
     def leave_farm(self):
         """
         Leave the farm and return to the hospital
         """
+        print("  ({}) {} leaving {}".format(self.model.steps, self.name, self.farm.farm_id))
+        if self.role == PersonRole.FARM_SERVICES_VET:
+            # visiting vet so de-register with the farm
+            self.farm.vet_leaving()
+        self.model.come_back_from_farm(self)
         self.farm = None
         self.steps_at_farm = 0
         self.location = Location.HOSPITAL

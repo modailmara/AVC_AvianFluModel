@@ -12,7 +12,8 @@ from InfectionPaths import InfectionPaths
 import Models
 from Models.PeopleAgents import PersonAgent, FarmerAgent, FarmVisitorAgent
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent
-from constants import FARM_INPUT_FILENAME, HospitalDepartment, PEOPLE_INPUT_FILENAME, PersonRole
+from constants import FARM_INPUT_FILENAME, HospitalDepartment, PEOPLE_INPUT_FILENAME, PersonRole, STEPS_PER_DAY, \
+    WORK_DAY_STEPS
 
 
 class MainModel(mesa.Model):
@@ -40,6 +41,7 @@ class MainModel(mesa.Model):
         # queue to manage farm requests for vets
         self.farm_request_queue = []
         self.available_farm_clinicians = []
+        self.available_farm_students = []
 
         self.infection_paths = InfectionPaths()
 
@@ -134,8 +136,14 @@ class MainModel(mesa.Model):
 
             for i in range(num_role):
                 if person_role in [PersonRole.FARM_SERVICES_VET, PersonRole.FARM_SERVICES_STUDENT]:
-                    FarmVisitorAgent(self, "{}_{}".format(person_role, i), cell=None, role=person_role,
-                                     area_weights=area_weights)
+                    visitor_agent = FarmVisitorAgent(self, "{}_{}".format(person_role, i), cell=None, role=person_role,
+                                                     area_weights=area_weights)
+                    if person_role == PersonRole.FARM_SERVICES_VET:
+                        # add the farmer to the queue for vet farm visits
+                        self.available_farm_clinicians.append(visitor_agent)
+                    elif person_role == PersonRole.FARM_SERVICES_STUDENT:
+                        # add the farmer to the queue for vet farm visits
+                        self.available_farm_students.append(visitor_agent)
                 else:
                     PersonAgent(self, "{}_{}".format(person_role, i), cell=None, role=person_role,
                                 area_weights=area_weights)
@@ -165,7 +173,32 @@ class MainModel(mesa.Model):
         """
         self.agents.shuffle_do('step')
 
+        # vet visits but only during the work day (not the last step of the day)
+        if self.steps % STEPS_PER_DAY in WORK_DAY_STEPS[:-1]:
+            # if there is a request for a vet and a vet available, send a vet to a farm
+            num_farm_visits = min(len(self.farm_request_queue), len(self.available_farm_clinicians))
+            for visit in range(num_farm_visits):
+                farm = self.farm_request_queue.pop(0)
+                vet = self.available_farm_clinicians.pop(0)
+                vet.visit_farm(farm)
+
+                # if there's a student around, they should go along as well
+                if len(self.available_farm_students) > 0:
+                    student = self.available_farm_students.pop(0)
+                    student.visit_farm(farm)
+
         self.datacollector.collect(self)
+
+    def come_back_from_farm(self, farm_visitor):
+        """
+        A vet or student has returned from visiting a farm. Put them back in the relevant availability queue
+        :param farm_visitor: Returning Vet or Student
+        :type farm_visitor: PeopleAgents.FarmVisitorAgent object
+        """
+        if farm_visitor.role == PersonRole.FARM_SERVICES_VET:
+            self.available_farm_clinicians.append(farm_visitor)
+        elif farm_visitor.role == PersonRole.FARM_SERVICES_VET:
+            self.available_farm_students.append(farm_visitor)
 
     def request_vet_visit(self, farm):
         """
