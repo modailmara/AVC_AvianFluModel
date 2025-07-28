@@ -197,7 +197,7 @@ class MainModel(mesa.Model):
         """
         if farm_visitor.role == PersonRole.FARM_SERVICES_VET:
             self.available_farm_clinicians.append(farm_visitor)
-        elif farm_visitor.role == PersonRole.FARM_SERVICES_VET:
+        elif farm_visitor.role == PersonRole.FARM_SERVICES_STUDENT:
             self.available_farm_students.append(farm_visitor)
 
     def request_vet_visit(self, farm):
