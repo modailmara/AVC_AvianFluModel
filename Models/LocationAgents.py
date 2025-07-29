@@ -108,7 +108,7 @@ class DairyFarmAgent(LocationAgent):
         return self.cattle_model.susceptible
 
     @property
-    def proportion_suscptible(self):
+    def proportion_susceptible(self):
         return self.susceptible / self.herd_count
 
     @property

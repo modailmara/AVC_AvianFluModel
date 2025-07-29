@@ -144,7 +144,8 @@ class PersonAgent(CellAgent):
 
                 if num_infections > 0:
                     # stop if any infections (Community spillover has happened)
-                    self.model.running = False
+                    # self.model.running = False
+                    pass
 
 
 class FarmPersonAgent(PersonAgent):

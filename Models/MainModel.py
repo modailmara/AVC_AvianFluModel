@@ -102,6 +102,7 @@ class MainModel(mesa.Model):
         # add the farm cells, starting top right and every second cell to bottom then left
         cell_x = self.width - 1  # all the way right
         cell_y = 0  # top
+        self.total_people = 0  # count the number of people, remains constant
         for _, farm_row in farm_df.iterrows():
             cell = self.grid[cell_x, cell_y]
             farm = DairyFarmAgent(self, cell,
@@ -111,6 +112,7 @@ class MainModel(mesa.Model):
 
             # one farmer per farm
             FarmerAgent(self, farm)
+            self.total_people += 1
 
             # increment the cell coordinates
             cell_y += 2
@@ -124,7 +126,6 @@ class MainModel(mesa.Model):
         area_names = [name.split(':')[1].strip()
                       for name in people_df.columns if name.startswith('area:')]
 
-        self.total_people = 0  # count the number of people, remains constant
         for _, role_def_row in people_df.iterrows():
             role_name = role_def_row.type.lower().strip()
             person_role = PersonRole(role_name)

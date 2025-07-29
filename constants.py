@@ -69,7 +69,7 @@ COMMUNITY_CONTACTS_PER_STEP = 2
 # DEFAULT_DAIRY_HERD_SIZE = 50
 
 VET_STEPS_AT_FARM = 1
-VET_CONTACTS_PER_STEP = 1  # number of cows they see
+VET_CONTACTS_PER_STEP = 10  # number of cows they see
 
 
 class FarmHousing(Enum):
