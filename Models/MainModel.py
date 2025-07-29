@@ -171,11 +171,14 @@ class MainModel(mesa.Model):
         )
         self.datacollector.collect(self)
 
+        self.running = True
+
     def step(self) -> None:
         """
         Execute one step of the model
         """
         self.agents.shuffle_do('step')
+        self.community_model.step()
 
         # vet visits but only during the work day (not the last step of the day)
         if self.steps % STEPS_PER_DAY in WORK_DAY_STEPS[:-1]:

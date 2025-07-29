@@ -13,7 +13,7 @@ from mesa.visualization.utils import update_counter
 from Models.PeopleAgents import PersonAgent
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent
 from Models.MainModel import MainModel
-from constants import DiseaseState, HospitalDepartment, PersonRole
+from constants import DiseaseState, HospitalDepartment, PersonRole, STEPS_PER_DAY
 
 
 def vet_location_portrayal(agent):
@@ -231,6 +231,7 @@ def dairy_farm_lineplot(model):
     agent_ids = infection_df.AgentID.unique()
     for agent_id in agent_ids:
         agent_history = infection_df.loc[infection_df.AgentID == agent_id]['Infection'].to_list()
+        agent_history = [x / STEPS_PER_DAY for x in agent_history]
         ax.plot(list(range(max_step+1)), agent_history)
 
     ax.set_title("Infection Proportion on Dairy Farms")

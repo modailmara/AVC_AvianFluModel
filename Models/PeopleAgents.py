@@ -3,7 +3,7 @@ import numpy as np
 
 from constants import DiseaseState, Location, STEPS_PER_DAY, WORK_DAY_STEPS, COMMUNITY_STEPS, PersonRole, \
     HUMAN_INFECTED_STEPS, HUMAN_RECOVERED_STEPS, HUMAN_INFECT_HUMAN_PROB, VET_STEPS_AT_FARM, VET_CONTACTS_PER_STEP, \
-    HUMAN_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB
+    HUMAN_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB, COMMUNITY_CONTACTS_PER_STEP
 
 
 class PersonAgent(CellAgent):
@@ -122,16 +122,29 @@ class PersonAgent(CellAgent):
 
     def infect_others(self):
         """
-        If this person is infected/infectious, then infect other people and cattle in the same cell.
+        If this person is infected/infectious:
+          - if at the hospital, infect other people in the same cell
+          - if at the community, infect the community; stop the simulation if successful
         """
-        if self.cell is not None and self.disease_state == DiseaseState.INFECTED:
-            # get all the agents in this cell
-            susceptible_agents_in_cell = [agent for agent in self.cell.agents
-                                          if isinstance(agent, PersonAgent)
-                                          and agent.disease_state == DiseaseState.SUSCEPTIBLE]
-            for agent in susceptible_agents_in_cell:
-                if self.random.random() < HUMAN_INFECT_HUMAN_PROB:
-                    agent.become_infected()
+        if self.disease_state == DiseaseState.INFECTED:  # can only infect if infectious
+            if self.cell is not None:
+                # cell not None means there may be other agents to infect
+                # get all the agents in this cell
+                susceptible_agents_in_cell = [agent for agent in self.cell.agents
+                                              if isinstance(agent, PersonAgent)
+                                              and agent.disease_state == DiseaseState.SUSCEPTIBLE]
+                for agent in susceptible_agents_in_cell:
+                    if self.random.random() < HUMAN_INFECT_HUMAN_PROB:
+                        agent.become_infected()
+            elif self.location == Location.COMMUNITY:
+                # try to infect the community
+                num_possible_infections = np.random.binomial(COMMUNITY_CONTACTS_PER_STEP,
+                                                              self.model.community_model.proportion_susceptible)
+                num_infections = np.random.binomial(num_possible_infections, HUMAN_INFECT_HUMAN_PROB)
+
+                if num_infections > 0:
+                    # stop if any infections (Community spillover has happened)
+                    self.model.running = False
 
 
 class FarmPersonAgent(PersonAgent):
@@ -229,7 +242,7 @@ class FarmVisitorAgent(FarmPersonAgent):
         """
         num_susceptible_cows_contacted = min(self.farm.susceptible,
                                              np.random.binomial(VET_CONTACTS_PER_STEP,
-                                                                self.farm.cattle_model.proportion_susceptible))
+                                                                self.farm.proportion_susceptible))
         num_infected = np.random.binomial(num_susceptible_cows_contacted, HUMAN_INFECT_CATTLE_PROB)
 
         self.farm.cattle_model.infect_susceptible(num_infected, self.current_infection_path)
@@ -241,7 +254,8 @@ class FarmVisitorAgent(FarmPersonAgent):
         This is a farm services vet or student to see some cows that may be sick. This method runs once per step.
         """
         num_infected_cows_contacted = min(self.farm.susceptible,
-                                          np.random.binomial(VET_CONTACTS_PER_STEP, self.farm.proportion_infected))
+                                          np.random.binomial(VET_CONTACTS_PER_STEP,
+                                                             self.farm.infection_level))
         num_infections = np.random.binomial(num_infected_cows_contacted, HUMAN_INFECT_CATTLE_PROB)
 
         if num_infections > 0:

@@ -62,11 +62,11 @@ def convert_days_to_steps(num_days):
 # -----------------------------------------------------------
 # community
 COMMUNITY_POPULATION = 3000
-COMMUNITY_CONTACTS_PER_STEP = 10
+COMMUNITY_CONTACTS_PER_STEP = 2
 
 # -----------------------------------------------------------
 # farm
-DEFAULT_DAIRY_HERD_SIZE = 50
+# DEFAULT_DAIRY_HERD_SIZE = 50
 
 VET_STEPS_AT_FARM = 1
 VET_CONTACTS_PER_STEP = 1  # number of cows they see
@@ -83,10 +83,10 @@ class FarmHousing(Enum):
 
 
 CATTLE_CONTACTS_PER_STEP = {
-    FarmHousing.FREE_STALL: 10,
-    FarmHousing.TIE_STALL: 10,
-    FarmHousing.STRAW_PACK: 10,
-    FarmHousing.TIE_AND_STRAW: 10
+    FarmHousing.FREE_STALL: 2,
+    FarmHousing.TIE_STALL: 2,
+    FarmHousing.STRAW_PACK: 2,
+    FarmHousing.TIE_AND_STRAW: 2
 }
 
 
@@ -118,7 +118,7 @@ HUMAN_RECOVERED_STEPS = convert_days_to_steps(HUMAN_RECOVERED_DAYS)
 
 CATTLE_INFECT_HUMAN_PROB = 0.9  # per step
 # CATTLE_INFECT_HUMAN_PROB = 0.0000083
-CATTLE_INFECT_CATTLE_PROB = .9  # .05
+CATTLE_INFECT_CATTLE_PROB = .05
 CATTLE_INFECTED_DAYS = 10
 CATTLE_INFECTED_STEPS = convert_days_to_steps(CATTLE_INFECTED_DAYS)
 CATTLE_RECOVERED_DAYS = 100
@@ -127,10 +127,6 @@ CATTLE_RECOVERED_STEPS = convert_days_to_steps(CATTLE_RECOVERED_DAYS)
 
 # -----------------------------
 # Enums
-
-class Time(Enum):
-    DAY = 0  # at work
-    NIGHT = 1
 
 
 class Location(Enum):
