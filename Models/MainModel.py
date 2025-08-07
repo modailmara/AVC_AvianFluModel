@@ -1,15 +1,12 @@
-import inspect
 import mesa
 import math
 from mesa.experimental.cell_space import OrthogonalMooreGrid
 import pandas as pd
 
 from support_functions import get_input_data_dir
-from constants import convert_days_to_steps
 from Models.SIRModel import SIRModel
 from InfectionPaths import InfectionPaths
 
-import Models
 from Models.PeopleAgents import PersonAgent, FarmerAgent, FarmVisitorAgent
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent
 from constants import FARM_INPUT_FILENAME, HospitalDepartment, PEOPLE_INPUT_FILENAME, PersonRole, STEPS_PER_DAY, \

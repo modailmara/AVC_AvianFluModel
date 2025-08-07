@@ -94,7 +94,7 @@ class DairyFarmAgent(LocationAgent):
                                      infection_probability=CATTLE_INFECT_CATTLE_PROB,
                                      recovery_days=CATTLE_INFECTED_DAYS,
                                      recovered_expire_days=CATTLE_RECOVERED_DAYS,
-                                     num_contacts_per_day=self.cattle_contacts_per_step)
+                                     num_contacts_per_step=self.cattle_contacts_per_step)
 
         self.cattle_model.infect_susceptible(infected_cattle, [])
 

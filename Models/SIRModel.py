@@ -12,7 +12,7 @@ class SIRModel(object):
     def __init__(self, model, name,
                  population=COMMUNITY_POPULATION, infection_probability=HUMAN_INFECT_HUMAN_PROB,
                  recovery_days=HUMAN_INFECTED_DAYS, recovered_expire_days=HUMAN_RECOVERED_DAYS,
-                 num_contacts_per_day=COMMUNITY_CONTACTS_PER_STEP):
+                 num_contacts_per_step=COMMUNITY_CONTACTS_PER_STEP):
         """
 
         :param name: Name of this model. Identifies what this model represents.
@@ -25,8 +25,8 @@ class SIRModel(object):
         :type recovery_days:
         :param recovered_expire_days:
         :type recovered_expire_days:
-        :param num_contacts_per_day:
-        :type num_contacts_per_day:
+        :param num_contacts_per_step: Number of other cows a single cow comes into contact with each step
+        :type num_contacts_per_step: int
         """
         self.model = model
         self.name = name
@@ -39,7 +39,7 @@ class SIRModel(object):
 
         # model parameters
         self.infection_prob = infection_probability
-        self.num_contacts_per_step = num_contacts_per_day
+        self.num_contacts_per_step = num_contacts_per_step
 
     @property
     def population(self):
@@ -66,6 +66,8 @@ class SIRModel(object):
         :return: Proportion of the population that is infected.
         :rtype: float
         """
+        # print(" ({}) {}: {} / {} = {}".format(self.model.steps, self.name, sum(self.infected), self.population,
+        #                                       sum(self.infected) / self.population))
         return sum(self.infected) / self.population
 
     def progress_infection(self):
@@ -76,7 +78,8 @@ class SIRModel(object):
         - recovery immunity expires
         """
         potential_new_infections = np.random.binomial(
-            self.num_contacts_per_step * sum(self.infected), self.proportion_susceptible
+            self.num_contacts_per_step * sum(self.infected),
+            self.proportion_susceptible
         )
         new_infected = min(self.susceptible, np.random.binomial(potential_new_infections, self.infection_prob))
 

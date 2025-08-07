@@ -232,6 +232,7 @@ def dairy_farm_lineplot(model):
     for agent_id in agent_ids:
         agent_history = infection_df.loc[infection_df.AgentID == agent_id]['Infection'].to_list()
         agent_history = [x / STEPS_PER_DAY for x in agent_history]
+        # print("  ({}) {}: {}".format(model.steps, agent_id, agent_history))
         ax.plot(list(range(max_step+1)), agent_history)
 
     ax.set_title("Infection Proportion on Dairy Farms")
