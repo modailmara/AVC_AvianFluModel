@@ -231,7 +231,7 @@ def dairy_farm_lineplot(model):
     agent_ids = infection_df.AgentID.unique()
     for agent_id in agent_ids:
         agent_history = infection_df.loc[infection_df.AgentID == agent_id]['Infection'].to_list()
-        agent_history = [x / STEPS_PER_DAY for x in agent_history]
+        agent_history = [x for x in agent_history]
         # print("  ({}) {}: {}".format(model.steps, agent_id, agent_history))
         ax.plot(list(range(max_step+1)), agent_history)
 

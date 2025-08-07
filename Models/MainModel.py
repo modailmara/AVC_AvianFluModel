@@ -123,12 +123,14 @@ class MainModel(mesa.Model):
         area_names = [name.split(':')[1].strip()
                       for name in people_df.columns if name.startswith('area:')]
 
+        # create agents for each role
         for _, role_def_row in people_df.iterrows():
             role_name = role_def_row.type.lower().strip()
             person_role = PersonRole(role_name)
             num_role = int(role_def_row.num)
             self.total_people += num_role
 
+            # parse the weightings for each area for this role
             area_weights = []
             for name in area_names:
                 area = HospitalDepartment(name)
@@ -156,7 +158,7 @@ class MainModel(mesa.Model):
             'Infected': lambda model: model.infected_proportion(),
             'Susceptible': lambda model: model.susceptible_proportion(),
             'Recovered': lambda model: model.recovered_proportion(),
-            # 'paths': lambda model: model.infection_paths._path_dict
+            'paths': lambda model: model.infection_paths.path_dict
         }
         # add in a model reporter for each farm
         agent_reporters = {

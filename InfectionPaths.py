@@ -9,7 +9,7 @@ class InfectionPaths:
     def __init__(self):
         # keep the paths in a dictionary
         # {(<class_name>, <class_name>, ...): <count>, ... }
-        self._path_dict = defaultdict(int)
+        self.path_dict = defaultdict(int)
 
     def add_path(self, path, num=1):
         """
@@ -19,12 +19,12 @@ class InfectionPaths:
         :param num: Number of this path to add
         :type num: int
         """
-        self._path_dict[tuple(path)] += num
+        self.path_dict[tuple(path)] += num
 
     def get_paths_counts(self):
         """
         Gets a list of all the paths that have been recorded with their counts
-        :return: List of tuples (path, count). Paths are tuples of strings
+        :return: List of tuples (path, count). Paths are tuples of strings, counts are integers
         :rtype: list
         """
-        return self._path_dict.items()
+        return self.path_dict.items()

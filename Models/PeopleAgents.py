@@ -8,20 +8,20 @@ from constants import DiseaseState, Location, STEPS_PER_DAY, WORK_DAY_STEPS, COM
 
 class PersonAgent(CellAgent):
     """
-    Represents a person based at the Hospital
+    Represents a person in the model. Tracks Avian Influenza status and location in the model.
     """
 
     def __init__(self, model, person_id, role, cell, area_weights=()):
         """
 
-        :param model:
-        :type model:
-        :param cell:
-        :type cell:
-        :param role:
-        :type role:
-        :param area_weights:
-        :type area_weights:
+        :param model: Model that this agent belongs to
+        :type model: MainModel
+        :param cell: Starting grid location of the agent
+        :type cell: mesa.experimental.cell_space.grid.GridCell
+        :param role: Role of the agent in the model.
+        :type role: PersonRole
+        :param area_weights: Weighting for selecting areas of the hospital to move to
+        :type area_weights: list
         """
         super().__init__(model)
 
@@ -47,7 +47,7 @@ class PersonAgent(CellAgent):
         - move to a new location
         - progress their disease status
         """
-        # check if need to change location
+        # check need to change location
         step_of_day = self.model.steps % STEPS_PER_DAY
         if step_of_day == WORK_DAY_STEPS[0]:  # time to go to work
             self.start_work()
@@ -73,7 +73,11 @@ class PersonAgent(CellAgent):
             # note that it may be the same cell - that is OK
 
             areas, weights = zip(*self.area_weights)
-            selected_area = self.random.choices(areas, weights=weights)[0]  # choices() returns a list
+            # print("---\n  areas: {}\nweights: {}".format(areas, weights))
+            choices = self.random.choices(areas, weights=weights)
+            # print('choices: {}'.format(choices))
+            selected_area = choices[0]  # choices() returns a list
+            # print("selected: {}".format(selected_area))
 
             self.cell = self.random.choice(self.model.hospital_cells[selected_area])
 
@@ -139,13 +143,13 @@ class PersonAgent(CellAgent):
             elif self.location == Location.COMMUNITY:
                 # try to infect the community
                 num_possible_infections = np.random.binomial(COMMUNITY_CONTACTS_PER_STEP,
-                                                              self.model.community_model.proportion_susceptible)
+                                                             self.model.community_model.proportion_susceptible)
                 num_infections = np.random.binomial(num_possible_infections, HUMAN_INFECT_HUMAN_PROB)
 
                 if num_infections > 0:
                     # stop if any infections (Community spillover has happened)
                     # self.model.running = False
-                    pass
+                    pass  # turned off as stopping at community spillover is not interesting to look at
 
 
 class FarmPersonAgent(PersonAgent):

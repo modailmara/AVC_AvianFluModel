@@ -12,7 +12,7 @@ if __name__ == "__main__":
         parameters={},  # {'width': 20, 'height': 20},
         iterations=1,
         max_steps=60,
-        number_processes=5,
+        number_processes=1,
         data_collection_period=-1,
         display_progress=True
     )
