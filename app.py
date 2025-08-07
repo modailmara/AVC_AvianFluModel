@@ -1,5 +1,6 @@
 import solara
 from matplotlib.figure import Figure
+import numpy as np
 from mesa.visualization import (
     Slider,
     SolaraViz,
@@ -9,7 +10,7 @@ from mesa.visualization import (
 from mesa.experimental.devs import ABMSimulator
 from mesa.visualization.utils import update_counter
 
-
+from support_functions import get_day_from_steps
 from Models.PeopleAgents import PersonAgent
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent
 from Models.MainModel import MainModel
@@ -274,16 +275,43 @@ def infection_path_vis(model):
     solara.FigureMatplotlib(fig)
 
 
+@solara.component
+def num_farm_visits_per_day_plot(model):
+    update_counter.get()  # update
+    visit_list = []
+    for step_num, visits in model.farm_visits_by_vets.items():
+        day = get_day_from_steps(step_num)
+        num_visits = len(visits)
+
+        visit_list += [day] * num_visits
+
+    # set up the chart figure
+    fig = Figure()
+    ax = fig.subplots()
+
+    counts = np.bincount(visit_list)
+    max_x = 1 if len(visit_list) == 0 else max(visit_list) + 1
+    ax.bar(range(max_x), counts, width=1, align='center')
+    ax.set(xticks=range(max_x), xlim=[-1, max_x])
+
+    # ax.hist(visit_list, range=[0, max_x])
+    ax.set_ylim(ymin=0, ymax=5.5)
+
+    ax.set_ylabel('# of farm visits per day')
+
+    solara.FigureMatplotlib(fig)
+
+
 simulator = ABMSimulator()
 main_model = MainModel(simulator=simulator)
 
 page = SolaraViz(
     main_model,
-    components=[space_component, dairy_farm_lineplot, person_infection_plot],
+    components=[space_component, dairy_farm_lineplot, person_infection_plot, num_farm_visits_per_day_plot],
     # components=[space_component, dairy_farm_lineplot, infection_path_vis, community_plot
     #             fs_vet_plot, fs_tech_plot, large_vet_plot, small_vet_plot, float_staff_plot, farmer_plot],
     model_params=model_params,
-    name="Avian Flu in the Veterinary Teaching Hospital",
+    name="Avian Influenza in the Veterinary Teaching Hospital",
     simulator=simulator,
 )
 page  # noqa

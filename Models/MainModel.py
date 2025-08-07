@@ -2,8 +2,9 @@ import mesa
 import math
 from mesa.experimental.cell_space import OrthogonalMooreGrid
 import pandas as pd
+from collections import defaultdict
 
-from support_functions import get_input_data_dir
+from support_functions import get_input_data_dir, get_day_from_steps
 from Models.SIRModel import SIRModel
 from InfectionPaths import InfectionPaths
 
@@ -153,6 +154,10 @@ class MainModel(mesa.Model):
 
         self.community_model = SIRModel(self, 'community')
 
+        # track visits to farms by FS vets (doesn't fit with collectors)
+        # farm_visits_by_vet {step_num: [(vet id, farm id), ...]
+        self.farm_visits_by_vets = defaultdict(list)
+
         # add collecters for the people infection trackers
         model_reporters = {
             'Infected': lambda model: model.infected_proportion(),
@@ -188,6 +193,10 @@ class MainModel(mesa.Model):
                 farm = self.farm_request_queue.pop(0)
                 vet = self.available_farm_clinicians.pop(0)
                 vet.visit_farm(farm)
+
+                # record the visit
+                # farm_visits_by_vet {step_num: [(vet id, farm id), ...]
+                self.farm_visits_by_vets[self.steps].append((vet.name, farm.farm_id))
 
                 # if there's a student around, they should go along as well
                 if len(self.available_farm_students) > 0:

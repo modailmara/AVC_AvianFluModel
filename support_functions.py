@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from constants import STEPS_PER_DAY
+
 
 def get_root_dir():
     """
@@ -36,3 +38,14 @@ def get_input_data_dir():
     :rtype: pathlib.Path object
     """
     return get_root_dir() / 'InputData'
+
+
+def get_day_from_steps(step_number):
+    """
+    Gets the day number given a step number.
+    :param step_number: The step number to convert to a day number
+    :type step_number: int
+    :return: Day number for the given step
+    :rtype: int
+    """
+    return step_number // STEPS_PER_DAY
