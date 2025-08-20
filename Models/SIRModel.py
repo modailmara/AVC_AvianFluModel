@@ -1,6 +1,6 @@
 import numpy as np
 
-from constants import COMMUNITY_POPULATION, HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECTED_DAYS, HUMAN_RECOVERED_DAYS, \
+from constants import COMMUNITY_POPULATION, HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECTIOUS_DAYS, HUMAN_RECOVERED_DAYS, \
     STEPS_PER_DAY, COMMUNITY_CONTACTS_PER_STEP
 
 
@@ -11,7 +11,7 @@ class SIRModel(object):
 
     def __init__(self, model, name,
                  population=COMMUNITY_POPULATION, infection_probability=HUMAN_INFECT_HUMAN_PROB,
-                 recovery_days=HUMAN_INFECTED_DAYS, recovered_expire_days=HUMAN_RECOVERED_DAYS,
+                 recovery_days=HUMAN_INFECTIOUS_DAYS, recovered_expire_days=HUMAN_RECOVERED_DAYS,
                  num_contacts_per_step=COMMUNITY_CONTACTS_PER_STEP):
         """
 

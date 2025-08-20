@@ -1,7 +1,15 @@
 from collections import defaultdict
 
 
-class InfectionPaths:
+class InfectionNode:
+    pass
+
+
+class InfectionEdge:
+    pass
+
+
+class InfectionNetwork:
     """
     Keeps a record of all the infection paths
     """

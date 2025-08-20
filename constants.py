@@ -109,16 +109,16 @@ NUM_MILKING_CONTACTS = {
 
 # -----------------------------------------------------------
 # flu disease parameters
-HUMAN_INFECT_CATTLE_PROB = 0  # prob of a human infecting a cow assuming contact
-HUMAN_INFECT_HUMAN_PROB = .1  # prog of a human infecting another human assuming contact
-HUMAN_INFECTED_DAYS = 10  # num days a human stays in Infected state
-HUMAN_INFECTED_STEPS = convert_days_to_steps(HUMAN_INFECTED_DAYS)
+HUMAN_INFECT_CATTLE_PROB = .1  # prob of a human infecting a cow assuming contact. 0-1
+HUMAN_INFECT_HUMAN_PROB = .1  # prob of a human infecting another human assuming contact. 0-1
+HUMAN_INFECTIOUS_DAYS = 10  # num days a human stays in Infected state
+HUMAN_INFECTIOUS_STEPS = convert_days_to_steps(HUMAN_INFECTIOUS_DAYS)
 HUMAN_RECOVERED_DAYS = 20  # num days a human stays in Recovered state
 HUMAN_RECOVERED_STEPS = convert_days_to_steps(HUMAN_RECOVERED_DAYS)
 
-CATTLE_INFECT_HUMAN_PROB = 0.9  # per step
+CATTLE_INFECT_HUMAN_PROB = 0.9  # per contact-step
 # CATTLE_INFECT_HUMAN_PROB = 0.0000083
-CATTLE_INFECT_CATTLE_PROB = 1
+CATTLE_INFECT_CATTLE_PROB = .2
 CATTLE_INFECTED_DAYS = 10
 CATTLE_INFECTED_STEPS = convert_days_to_steps(CATTLE_INFECTED_DAYS)
 CATTLE_RECOVERED_DAYS = 100

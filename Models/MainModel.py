@@ -6,7 +6,7 @@ from collections import defaultdict
 
 from support_functions import get_input_data_dir, get_day_from_steps
 from Models.SIRModel import SIRModel
-from InfectionPaths import InfectionPaths
+from InfectionPaths import InfectionNetwork
 
 from Models.PeopleAgents import PersonAgent, FarmerAgent, FarmVisitorAgent
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent
@@ -41,7 +41,7 @@ class MainModel(mesa.Model):
         self.available_farm_clinicians = []
         self.available_farm_students = []
 
-        self.infection_paths = InfectionPaths()
+        self.infection_paths = InfectionNetwork()
 
         # keep references to the different types of locations
         self.hospital_cells = {HospitalDepartment.FARM_SERVICES: [], HospitalDepartment.SMALL_ANIMAL: [],

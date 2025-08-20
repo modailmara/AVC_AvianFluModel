@@ -2,7 +2,7 @@ from mesa.experimental.cell_space import CellAgent
 import numpy as np
 
 from constants import DiseaseState, Location, STEPS_PER_DAY, WORK_DAY_STEPS, COMMUNITY_STEPS, PersonRole, \
-    HUMAN_INFECTED_STEPS, HUMAN_RECOVERED_STEPS, HUMAN_INFECT_HUMAN_PROB, VET_STEPS_AT_FARM, VET_CONTACTS_PER_STEP, \
+    HUMAN_INFECTIOUS_STEPS, HUMAN_RECOVERED_STEPS, HUMAN_INFECT_HUMAN_PROB, VET_STEPS_AT_FARM, VET_CONTACTS_PER_STEP, \
     HUMAN_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB, COMMUNITY_CONTACTS_PER_STEP
 
 
@@ -100,7 +100,7 @@ class PersonAgent(CellAgent):
         If this person is infected or recently recovered, then progress the status of the disease.
         """
         if self.disease_state == DiseaseState.INFECTED:
-            if self.steps_current_disease_state >= HUMAN_INFECTED_STEPS:
+            if self.steps_current_disease_state >= HUMAN_INFECTIOUS_STEPS:
                 # they've done their time - now recovered
                 self.disease_state = DiseaseState.RECOVERED
                 self.steps_current_disease_state = 0

@@ -239,7 +239,7 @@ def dairy_farm_lineplot(model):
     ax.set_title("Infection Proportion on Dairy Farms")
     ax.set_ylim(ymin=-0.05, ymax=1.05)
     ax.set_ylabel("infected / total")
-    # ax.set_xlabel('Step')
+    ax.set_xlabel('Step')
 
     fig.tight_layout()
 
@@ -297,7 +297,9 @@ def num_farm_visits_per_day_plot(model):
     # ax.hist(visit_list, range=[0, max_x])
     ax.set_ylim(ymin=0, ymax=5.5)
 
+    ax.set_title("Number of farm visits each day by FS vets")
     ax.set_ylabel('# of farm visits per day')
+    ax.set_xlabel('Day')
 
     solara.FigureMatplotlib(fig)
 
