@@ -100,6 +100,11 @@ class FarmMilkingSystem(Enum):
     ROTARY_PARLOUR = 'rotary parlour'
 
 
+# number of times milking occurs on a farm
+# this is more about the number of times the farmer has to interact with the milking equipment
+NUM_MILKING_EVENTS_PER_DAY = 3
+
+# number of contacts cow<->farmer at each milking event
 NUM_MILKING_CONTACTS = {
     FarmMilkingSystem.PARLOUR: 2,
     FarmMilkingSystem.AMS: 1,

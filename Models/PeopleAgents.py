@@ -3,7 +3,7 @@ import numpy as np
 
 from constants import DiseaseState, Location, STEPS_PER_DAY, WORK_DAY_STEPS, COMMUNITY_STEPS, PersonRole, \
     HUMAN_INFECTIOUS_STEPS, HUMAN_RECOVERED_STEPS, HUMAN_INFECT_HUMAN_PROB, VET_STEPS_AT_FARM, VET_CONTACTS_PER_STEP, \
-    HUMAN_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB, COMMUNITY_CONTACTS_PER_STEP
+    HUMAN_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB, COMMUNITY_CONTACTS_PER_STEP, NUM_MILKING_EVENTS_PER_DAY
 
 
 class PersonAgent(CellAgent):
@@ -172,7 +172,7 @@ class FarmPersonAgent(PersonAgent):
             if self.disease_state == DiseaseState.INFECTED:
                 # possibility to infect some cattle
                 self.infect_cattle()
-            if self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.infection_level > 0:
+            elif self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.infection_level > 0:
                 # infected cattle - maybe get infected
                 self.is_become_infected_by_cattle()
 
@@ -306,8 +306,10 @@ class FarmerAgent(FarmPersonAgent):
 
         This is a farmer, so contacts happen to all cows at milking time. Number of contacts depend on milking system.
         """
-        # milking only happens at the first step of the day
-        if self.model.steps % STEPS_PER_DAY == WORK_DAY_STEPS[0]:
+        # put all the milking events at the beginning of the day
+        # currently doesn't matter that they aren't spaced out - if it does then this has to be changed
+        if self.model.steps % STEPS_PER_DAY in WORK_DAY_STEPS[:NUM_MILKING_EVENTS_PER_DAY]:
+            print("infect: {} ({})".format(self.model.steps, self.model.steps % STEPS_PER_DAY))
             # contact every cow a number of times based on milking system
             for _ in range(self.farm.num_milking_contacts):
                 num_susceptible_cows_contacted = self.farm.susceptible
@@ -321,8 +323,11 @@ class FarmerAgent(FarmPersonAgent):
 
         This is a farm services vet or student to see some cows that may be sick. This method runs once per step.
         """
-        # milking only happens at the first step of the day
-        if self.model.steps % STEPS_PER_DAY == WORK_DAY_STEPS[0]:
+        # put all the milking events at the beginning of the day
+        # currently doesn't matter that they aren't spaced out - if it does then this has to be changed
+        if self.model.steps % STEPS_PER_DAY in WORK_DAY_STEPS[:NUM_MILKING_EVENTS_PER_DAY]:
+            # contact every cow a number of times based on milking system
+            print("become: {} ({})".format(self.model.steps, self.model.steps % STEPS_PER_DAY))
             # contact every cow a number of times based on milking system
             for _ in range(self.farm.num_milking_contacts):
                 num_infected_cows_contacted = self.farm.infected

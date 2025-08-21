@@ -6,7 +6,7 @@ from collections import defaultdict
 
 from support_functions import get_input_data_dir, get_day_from_steps
 from Models.SIRModel import SIRModel
-from InfectionPaths import InfectionNetwork
+from InfectionNetwork import InfectionNetwork
 
 from Models.PeopleAgents import PersonAgent, FarmerAgent, FarmVisitorAgent
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent
