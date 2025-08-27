@@ -163,7 +163,8 @@ class MainModel(mesa.Model):
             'Infected': lambda model: model.infected_proportion(),
             'Susceptible': lambda model: model.susceptible_proportion(),
             'Recovered': lambda model: model.recovered_proportion(),
-            'paths': lambda model: model.infection_paths.path_dict
+            # 'paths': lambda model: model.infection_paths.path_dict,
+            'farm_visits': lambda model: model.farm_visits_by_vets
         }
         # add in a model reporter for each farm
         agent_reporters = {

@@ -5,7 +5,7 @@ from constants import convert_days_to_steps
 
 from constants import CATTLE_INFECT_CATTLE_PROB, CATTLE_INFECTED_DAYS, \
     CATTLE_RECOVERED_DAYS, FarmMilkingSystem, FarmHousing, FarmVetVisitState, CATTLE_CONTACTS_PER_STEP, \
-    NUM_MILKING_CONTACTS
+    NUM_MILKING_CONTACTS, Location
 
 
 class LocationAgent(FixedAgent):
@@ -23,6 +23,8 @@ class LocationAgent(FixedAgent):
         """
         super().__init__(model)
 
+        self.location = None
+
         self.cell = cell
 
     def step(self):
@@ -38,6 +40,7 @@ class HospitalAgent(LocationAgent):
     def __init__(self, model, department, cell=None):
         super().__init__(model, cell)
 
+        self.location = Location.HOSPITAL
         self.department = department
 
 
@@ -72,8 +75,11 @@ class DairyFarmAgent(LocationAgent):
         """
         super().__init__(model, cell)
 
+        self.location = Location.FARM
+
         self.farm_id = farm_id
         self.visit_frequency_steps = convert_days_to_steps(visit_frequency)
+
         self.steps_since_last_visit = self.random.randint(0, self.visit_frequency_steps)
 
         self.milking_system = FarmMilkingSystem(milking_system.lower().strip())
@@ -147,7 +153,6 @@ class DairyFarmAgent(LocationAgent):
             if self.steps_since_last_visit >= self.visit_frequency_steps:
                 # time for a regular visit - request a vet
                 self.vet_state = FarmVetVisitState.NEED_VET
-                # print("({}) {}: request vet visit".format(self.model.steps, self.farm_id))
                 self.model.request_vet_visit(self)
             else:
                 # don't need a vet yet
@@ -159,7 +164,6 @@ class DairyFarmAgent(LocationAgent):
         :param vet: The vet agent that is visiting the farm
         :type vet: FarmServicesVet object
         """
-        # print("({}): {} visiting {}".format(self.model.steps, vet.name, self.farm_id))
         self.visiting_vet = vet
         self.vet_state = FarmVetVisitState.VET_PRESENT
 

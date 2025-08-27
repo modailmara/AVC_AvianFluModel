@@ -28,7 +28,7 @@ PEOPLE_INPUT_FILENAME = "people.xlsx"
 # total steps from midnight to midnight
 STEPS_PER_DAY = 16  # 1 step = 1.5 hours
 # step numbers that are part of the working day - all VTH staff are at the hospital or farms, farmers are at farms
-DAYTIME_STEPS = round(1 / 3 * STEPS_PER_DAY)
+DAYTIME_STEPS = 6  # 9am to 6pm
 WORK_DAY_STEPS = list(range(1, DAYTIME_STEPS + 1))
 # steps not at work - all person agents are in the community. in order from knockoff time
 NIGHTTIME_STEPS = STEPS_PER_DAY - DAYTIME_STEPS

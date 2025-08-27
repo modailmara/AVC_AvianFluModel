@@ -133,7 +133,7 @@ class SIRModel(object):
             # add the infection path, need to append this SIR model name
             path = infection_path + [self.name]
 
-            self.model.infection_paths.add_path(path, num_infected)
+            # self.model.infection_paths.add_path(path, num_infected)
 
         return num_infected
 

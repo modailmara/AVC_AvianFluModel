@@ -73,11 +73,8 @@ class PersonAgent(CellAgent):
             # note that it may be the same cell - that is OK
 
             areas, weights = zip(*self.area_weights)
-            # print("---\n  areas: {}\nweights: {}".format(areas, weights))
             choices = self.random.choices(areas, weights=weights)
-            # print('choices: {}'.format(choices))
             selected_area = choices[0]  # choices() returns a list
-            # print("selected: {}".format(selected_area))
 
             self.cell = self.random.choice(self.model.hospital_cells[selected_area])
 
@@ -213,6 +210,18 @@ class FarmVisitorAgent(FarmPersonAgent):
             # visiting vet so register with the farm
             self.farm.visit_from_vet(self)
 
+    def go_home(self):
+        """
+        Go home after work. Removes from farm cell and goes to the community.
+
+        Need to override here as if the visitor is at a farm, they need to do farm leaving things first
+        """
+        if self.location == Location.FARM:
+            # do farm leaving cleanup
+            self.leave_farm()
+        self.location = Location.COMMUNITY
+        self.cell = None
+
     def leave_farm(self):
         """
         Leave the farm and return to the hospital
@@ -309,7 +318,6 @@ class FarmerAgent(FarmPersonAgent):
         # put all the milking events at the beginning of the day
         # currently doesn't matter that they aren't spaced out - if it does then this has to be changed
         if self.model.steps % STEPS_PER_DAY in WORK_DAY_STEPS[:NUM_MILKING_EVENTS_PER_DAY]:
-            print("infect: {} ({})".format(self.model.steps, self.model.steps % STEPS_PER_DAY))
             # contact every cow a number of times based on milking system
             for _ in range(self.farm.num_milking_contacts):
                 num_susceptible_cows_contacted = self.farm.susceptible
@@ -326,8 +334,6 @@ class FarmerAgent(FarmPersonAgent):
         # put all the milking events at the beginning of the day
         # currently doesn't matter that they aren't spaced out - if it does then this has to be changed
         if self.model.steps % STEPS_PER_DAY in WORK_DAY_STEPS[:NUM_MILKING_EVENTS_PER_DAY]:
-            # contact every cow a number of times based on milking system
-            print("become: {} ({})".format(self.model.steps, self.model.steps % STEPS_PER_DAY))
             # contact every cow a number of times based on milking system
             for _ in range(self.farm.num_milking_contacts):
                 num_infected_cows_contacted = self.farm.infected
