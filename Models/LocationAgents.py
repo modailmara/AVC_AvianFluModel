@@ -24,6 +24,7 @@ class LocationAgent(FixedAgent):
         super().__init__(model)
 
         self.location = None
+        self.department = None
 
         self.cell = cell
 
@@ -57,7 +58,7 @@ class DairyFarmAgent(LocationAgent):
         :param model: The model that this agent belongs to
         :type model: MainModel object
         :param farm_id: Unique ID of this farm
-        :type farm_id: str
+        :type farm_id: int
         :param herd_size: Number of milking cows
         :type herd_size: int
         :param visit_frequency: Number of days between vet visits
@@ -77,7 +78,11 @@ class DairyFarmAgent(LocationAgent):
 
         self.location = Location.FARM
 
-        self.farm_id = farm_id
+        # unique ID (number is only unique within farms)
+        self.number = farm_id
+        self.name = 'Farm_{}'.format(self.number)
+        self.short_name = '{}'.format(self.number)
+
         self.visit_frequency_steps = convert_days_to_steps(visit_frequency)
 
         self.steps_since_last_visit = self.random.randint(0, self.visit_frequency_steps)
@@ -95,14 +100,14 @@ class DairyFarmAgent(LocationAgent):
         self.visiting_vet = None
 
         # SIR model for the cattle herd
-        self.cattle_model = SIRModel(model=self.model, name=self.farm_id,
+        self.cattle_model = SIRModel(model=self.model, name=self.name,
                                      population=herd_size,
                                      infection_probability=CATTLE_INFECT_CATTLE_PROB,
                                      recovery_days=CATTLE_INFECTED_DAYS,
                                      recovered_expire_days=CATTLE_RECOVERED_DAYS,
                                      num_contacts_per_step=self.cattle_contacts_per_step)
 
-        self.cattle_model.infect_susceptible(infected_cattle, [])
+        self.cattle_model.infect_susceptible(infected_cattle)
 
     @property
     def susceptible(self):
@@ -125,6 +130,10 @@ class DairyFarmAgent(LocationAgent):
         :rtype:
         """
         return sum(self.cattle_model.infected)
+
+    @property
+    def proportion_infected(self):
+        return self.infected / self.herd_count
 
     @property
     def herd_count(self):

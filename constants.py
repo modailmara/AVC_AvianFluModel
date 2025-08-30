@@ -61,6 +61,7 @@ def convert_days_to_steps(num_days):
 
 # -----------------------------------------------------------
 # community
+COMMUNITY = 'community'
 COMMUNITY_POPULATION = 3000
 COMMUNITY_CONTACTS_PER_STEP = 2
 
@@ -147,20 +148,40 @@ class PersonRole(Enum):
     """
     Roles of people agents in the hospital.
     """
-    FARM_SERVICES_VET = 'farm services vet'
-    FARM_SERVICES_TECH = 'farm services technician'
-    FARM_SERVICES_STUDENT = 'farm services student'
-    LARGE_ANIMAL_VET = 'large animal vet'
-    LARGE_ANIMAL_STAFF = 'large animal staff'
-    LARGE_ANIMAL_STUDENT = 'large animal student'
-    SMALL_ANIMAL_VET = 'small animal vet'
-    SMALL_ANIMAL_STAFF = 'small animal staff'
-    SMALL_ANIMAL_STUDENT = 'small animal student'
-    FLOATING_VET = 'floating vet'
-    FLOATING_STAFF = 'floating staff'
-    FLOATING_STUDENT = 'floating student'
+    FARM_SERVICES_CLINICIAN = 'FSc'
+    FARM_SERVICES_TECH = 'FSt'
+    FARM_SERVICES_STUDENT = 'FSu'
+    LARGE_ANIMAL_CLINICIAN = 'LAc'
+    LARGE_ANIMAL_STAFF = 'LAs'
+    LARGE_ANIMAL_STUDENT = 'LAu'
+    SMALL_ANIMAL_CLINICIAN = 'SAc'
+    SMALL_ANIMAL_STAFF = 'SAs'
+    SMALL_ANIMAL_STUDENT = 'SAu'
+    FLOATING_CLINICIAN = 'Fc'
+    FLOATING_STAFF = 'Fs'
+    FLOATING_STUDENT = 'Fu'
     FARMER = 'farmer'
 
+
+input_to_role = {
+    'farm services vet': PersonRole.FARM_SERVICES_CLINICIAN,
+    'farm services clinician': PersonRole.FARM_SERVICES_CLINICIAN,
+    'farm services technician': PersonRole.FARM_SERVICES_TECH,
+    'farm services tech': PersonRole.FARM_SERVICES_TECH,
+    'farm services student': PersonRole.FARM_SERVICES_STUDENT,
+    'large animal vet': PersonRole.LARGE_ANIMAL_CLINICIAN,
+    'large animal clinician': PersonRole.LARGE_ANIMAL_CLINICIAN,
+    'large animal staff': PersonRole.LARGE_ANIMAL_STAFF,
+    'large animal student': PersonRole.LARGE_ANIMAL_STUDENT,
+    'small animal vet': PersonRole.SMALL_ANIMAL_CLINICIAN,
+    'small animal clinician': PersonRole.SMALL_ANIMAL_CLINICIAN,
+    'small animal staff': PersonRole.SMALL_ANIMAL_STAFF,
+    'small animal student': PersonRole.SMALL_ANIMAL_STUDENT,
+    'floating vet': PersonRole.FLOATING_CLINICIAN,
+    'floating clinician': PersonRole.FLOATING_CLINICIAN,
+    'floating staff': PersonRole.FLOATING_STAFF,
+    'floating student': PersonRole.FLOATING_STUDENT,
+}
 
 class DiseaseState(Enum):
     """

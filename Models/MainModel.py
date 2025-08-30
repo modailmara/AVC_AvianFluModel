@@ -11,7 +11,7 @@ from InfectionNetwork import InfectionNetwork
 from Models.PeopleAgents import PersonAgent, FarmerAgent, FarmVisitorAgent
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent
 from constants import FARM_INPUT_FILENAME, HospitalDepartment, PEOPLE_INPUT_FILENAME, PersonRole, STEPS_PER_DAY, \
-    WORK_DAY_STEPS, DiseaseState
+    WORK_DAY_STEPS, DiseaseState, input_to_role
 
 
 class MainModel(mesa.Model):
@@ -41,7 +41,7 @@ class MainModel(mesa.Model):
         self.available_farm_clinicians = []
         self.available_farm_students = []
 
-        self.infection_paths = InfectionNetwork()
+        self.infection_network = InfectionNetwork()
 
         # keep references to the different types of locations
         self.hospital_cells = {HospitalDepartment.FARM_SERVICES: [], HospitalDepartment.SMALL_ANIMAL: [],
@@ -108,6 +108,10 @@ class MainModel(mesa.Model):
                                   farm_row.milking_system, farm_row.housing, farm_row.pasture, farm_row.num_infected)
             self.farm_cells.append(cell)
 
+            if farm_row.num_infected > 0:
+                # record this starting infection
+                self.infection_network.add_infection_source(farm)
+
             # one farmer per farm
             FarmerAgent(self, farm)
             self.total_people += 1
@@ -127,7 +131,7 @@ class MainModel(mesa.Model):
         # create agents for each role
         for _, role_def_row in people_df.iterrows():
             role_name = role_def_row.type.lower().strip()
-            person_role = PersonRole(role_name)
+            person_role = input_to_role[role_name]
             num_role = int(role_def_row.num)
             self.total_people += num_role
 
@@ -137,18 +141,18 @@ class MainModel(mesa.Model):
                 area = HospitalDepartment(name)
                 area_weights.append((area, float(role_def_row['area: ' + name])))
 
-            for i in range(num_role):
-                if person_role in [PersonRole.FARM_SERVICES_VET, PersonRole.FARM_SERVICES_STUDENT]:
-                    visitor_agent = FarmVisitorAgent(self, "{}_{}".format(person_role, i), cell=None, role=person_role,
+            for person_num in range(num_role):
+                if person_role in [PersonRole.FARM_SERVICES_CLINICIAN, PersonRole.FARM_SERVICES_STUDENT]:
+                    visitor_agent = FarmVisitorAgent(self, person_num, cell=None, role=person_role,
                                                      area_weights=area_weights)
-                    if person_role == PersonRole.FARM_SERVICES_VET:
+                    if person_role == PersonRole.FARM_SERVICES_CLINICIAN:
                         # add the farmer to the queue for vet farm visits
                         self.available_farm_clinicians.append(visitor_agent)
                     elif person_role == PersonRole.FARM_SERVICES_STUDENT:
                         # add the farmer to the queue for vet farm visits
                         self.available_farm_students.append(visitor_agent)
                 else:
-                    PersonAgent(self, "{}_{}".format(person_role, i), cell=None, role=person_role,
+                    PersonAgent(self, person_num, cell=None, role=person_role,
                                 area_weights=area_weights)
                 # person.move()
 
@@ -163,7 +167,7 @@ class MainModel(mesa.Model):
             'Infected': lambda model: model.infected_proportion(),
             'Susceptible': lambda model: model.susceptible_proportion(),
             'Recovered': lambda model: model.recovered_proportion(),
-            # 'paths': lambda model: model.infection_paths.path_dict,
+            'paths': lambda model: model.infection_network,
             'farm_visits': lambda model: model.farm_visits_by_vets
         }
         # add in a model reporter for each farm
@@ -197,7 +201,7 @@ class MainModel(mesa.Model):
 
                 # record the visit
                 # farm_visits_by_vet {step_num: [(vet id, farm id), ...]
-                self.farm_visits_by_vets[self.steps].append((vet.name, farm.farm_id))
+                self.farm_visits_by_vets[self.steps].append((vet.name, farm.name))
 
                 # if there's a student around, they should go along as well
                 if len(self.available_farm_students) > 0:
@@ -206,13 +210,18 @@ class MainModel(mesa.Model):
 
         self.datacollector.collect(self)
 
+        # print('{}: {}'.format(self.steps, self.community_model.proportion_infected))
+        if self.community_model.proportion_infected > 0:
+            # there has been community spillover - stop here
+            self.running = False
+
     def come_back_from_farm(self, farm_visitor):
         """
         A vet or student has returned from visiting a farm. Put them back in the relevant availability queue
         :param farm_visitor: Returning Vet or Student
         :type farm_visitor: PeopleAgents.FarmVisitorAgent object
         """
-        if farm_visitor.role == PersonRole.FARM_SERVICES_VET:
+        if farm_visitor.role == PersonRole.FARM_SERVICES_CLINICIAN:
             self.available_farm_clinicians.append(farm_visitor)
         elif farm_visitor.role == PersonRole.FARM_SERVICES_STUDENT:
             self.available_farm_students.append(farm_visitor)

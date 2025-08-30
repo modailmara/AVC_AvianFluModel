@@ -33,7 +33,7 @@ def vet_location_portrayal(agent):
             portrayal['color'] = 'xkcd:brown'
             portrayal['zorder'] = 2
             portrayal['size'] = 10
-        elif agent.role == PersonRole.FARM_SERVICES_VET:
+        elif agent.role == PersonRole.FARM_SERVICES_CLINICIAN:
             portrayal['color'] = 'xkcd:light brown'
         elif agent.role == PersonRole.FARM_SERVICES_STUDENT:
             portrayal['color'] = 'xkcd:beige'
@@ -250,7 +250,7 @@ def dairy_farm_lineplot(model):
 def infection_path_vis(model):
     # get the path labels and the counts
     update_counter.get()
-    path_items = model.infection_paths.get_paths_counts()
+    path_items = model.infection_network.get_paths_counts()
     # print(path_items)
     if len(path_items) > 0:
         paths, counts = zip(*path_items)

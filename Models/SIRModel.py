@@ -66,8 +66,6 @@ class SIRModel(object):
         :return: Proportion of the population that is infected.
         :rtype: float
         """
-        # print(" ({}) {}: {} / {} = {}".format(self.model.steps, self.name, sum(self.infected), self.population,
-        #                                       sum(self.infected) / self.population))
         return sum(self.infected) / self.population
 
     def progress_infection(self):
@@ -112,15 +110,13 @@ class SIRModel(object):
             state_list[i + 1] = state_list[i]
         return state_list
 
-    def infect_susceptible(self, num_to_infect, infection_path):
+    def infect_susceptible(self, num_to_infect):
         """
         Changes some of the model entities from susceptible to infected. If there are less susceptible than the number
         specified, will only infect the number of susceptible.
 
         :param num_to_infect: The requested number to change susceptible -> infected
         :type num_to_infect: int
-        :param infection_path: The path this infection took before getting to this SIR model
-        :type infection_path: list
 
         :return: Number of entities infected
         :rtype: int
@@ -129,11 +125,6 @@ class SIRModel(object):
         if num_infected > 0:
             self.susceptible -= num_infected
             self.infected[0] += num_infected
-
-            # add the infection path, need to append this SIR model name
-            path = infection_path + [self.name]
-
-            # self.model.infection_paths.add_path(path, num_infected)
 
         return num_infected
 

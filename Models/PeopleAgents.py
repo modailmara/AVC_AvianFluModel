@@ -16,10 +16,12 @@ class PersonAgent(CellAgent):
 
         :param model: Model that this agent belongs to
         :type model: MainModel
-        :param cell: Starting grid location of the agent
-        :type cell: mesa.experimental.cell_space.grid.GridCell
+        :param person_id: ID number unique amongst the role
+        :type person_id: int
         :param role: Role of the agent in the model.
         :type role: PersonRole
+        :param cell: Starting grid location of the agent
+        :type cell: mesa.experimental.cell_space.grid.GridCell
         :param area_weights: Weighting for selecting areas of the hospital to move to
         :type area_weights: list
         """
@@ -27,19 +29,19 @@ class PersonAgent(CellAgent):
 
         self.cell = cell
 
-        self.person_id = person_id
+        self.number = person_id
         self.role = role
+        self.name = '{}_{}'.format(self.role.name, self.number)
+        self.short_name = '{}{}'.format(self.role.value, self.number)
         self.area_weights = area_weights
 
         # disease information
         self.disease_state = DiseaseState.SUSCEPTIBLE
         self.steps_current_disease_state = 0
 
-        # the path to the person agent's current infection, [] if they aren't infected
-        self.current_infection_path = []
-
         # information about where they are now - start in the community
         self.location = Location.COMMUNITY
+        self.department = None
 
     def step(self):
         """
@@ -58,11 +60,8 @@ class PersonAgent(CellAgent):
 
         # disease stuff
         self.progress_disease()
-        self.infect_others()
-
-    @property
-    def name(self):
-        return self.person_id
+        self.infect_others()  # maybe infect other people agents or community
+        self.become_infected_by_community()  # maybe get infected by the community
 
     def move(self):
         """
@@ -77,6 +76,8 @@ class PersonAgent(CellAgent):
             selected_area = choices[0]  # choices() returns a list
 
             self.cell = self.random.choice(self.model.hospital_cells[selected_area])
+
+            self.department = selected_area
 
     def go_home(self):
         """
@@ -137,6 +138,10 @@ class PersonAgent(CellAgent):
                 for agent in susceptible_agents_in_cell:
                     if self.random.random() < HUMAN_INFECT_HUMAN_PROB:
                         agent.become_infected()
+
+                        # record in the infection graph
+                        self.model.infection_network.add_infection_event(agent, source_agent=self,
+                                                                         time_step=self.model.steps)
             elif self.location == Location.COMMUNITY:
                 # try to infect the community
                 num_possible_infections = np.random.binomial(COMMUNITY_CONTACTS_PER_STEP,
@@ -144,9 +149,24 @@ class PersonAgent(CellAgent):
                 num_infections = np.random.binomial(num_possible_infections, HUMAN_INFECT_HUMAN_PROB)
 
                 if num_infections > 0:
-                    # stop if any infections (Community spillover has happened)
-                    # self.model.running = False
-                    pass  # turned off as stopping at community spillover is not interesting to look at
+                    self.model.community_model.infect_susceptible(num_infections)
+                    # record the infection
+                    self.model.infection_network.add_community_spillover(self, self.model.steps)
+
+    def become_infected_by_community(self):
+        """
+
+        """
+        if self.disease_state == DiseaseState.SUSCEPTIBLE and self.location == Location.COMMUNITY:
+            num_infected_people_contacted = min(self.model.community_model.susceptible,
+                                                np.random.binomial(COMMUNITY_CONTACTS_PER_STEP,
+                                                                   self.model.community_model.proportion_infected))
+            num_infections = np.random.binomial(num_infected_people_contacted, HUMAN_INFECT_HUMAN_PROB)
+
+            if num_infections > 0:
+                self.become_infected()
+
+                self.model.infection_network.add_community_infection(infected_agent=self, time_step=self.model.steps)
 
 
 class FarmPersonAgent(PersonAgent):
@@ -155,6 +175,19 @@ class FarmPersonAgent(PersonAgent):
     """
 
     def __init__(self, model, person_id, role, cell, area_weights=()):
+        """
+
+        :param model:
+        :type model:
+        :param person_id: ID number unique amongst the role
+        :type person_id: int
+        :param role:
+        :type role:
+        :param cell:
+        :type cell:
+        :param area_weights:
+        :type area_weights:
+        """
         super().__init__(model, person_id, role, cell, area_weights)
 
         self.farm = None
@@ -169,7 +202,7 @@ class FarmPersonAgent(PersonAgent):
             if self.disease_state == DiseaseState.INFECTED:
                 # possibility to infect some cattle
                 self.infect_cattle()
-            elif self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.infection_level > 0:
+            elif self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.proportion_infected > 0:
                 # infected cattle - maybe get infected
                 self.is_become_infected_by_cattle()
 
@@ -206,7 +239,7 @@ class FarmVisitorAgent(FarmPersonAgent):
         self.location = Location.FARM
         self.steps_at_farm = 0
 
-        if self.role == PersonRole.FARM_SERVICES_VET:
+        if self.role == PersonRole.FARM_SERVICES_CLINICIAN:
             # visiting vet so register with the farm
             self.farm.visit_from_vet(self)
 
@@ -226,7 +259,7 @@ class FarmVisitorAgent(FarmPersonAgent):
         """
         Leave the farm and return to the hospital
         """
-        if self.role == PersonRole.FARM_SERVICES_VET:
+        if self.role == PersonRole.FARM_SERVICES_CLINICIAN:
             # visiting vet so de-register with the farm
             self.farm.vet_leaving()
         self.model.come_back_from_farm(self)
@@ -259,7 +292,11 @@ class FarmVisitorAgent(FarmPersonAgent):
                                                                 self.farm.proportion_susceptible))
         num_infected = np.random.binomial(num_susceptible_cows_contacted, HUMAN_INFECT_CATTLE_PROB)
 
-        self.farm.cattle_model.infect_susceptible(num_infected, self.current_infection_path)
+        if num_infected > 0:
+            self.farm.cattle_model.infect_susceptible(num_infected)
+
+            self.model.infection_network.add_infection_event(source_agent=self, infected_agent=self.farm,
+                                                             time_step=self.model.steps)
 
     def is_become_infected_by_cattle(self):
         """
@@ -269,11 +306,14 @@ class FarmVisitorAgent(FarmPersonAgent):
         """
         num_infected_cows_contacted = min(self.farm.susceptible,
                                           np.random.binomial(VET_CONTACTS_PER_STEP,
-                                                             self.farm.infection_level))
+                                                             self.farm.proportion_infected))
         num_infections = np.random.binomial(num_infected_cows_contacted, HUMAN_INFECT_CATTLE_PROB)
 
         if num_infections > 0:
             self.become_infected()
+
+            self.model.infection_network.add_infection_event(source_agent=self.farm, infected_agent=self,
+                                                             time_step=self.model.steps)
 
 
 class FarmerAgent(FarmPersonAgent):
@@ -287,7 +327,7 @@ class FarmerAgent(FarmPersonAgent):
         :param model: The model that this agent belongs to
         :type model: MainModel object
         """
-        super().__init__(model, 'farmer_{}'.format(farm.farm_id), PersonRole.FARMER, None, ())
+        super().__init__(model, farm.number, PersonRole.FARMER, None, ())
 
         # farmers are always on the same farm
         self.farm = farm
@@ -323,7 +363,11 @@ class FarmerAgent(FarmPersonAgent):
                 num_susceptible_cows_contacted = self.farm.susceptible
                 num_infected = np.random.binomial(num_susceptible_cows_contacted, HUMAN_INFECT_CATTLE_PROB)
 
-                self.farm.cattle_model.infect_susceptible(num_infected, self.current_infection_path)
+                if num_infected > 0:
+                    self.farm.cattle_model.infect_susceptible(num_infected)
+
+                    self.model.infection_network.add_infection_event(source_agent=self, infected_agent=self.farm,
+                                                                     time_step=self.model.steps)
 
     def is_become_infected_by_cattle(self):
         """
@@ -341,6 +385,10 @@ class FarmerAgent(FarmPersonAgent):
 
                 if num_infections > 0:
                     self.become_infected()
+
+                    self.model.infection_network.add_infection_event(source_agent=self.farm, infected_agent=self,
+                                                                     time_step=self.model.steps)
+
                     break  # can only become infected once
 
 

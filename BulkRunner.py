@@ -5,7 +5,7 @@ from VisualiseResults import visualise_paths, visualise_visit_counts
 from Models.MainModel import MainModel
 from constants import convert_days_to_steps
 
-DAYS = 120
+DAYS = 2
 STEPS = convert_days_to_steps(DAYS)
 
 
@@ -26,5 +26,5 @@ if __name__ == "__main__":
                 print('{}: {}'.format(name, anything))
         print('---')
 
-    # visualise_paths(results)
-    visualise_visit_counts(results[0]['farm_visits'], DAYS)
+    visualise_paths(results[0]['paths'])
+    # visualise_visit_counts(results[0]['farm_visits'], DAYS)

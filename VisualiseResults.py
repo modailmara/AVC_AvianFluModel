@@ -1,67 +1,64 @@
 import seaborn as sns
 import pandas as pd
 import matplotlib
+import matplotlib.pyplot as plt
+import networkx as nx
 
 from support_functions import get_day_from_steps
 
 matplotlib.use('TkAgg')
 
+X_MULT = 20
+Y_INC = 15
 
-def visualise_paths(result_list):
+
+def get_pos_dict_for_node(network, node, current_y, visited):
+    # print('{}: {}'.format(node, network.successors(node)))
+    total_y_span = 1
+    current_x = network.nodes[node]['step'] * X_MULT
+    current_pos_dict = {node: (current_x, current_y)}
+    for adj_node in network.successors(node):
+        if adj_node not in visited:
+            visited.append(adj_node)
+            adj_dict, y_span = get_pos_dict_for_node(network, adj_node, current_y, visited)
+            current_y += y_span * Y_INC
+            total_y_span += y_span * Y_INC
+
+            current_pos_dict.update(adj_dict)
+
+    return current_pos_dict, total_y_span
+
+
+def visualise_paths(infection_network):
     """
 
-    :param result_list:
-    :type result_list: List[Dict{str, Any}]
     """
-    # create the pandas DataFrame
-    path_dict = {'path': [], 'iteration': [], 'count': []}
-    end_comm_path_dict = {'path': [], 'iteration': [], 'count': []}
-    not_start_comm_end_comm_path_dict = {'path': [], 'iteration': [], 'count': []}
-    for iteration_dict in result_list:
-        for path_tuple, path_count in iteration_dict['paths'].items():
-            path = '-'.join(path_tuple)
 
-            path_dict['path'].append(path)
-            path_dict['iteration'].append(iteration_dict['iteration'])
-            path_dict['count'].append(path_count)
-            # only add paths that end in community
-            if path_tuple[-1] == 'community' and path_count > 0:
-                end_comm_path_dict['path'].append(path)
-                end_comm_path_dict['iteration'].append(iteration_dict['iteration'])
-                end_comm_path_dict['count'].append(path_count)
-                if path_tuple[0] != 'community':
-                    not_start_comm_end_comm_path_dict['path'].append(path)
-                    not_start_comm_end_comm_path_dict['iteration'].append(iteration_dict['iteration'])
-                    not_start_comm_end_comm_path_dict['count'].append(path_count)
+    options = {
+        "font_size": 10,
+        "node_size": 700,
+        "node_color": "white",
+        "edgecolors": "black",
+        "linewidths": 2,
+        "width": 2,
+    }
 
-    # path_df = pd.DataFrame(data=path_dict)
-    print('path: {}'.format(path_dict))
-    print('end: {}'.format(end_comm_path_dict))
-    print('not start: {}'.format(not_start_comm_end_comm_path_dict))
+    pos_dict = {}
+    current_y = 0
+    for source_node in infection_network.source_nodes:
+        source_node_pos_dict, y_span = get_pos_dict_for_node(infection_network.infection_graph,
+                                                             source_node, current_y, [])
+        pos_dict.update(source_node_pos_dict)
+        current_y += y_span
 
-    # make charts
-    sns.set_theme(rc={'figure.figsize': (10, 50)})
+    nx.draw_networkx(infection_network.infection_graph, pos_dict, **options)
 
-    if len(path_dict['path']) > 0:
-        path_plot = sns.catplot(data=path_dict, x='count', y='path', kind='box',
-                                height=20, aspect=1)
-        path_plot.savefig('./visualisations/path_barplot_all.png')
-    else:
-        print('No paths')
+    # Set margins for the axes so that nodes aren't clipped
+    ax = plt.gca()
+    ax.margins(0.20)
+    plt.axis("off")
 
-    if len(end_comm_path_dict['path']) > 0:
-        path_plot = sns.catplot(data=end_comm_path_dict, x='count', y='path', kind='box',
-                                height=20, aspect=1)
-        path_plot.savefig('./visualisations/path_barplot_community.png')
-    else:
-        print('No paths ending in community')
-
-    if len(not_start_comm_end_comm_path_dict['path']) > 0:
-        path_plot = sns.catplot(data=not_start_comm_end_comm_path_dict, x='count', y='path', kind='box',
-                                height=20, aspect=1)
-        path_plot.savefig('./visualisations/path_barplot_not_start_community.png')
-    else:
-        print('No paths not starting in community, but ending in community')
+    ax.get_figure().savefig('./visualisations/infection_network.png')
 
 
 def visualise_visit_counts(visit_dict, days):
