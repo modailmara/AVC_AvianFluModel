@@ -39,9 +39,11 @@ class InfectionNetwork:
         self._add_node_for_agent(source_agent, 0)
         self.source_nodes[source_agent.short_name] = 0
 
-    def add_infection_event(self, infected_agent, source_agent, time_step):
+    def add_infection_event(self, source_agent, infected_agent, time_step):
         """
         Adds an infection event to the network: source <=> edge <=> infected.
+        The source_agent already exists. Use add_infection_source() for infection source nodes.
+
         :param source_agent: The agent that infected another agent. None if this is a starting infection.
         :type source_agent: DairyFarmAgent or PeopleAgent object
         :param infected_agent:
@@ -52,14 +54,11 @@ class InfectionNetwork:
         # create a node for the new infected agent
         self._add_node_for_agent(infected_agent, time_step)
 
-        if source_agent is not None:
-            # not a starting node so create a node for the source of the infection
-            self._add_node_for_agent(source_agent, time_step)
-
-            # create an edge from source to infected, annotate with time and place
-            self.infection_graph.add_edge(source_agent.short_name, infected_agent.short_name,
-                                          step=time_step, location=infected_agent.location,
-                                          department=infected_agent.department)
+        # create an edge from source to infected, annotate with time and place
+        self.infection_graph.add_edge(source_agent.short_name, infected_agent.short_name,
+                                      step=time_step, location=infected_agent.location,
+                                      department=infected_agent.department)
+        print('infection added: {} -{}-> {}'.format(source_agent.short_name, time_step, infected_agent.short_name))
 
     def add_community_spillover(self, source_agent, time_step):
         """
@@ -70,9 +69,11 @@ class InfectionNetwork:
         :type time_step:
         """
         self._add_community_infection_edge(source_agent, time_step, True)
+        print('infection added: {} -{}-> C'.format(source_agent.short_name, time_step))
 
     def add_community_infection(self, infected_agent, time_step):
         self._add_community_infection_edge(infected_agent, time_step, False)
+        print('infection added: C -{}-> {}'.format(time_step, infected_agent.short_name))
 
     def _add_community_infection_edge(self, agent, step, is_agent_source):
         """

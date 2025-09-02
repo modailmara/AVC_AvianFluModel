@@ -29,7 +29,7 @@ PEOPLE_INPUT_FILENAME = "people.xlsx"
 STEPS_PER_DAY = 16  # 1 step = 1.5 hours
 # step numbers that are part of the working day - all VTH staff are at the hospital or farms, farmers are at farms
 DAYTIME_STEPS = 6  # 9am to 6pm
-WORK_DAY_STEPS = list(range(1, DAYTIME_STEPS + 1))
+WORK_DAY_STEPS = [step+1 for step in range(DAYTIME_STEPS)]  # model steps count from 1
 # steps not at work - all person agents are in the community. in order from knockoff time
 NIGHTTIME_STEPS = STEPS_PER_DAY - DAYTIME_STEPS
 COMMUNITY_STEPS = list(range(DAYTIME_STEPS + 1, STEPS_PER_DAY + 1))
@@ -115,16 +115,16 @@ NUM_MILKING_CONTACTS = {
 
 # -----------------------------------------------------------
 # flu disease parameters
-HUMAN_INFECT_CATTLE_PROB = .1  # prob of a human infecting a cow assuming contact. 0-1
-HUMAN_INFECT_HUMAN_PROB = .1  # prob of a human infecting another human assuming contact. 0-1
+HUMAN_INFECT_CATTLE_PROB = 0  # prob of a human infecting a cow assuming contact. 0-1
+HUMAN_INFECT_HUMAN_PROB = 0.1  # prob of a human infecting another human assuming contact. 0-1
 HUMAN_INFECTIOUS_DAYS = 10  # num days a human stays in Infected state
 HUMAN_INFECTIOUS_STEPS = convert_days_to_steps(HUMAN_INFECTIOUS_DAYS)
 HUMAN_RECOVERED_DAYS = 20  # num days a human stays in Recovered state
 HUMAN_RECOVERED_STEPS = convert_days_to_steps(HUMAN_RECOVERED_DAYS)
 
-CATTLE_INFECT_HUMAN_PROB = 0.9  # per contact-step
+CATTLE_INFECT_HUMAN_PROB = 0.1  # per contact-step. 0-1
 # CATTLE_INFECT_HUMAN_PROB = 0.0000083
-CATTLE_INFECT_CATTLE_PROB = .2
+CATTLE_INFECT_CATTLE_PROB = 0.1  # probability per contact. 0-1
 CATTLE_INFECTED_DAYS = 10
 CATTLE_INFECTED_STEPS = convert_days_to_steps(CATTLE_INFECTED_DAYS)
 CATTLE_RECOVERED_DAYS = 100
@@ -160,7 +160,7 @@ class PersonRole(Enum):
     FLOATING_CLINICIAN = 'Fc'
     FLOATING_STAFF = 'Fs'
     FLOATING_STUDENT = 'Fu'
-    FARMER = 'farmer'
+    FARMER = 'f'
 
 
 input_to_role = {

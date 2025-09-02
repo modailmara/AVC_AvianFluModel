@@ -50,7 +50,8 @@ def visualise_paths(infection_network):
                                                              source_node, current_y, [])
         pos_dict.update(source_node_pos_dict)
         current_y += y_span
-
+    print(infection_network.infection_graph.nodes)
+    print(infection_network.infection_graph.edges)
     nx.draw_networkx(infection_network.infection_graph, pos_dict, **options)
 
     # Set margins for the axes so that nodes aren't clipped

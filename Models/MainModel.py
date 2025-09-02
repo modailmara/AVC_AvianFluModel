@@ -187,33 +187,34 @@ class MainModel(mesa.Model):
         """
         Execute one step of the model
         """
-        self.agents.shuffle_do('step')
-        self.community_model.step()
-
-        # vet visits but only during the work day (not the last step of the day)
-        if self.steps % STEPS_PER_DAY in WORK_DAY_STEPS[:-1]:
-            # if there is a request for a vet and a vet available, send a vet to a farm
-            num_farm_visits = min(len(self.farm_request_queue), len(self.available_farm_clinicians))
-            for visit in range(num_farm_visits):
-                farm = self.farm_request_queue.pop(0)
-                vet = self.available_farm_clinicians.pop(0)
-                vet.visit_farm(farm)
-
-                # record the visit
-                # farm_visits_by_vet {step_num: [(vet id, farm id), ...]
-                self.farm_visits_by_vets[self.steps].append((vet.name, farm.name))
-
-                # if there's a student around, they should go along as well
-                if len(self.available_farm_students) > 0:
-                    student = self.available_farm_students.pop(0)
-                    student.visit_farm(farm)
-
-        self.datacollector.collect(self)
-
         # print('{}: {}'.format(self.steps, self.community_model.proportion_infected))
         if self.community_model.proportion_infected > 0:
             # there has been community spillover - stop here
             self.running = False
+        else:
+            # go ahead with another model step
+            self.agents.shuffle_do('step')
+            self.community_model.step()
+
+            # vet visits but only during the work day (not the last step of the day)
+            if self.steps % STEPS_PER_DAY in WORK_DAY_STEPS[:-1]:
+                # if there is a request for a vet and a vet available, send a vet to a farm
+                num_farm_visits = min(len(self.farm_request_queue), len(self.available_farm_clinicians))
+                for visit in range(num_farm_visits):
+                    farm = self.farm_request_queue.pop(0)
+                    vet = self.available_farm_clinicians.pop(0)
+                    vet.visit_farm(farm)
+
+                    # record the visit
+                    # farm_visits_by_vet {step_num: [(vet id, farm id), ...]
+                    self.farm_visits_by_vets[self.steps].append((vet.name, farm.name))
+
+                    # if there's a student around, they should go along as well
+                    if len(self.available_farm_students) > 0:
+                        student = self.available_farm_students.pop(0)
+                        student.visit_farm(farm)
+
+            self.datacollector.collect(self)
 
     def come_back_from_farm(self, farm_visitor):
         """

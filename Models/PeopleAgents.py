@@ -140,7 +140,7 @@ class PersonAgent(CellAgent):
                         agent.become_infected()
 
                         # record in the infection graph
-                        self.model.infection_network.add_infection_event(agent, source_agent=self,
+                        self.model.infection_network.add_infection_event(source_agent=self, infected_agent=agent,
                                                                          time_step=self.model.steps)
             elif self.location == Location.COMMUNITY:
                 # try to infect the community
@@ -208,7 +208,7 @@ class FarmPersonAgent(PersonAgent):
 
     def infect_cattle(self):
         """
-        This person is infectious and on the farm. They may infect susceptible cattle on the farm.
+        This person is infectious and on a farm. They may infect susceptible cattle on the farm.
         """
         raise NotImplementedError("Base class. Implement infecting cattle.")
 
