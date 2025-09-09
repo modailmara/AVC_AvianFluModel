@@ -83,9 +83,11 @@ class DairyFarmAgent(LocationAgent):
         self.name = 'Farm_{}'.format(self.number)
         self.short_name = '{}'.format(self.number)
 
+        # set up the frequency and random counter since last (not modelled) last visit
         self.visit_frequency_steps = convert_days_to_steps(visit_frequency)
-
-        self.steps_since_last_visit = self.random.randint(0, self.visit_frequency_steps)
+        # randomly select a number of days less than visit_frequency but isn't a weekend
+        days_since_last_visit = self.random.choice([day for day in range(visit_frequency) if day % 7 not in [5, 6]])
+        self.steps_since_last_visit = convert_days_to_steps(days_since_last_visit) + 1
 
         self.milking_system = FarmMilkingSystem(milking_system.lower().strip())
         self.num_milking_contacts = NUM_MILKING_CONTACTS[self.milking_system]

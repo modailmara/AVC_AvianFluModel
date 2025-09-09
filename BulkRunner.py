@@ -26,5 +26,5 @@ if __name__ == "__main__":
                 print('{}: {}'.format(name, anything))
         print('---')
 
-    visualise_paths(results[0]['paths'])
-    # visualise_visit_counts(results[0]['farm_visits'], DAYS)
+    # visualise_paths(results[0]['paths'])
+    visualise_visit_counts(results[0]['farm_visits'], DAYS)

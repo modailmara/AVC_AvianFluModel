@@ -4,14 +4,14 @@ from mesa.experimental.cell_space import OrthogonalMooreGrid
 import pandas as pd
 from collections import defaultdict
 
-from support_functions import get_input_data_dir, get_day_from_steps
+from support_functions import get_input_data_dir, is_business_hours
 from Models.SIRModel import SIRModel
 from InfectionNetwork import InfectionNetwork
 
 from Models.PeopleAgents import PersonAgent, FarmerAgent, FarmVisitorAgent
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent
-from constants import FARM_INPUT_FILENAME, HospitalDepartment, PEOPLE_INPUT_FILENAME, PersonRole, STEPS_PER_DAY, \
-    WORK_DAY_STEPS, DiseaseState, input_to_role
+from constants import FARM_INPUT_FILENAME, HospitalDepartment, PEOPLE_INPUT_FILENAME, PersonRole, DiseaseState, \
+    input_to_role
 
 
 class MainModel(mesa.Model):
@@ -196,8 +196,8 @@ class MainModel(mesa.Model):
             self.agents.shuffle_do('step')
             self.community_model.step()
 
-            # vet visits but only during the work day (not the last step of the day)
-            if self.steps % STEPS_PER_DAY in WORK_DAY_STEPS[:-1]:
+            # vet visits but only during the work day
+            if is_business_hours(self.steps):
                 # if there is a request for a vet and a vet available, send a vet to a farm
                 num_farm_visits = min(len(self.farm_request_queue), len(self.available_farm_clinicians))
                 for visit in range(num_farm_visits):

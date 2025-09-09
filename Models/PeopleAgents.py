@@ -1,9 +1,10 @@
 from mesa.experimental.cell_space import CellAgent
 import numpy as np
 
-from constants import DiseaseState, Location, STEPS_PER_DAY, WORK_DAY_STEPS, COMMUNITY_STEPS, PersonRole, \
+from constants import DiseaseState, Location, STEPS_PER_DAY, WORK_DAY_STEPS, PersonRole, \
     HUMAN_INFECTIOUS_STEPS, HUMAN_RECOVERED_STEPS, HUMAN_INFECT_HUMAN_PROB, VET_STEPS_AT_FARM, VET_CONTACTS_PER_STEP, \
     HUMAN_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB, COMMUNITY_CONTACTS_PER_STEP, NUM_MILKING_EVENTS_PER_DAY
+from support_functions import is_business_hours
 
 
 class PersonAgent(CellAgent):
@@ -50,12 +51,14 @@ class PersonAgent(CellAgent):
         - progress their disease status
         """
         # check need to change location
-        step_of_day = self.model.steps % STEPS_PER_DAY
-        if step_of_day == WORK_DAY_STEPS[0]:  # time to go to work
+        if self.location == Location.COMMUNITY and is_business_hours(self.model.steps):
+            # out in the community and it's time to go to work
             self.start_work()
-        elif step_of_day == COMMUNITY_STEPS[0]:  # time to go home from work
+        elif self.location in [Location.HOSPITAL, Location.FARM] and not is_business_hours(self.model.steps):
+            # at work and work time is over so time to go home from work
             self.go_home()
-        elif self.location == Location.HOSPITAL:  # no change of location - just do a normal move
+        elif self.location == Location.HOSPITAL and is_business_hours(self.model.steps):
+            # at the hospital, time to move around
             self.move()
 
         # disease stuff

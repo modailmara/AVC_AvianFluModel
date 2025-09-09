@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from constants import STEPS_PER_DAY
+from constants import STEPS_PER_DAY, DAYTIME_STEPS
 
 
 def get_root_dir():
@@ -49,3 +49,25 @@ def get_day_from_steps(step_number):
     :rtype: int
     """
     return step_number // STEPS_PER_DAY
+
+
+def is_business_hours(all_steps):
+    """
+    True if the model step falls in business hours.
+    Step 1 is the first step of the first workday (Monday). Each 24 hours is STEPS_PER_DAY steps long.
+    The first 1 <= x <= DAYTIME_STEPS of each day is work hours.
+    Weekends (saturday and sunday) are not business hours.
+
+    :param all_steps: Total count of steps since the model started
+    :type all_steps: int
+    :return: True if the step falls in business hours
+    :rtype: bool
+    """
+    # get the number of days and the steps into the day
+    all_days, leftover_steps = divmod(all_steps, STEPS_PER_DAY)
+    weeks, leftover_days = divmod(all_days, 7)
+
+    # print("{} (w={}, d={}, s={}): {}".format(all_steps, weeks, leftover_days, leftover_steps,
+    #                                          leftover_days < 5 and 1 <= leftover_steps <= DAYTIME_STEPS))
+    return leftover_days < 5 and 1 <= leftover_steps <= DAYTIME_STEPS
+

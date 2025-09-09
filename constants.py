@@ -24,15 +24,13 @@ FARM_INPUT_FILENAME = "farms.xlsx"
 PEOPLE_INPUT_FILENAME = "people.xlsx"
 
 # -----------------------------------------------------------
-# time
-# total steps from midnight to midnight
+# ----------------- TIME ------------------------------------
+
+# total steps for 24-hour day
 STEPS_PER_DAY = 16  # 1 step = 1.5 hours
 # step numbers that are part of the working day - all VTH staff are at the hospital or farms, farmers are at farms
 DAYTIME_STEPS = 6  # 9am to 6pm
 WORK_DAY_STEPS = [step+1 for step in range(DAYTIME_STEPS)]  # model steps count from 1
-# steps not at work - all person agents are in the community. in order from knockoff time
-NIGHTTIME_STEPS = STEPS_PER_DAY - DAYTIME_STEPS
-COMMUNITY_STEPS = list(range(DAYTIME_STEPS + 1, STEPS_PER_DAY + 1))
 
 
 def convert_per_day_to_per_step(num_per_day):
@@ -60,7 +58,27 @@ def convert_days_to_steps(num_days):
 
 
 # -----------------------------------------------------------
-# community
+# ----------------- HPAI ------------------------------------
+
+HUMAN_INFECT_CATTLE_PROB = 0  # prob of a human infecting a cow assuming contact. 0-1
+HUMAN_INFECT_HUMAN_PROB = 0.1  # prob of a human infecting another human assuming contact. 0-1
+HUMAN_INFECTIOUS_DAYS = 10  # num days a human stays in Infected state
+HUMAN_INFECTIOUS_STEPS = convert_days_to_steps(HUMAN_INFECTIOUS_DAYS)
+HUMAN_RECOVERED_DAYS = 20  # num days a human stays in Recovered state
+HUMAN_RECOVERED_STEPS = convert_days_to_steps(HUMAN_RECOVERED_DAYS)
+
+# CATTLE_INFECT_HUMAN_PROB = 0.1
+CATTLE_INFECT_HUMAN_PROB = 0.0000083  # per contact-step. 0-1 (from Reilly Comper)
+CATTLE_INFECT_CATTLE_PROB = 0.1  # probability per contact. 0-1
+CATTLE_INFECTED_DAYS = 10
+CATTLE_INFECTED_STEPS = convert_days_to_steps(CATTLE_INFECTED_DAYS)
+CATTLE_RECOVERED_DAYS = 100
+CATTLE_RECOVERED_STEPS = convert_days_to_steps(CATTLE_RECOVERED_DAYS)
+
+
+# -----------------------------------------------------------
+# ----------------- COMMUNITY -------------------------------
+
 COMMUNITY = 'community'
 COMMUNITY_POPULATION = 3000
 COMMUNITY_CONTACTS_PER_STEP = 2
@@ -69,8 +87,8 @@ COMMUNITY_CONTACTS_PER_STEP = 2
 # farm
 # DEFAULT_DAIRY_HERD_SIZE = 50
 
-VET_STEPS_AT_FARM = 1
-VET_CONTACTS_PER_STEP = 10  # number of cows they see
+VET_STEPS_AT_FARM = 1  # number of steps they spend on the farm for a visit
+VET_CONTACTS_PER_STEP = 10  # number of cows they see on the farm
 
 
 class FarmHousing(Enum):
@@ -112,24 +130,6 @@ NUM_MILKING_CONTACTS = {
     FarmMilkingSystem.PIPELINE: 2,
     FarmMilkingSystem.ROTARY_PARLOUR: 2
 }
-
-# -----------------------------------------------------------
-# flu disease parameters
-HUMAN_INFECT_CATTLE_PROB = 0  # prob of a human infecting a cow assuming contact. 0-1
-HUMAN_INFECT_HUMAN_PROB = 0.1  # prob of a human infecting another human assuming contact. 0-1
-HUMAN_INFECTIOUS_DAYS = 10  # num days a human stays in Infected state
-HUMAN_INFECTIOUS_STEPS = convert_days_to_steps(HUMAN_INFECTIOUS_DAYS)
-HUMAN_RECOVERED_DAYS = 20  # num days a human stays in Recovered state
-HUMAN_RECOVERED_STEPS = convert_days_to_steps(HUMAN_RECOVERED_DAYS)
-
-CATTLE_INFECT_HUMAN_PROB = 0.1  # per contact-step. 0-1
-# CATTLE_INFECT_HUMAN_PROB = 0.0000083
-CATTLE_INFECT_CATTLE_PROB = 0.1  # probability per contact. 0-1
-CATTLE_INFECTED_DAYS = 10
-CATTLE_INFECTED_STEPS = convert_days_to_steps(CATTLE_INFECTED_DAYS)
-CATTLE_RECOVERED_DAYS = 100
-CATTLE_RECOVERED_STEPS = convert_days_to_steps(CATTLE_RECOVERED_DAYS)
-
 
 # -----------------------------
 # Enums
@@ -182,6 +182,7 @@ input_to_role = {
     'floating staff': PersonRole.FLOATING_STAFF,
     'floating student': PersonRole.FLOATING_STUDENT,
 }
+
 
 class DiseaseState(Enum):
     """
