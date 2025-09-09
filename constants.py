@@ -58,6 +58,20 @@ def convert_days_to_steps(num_days):
 
 
 # -----------------------------------------------------------
+# ----------------- FARM SERVICE VISITS TO FARMS ------------
+# these numbers are averages, in the code they will be converted to probabilities
+# also, these are for all farms, so 2-4 emergency visits overall
+
+# Luke: Weekends are variable for calls but I think on average there would be 2-4 calls per month on the weekends.
+EMERGENCY_VISITS_PER_MONTH = 3
+EMERGENCY_VISITS_PER_STEP = EMERGENCY_VISITS_PER_MONTH / (8 * STEPS_PER_DAY)  # 8 = number of weekend days in a month
+
+# Unscheduled calls that aren't emergencies, should result in 1-2 visits per day in business hours
+NON_URGENT_CALLS_PER_DAY = 2
+NON_URGENT_CALLS_PER_STEP = NON_URGENT_CALLS_PER_DAY / STEPS_PER_DAY
+
+
+# -----------------------------------------------------------
 # ----------------- HPAI ------------------------------------
 
 HUMAN_INFECT_CATTLE_PROB = 0  # prob of a human infecting a cow assuming contact. 0-1
@@ -67,8 +81,8 @@ HUMAN_INFECTIOUS_STEPS = convert_days_to_steps(HUMAN_INFECTIOUS_DAYS)
 HUMAN_RECOVERED_DAYS = 20  # num days a human stays in Recovered state
 HUMAN_RECOVERED_STEPS = convert_days_to_steps(HUMAN_RECOVERED_DAYS)
 
-# CATTLE_INFECT_HUMAN_PROB = 0.1
-CATTLE_INFECT_HUMAN_PROB = 0.0000083  # per contact-step. 0-1 (from Reilly Comper)
+CATTLE_INFECT_HUMAN_PROB = 0.1
+# CATTLE_INFECT_HUMAN_PROB = 0.0000083  # per contact-step. 0-1 (from Reilly Comper)
 CATTLE_INFECT_CATTLE_PROB = 0.1  # probability per contact. 0-1
 CATTLE_INFECTED_DAYS = 10
 CATTLE_INFECTED_STEPS = convert_days_to_steps(CATTLE_INFECTED_DAYS)

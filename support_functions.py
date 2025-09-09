@@ -71,3 +71,21 @@ def is_business_hours(all_steps):
     #                                          leftover_days < 5 and 1 <= leftover_steps <= DAYTIME_STEPS))
     return leftover_days < 5 and 1 <= leftover_steps <= DAYTIME_STEPS
 
+
+def is_weekend(all_steps):
+    """
+    True if the model step falls in a weekend
+    Step 1 is the first step of the first workday (Monday). Each 24 hours is STEPS_PER_DAY steps long.
+    Weekends (saturday and sunday) are days 5 and 6 of each week
+
+    :param all_steps: Total count of steps since the model started
+    :type all_steps: int
+    :return: True if the step falls in a weekend
+    :rtype: bool
+    """
+    # get the number of days and the steps into the day
+    all_days, leftover_steps = divmod(all_steps, STEPS_PER_DAY)
+    weeks, leftover_days = divmod(all_days, 7)
+
+    return leftover_days in [5, 6]
+

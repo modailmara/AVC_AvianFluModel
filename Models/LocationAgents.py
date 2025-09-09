@@ -1,11 +1,11 @@
 from mesa.experimental.cell_space import FixedAgent
 
 from Models.SIRModel import SIRModel
-from constants import convert_days_to_steps
+from support_functions import is_business_hours, is_weekend
 
 from constants import CATTLE_INFECT_CATTLE_PROB, CATTLE_INFECTED_DAYS, \
     CATTLE_RECOVERED_DAYS, FarmMilkingSystem, FarmHousing, FarmVetVisitState, CATTLE_CONTACTS_PER_STEP, \
-    NUM_MILKING_CONTACTS, Location
+    NUM_MILKING_CONTACTS, Location, EMERGENCY_VISITS_PER_STEP, NON_URGENT_CALLS_PER_STEP, convert_days_to_steps
 
 
 class LocationAgent(FixedAgent):
@@ -101,6 +101,11 @@ class DairyFarmAgent(LocationAgent):
         self.vet_state = FarmVetVisitState.OK
         self.visiting_vet = None
 
+        # work out probabilities for emergency calls
+        # divide by the number of farms
+        self.non_urgent_visit_prob = NON_URGENT_CALLS_PER_STEP / len(self.model.agents_by_type[DairyFarmAgent])
+        self.emergency_visit_prob = EMERGENCY_VISITS_PER_STEP / len(self.model.agents_by_type[DairyFarmAgent])
+
         # SIR model for the cattle herd
         self.cattle_model = SIRModel(model=self.model, name=self.name,
                                      population=herd_size,
@@ -168,6 +173,17 @@ class DairyFarmAgent(LocationAgent):
             else:
                 # don't need a vet yet
                 self.steps_since_last_visit += 1
+
+                # check for emergency visit
+                if is_weekend(self.model.steps) and self.random.random() <= self.emergency_visit_prob:
+                    # need an emergency clinician - only applies outside business hours
+                    self.vet_state = FarmVetVisitState.NEED_VET
+                    self.model.request_emergency_vet_visit(self)
+                elif self.random.random() <= self.non_urgent_visit_prob:
+                    # need a non-urgent visit outside of schedule
+                    # can be made outside business hours but only dealt with during business hours
+                    self.vet_state = FarmVetVisitState.NEED_VET
+                    self.model.request_vet_visit(self)
 
     def visit_from_vet(self, vet):
         """

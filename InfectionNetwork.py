@@ -58,7 +58,6 @@ class InfectionNetwork:
         self.infection_graph.add_edge(source_agent.short_name, infected_agent.short_name,
                                       step=time_step, location=infected_agent.location,
                                       department=infected_agent.department)
-        print('infection added: {} -{}-> {}'.format(source_agent.short_name, time_step, infected_agent.short_name))
 
     def add_community_spillover(self, source_agent, time_step):
         """
@@ -69,11 +68,9 @@ class InfectionNetwork:
         :type time_step:
         """
         self._add_community_infection_edge(source_agent, time_step, True)
-        print('infection added: {} -{}-> C'.format(source_agent.short_name, time_step))
 
     def add_community_infection(self, infected_agent, time_step):
         self._add_community_infection_edge(infected_agent, time_step, False)
-        print('infection added: C -{}-> {}'.format(time_step, infected_agent.short_name))
 
     def _add_community_infection_edge(self, agent, step, is_agent_source):
         """

@@ -13,6 +13,8 @@ from Models.LocationAgents import DairyFarmAgent, HospitalAgent
 from constants import FARM_INPUT_FILENAME, HospitalDepartment, PEOPLE_INPUT_FILENAME, PersonRole, DiseaseState, \
     input_to_role
 
+STOP_ON_COMMUNITY_INFECTION = False
+
 
 class MainModel(mesa.Model):
     """
@@ -38,6 +40,7 @@ class MainModel(mesa.Model):
 
         # queue to manage farm requests for vets
         self.farm_request_queue = []
+        self.farm_emergency_request_queue = []
         self.available_farm_clinicians = []
         self.available_farm_students = []
 
@@ -188,13 +191,23 @@ class MainModel(mesa.Model):
         Execute one step of the model
         """
         # print('{}: {}'.format(self.steps, self.community_model.proportion_infected))
-        if self.community_model.proportion_infected > 0:
+        if self.community_model.proportion_infected > 0 and STOP_ON_COMMUNITY_INFECTION:
             # there has been community spillover - stop here
             self.running = False
         else:
             # go ahead with another model step
             self.agents.shuffle_do('step')
             self.community_model.step()
+
+            # prioritise emergency visits
+            num_emergency_visits = min(len(self.farm_emergency_request_queue), len(self.available_farm_clinicians))
+            for emergency_visit in range(num_emergency_visits):
+                farm = self.farm_emergency_request_queue.pop(0)
+                clinician = self.available_farm_clinicians.pop(0)
+                clinician.visit_farm(farm)
+
+                # record the visit
+                self.farm_visits_by_vets[self.steps].append((clinician.name, farm.name))
 
             # vet visits but only during the work day
             if is_business_hours(self.steps):
@@ -206,7 +219,6 @@ class MainModel(mesa.Model):
                     vet.visit_farm(farm)
 
                     # record the visit
-                    # farm_visits_by_vet {step_num: [(vet id, farm id), ...]
                     self.farm_visits_by_vets[self.steps].append((vet.name, farm.name))
 
                     # if there's a student around, they should go along as well
@@ -234,6 +246,14 @@ class MainModel(mesa.Model):
         :type farm: DairyFarmAgent object
         """
         self.farm_request_queue.append(farm)
+
+    def request_emergency_vet_visit(self, farm):
+        """
+        A farm needs an emergency vet visit. Put them at the end of the queue
+        :param farm: The farm requesting a vet visit
+        :type farm: DairyFarmAgent object
+        """
+        self.farm_emergency_request_queue.append(farm)
 
     def susceptible_proportion(self):
         """

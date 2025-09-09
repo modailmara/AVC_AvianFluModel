@@ -1,5 +1,6 @@
 import solara
 from matplotlib.figure import Figure
+import matplotlib.patches as patches
 import numpy as np
 from mesa.visualization import (
     Slider,
@@ -9,6 +10,7 @@ from mesa.visualization import (
 )
 from mesa.experimental.devs import ABMSimulator
 from mesa.visualization.utils import update_counter
+import networkx as nx
 
 from support_functions import get_day_from_steps
 from Models.PeopleAgents import PersonAgent
@@ -295,11 +297,68 @@ def num_farm_visits_per_day_plot(model):
     ax.set(xticks=range(max_x), xlim=[-1, max_x])
 
     # ax.hist(visit_list, range=[0, max_x])
-    ax.set_ylim(ymin=0, ymax=5.5)
+    ax.set_ylim(ymin=0, ymax=10.5)
+
+    # # draw rectangles to mark weekends
+    # for d in range(5, max_x, 7):
+    #     ax.add_patch(patches.Rectangle(
+    #         xy=(d - .5, 0), width=2, height=6, color='lightgrey', fill=True, zorder=0
+    #     ))
 
     ax.set_title("Number of farm visits each day by FS vets")
     ax.set_ylabel('# of farm visits per day')
     ax.set_xlabel('Day')
+
+    solara.FigureMatplotlib(fig)
+
+
+X_MULT = 20
+Y_INC = 15
+
+def get_pos_dict_for_node(network, node, current_x, current_y, visited):
+    # print('{}: {}'.format(node, network.successors(node)))
+    total_y_span = 1
+    # current_x += 2
+    current_x = network.nodes[node]['step'] * X_MULT
+    current_pos_dict = {node: (current_x, current_y)}
+    for adj_node in network.successors(node):
+        if adj_node not in visited:
+            visited.append(adj_node)
+            adj_dict, y_span = get_pos_dict_for_node(network, adj_node, current_x, current_y, visited)
+            current_y += y_span * Y_INC
+            total_y_span += y_span * Y_INC
+
+            current_pos_dict.update(adj_dict)
+
+    return current_pos_dict, total_y_span
+
+
+@solara.component
+def infection_network(model):
+    update_counter.get()
+
+    fig = Figure()
+    ax = fig.subplots()
+
+    options = {
+        "font_size": 10,
+        "node_size": 700,
+        "node_color": "white",
+        "edgecolors": "black",
+        "linewidths": 2,
+        "width": 2,
+        'connectionstyle': "arc3,rad=0.1"
+    }
+
+    pos_dict = {}
+    current_y = 0
+    for source_node in model.infection_network.source_nodes:
+        source_node_pos_dict, y_span = get_pos_dict_for_node(model.infection_network.infection_graph,
+                                                             source_node, 0, current_y, [])
+        pos_dict.update(source_node_pos_dict)
+        current_y += y_span
+
+    nx.draw_networkx(model.infection_network.infection_graph, pos_dict, ax=ax, **options)
 
     solara.FigureMatplotlib(fig)
 
@@ -309,7 +368,7 @@ main_model = MainModel(simulator=simulator)
 
 page = SolaraViz(
     main_model,
-    components=[space_component, dairy_farm_lineplot, person_infection_plot, num_farm_visits_per_day_plot],
+    components=[space_component, person_infection_plot, num_farm_visits_per_day_plot, infection_network],
     # components=[space_component, dairy_farm_lineplot, infection_path_vis, community_plot
     #             fs_vet_plot, fs_tech_plot, large_vet_plot, small_vet_plot, float_staff_plot, farmer_plot],
     model_params=model_params,
