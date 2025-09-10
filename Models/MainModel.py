@@ -13,7 +13,7 @@ from Models.LocationAgents import DairyFarmAgent, HospitalAgent
 from constants import FARM_INPUT_FILENAME, HospitalDepartment, PEOPLE_INPUT_FILENAME, PersonRole, DiseaseState, \
     input_to_role
 
-STOP_ON_COMMUNITY_INFECTION = False
+STOP_ON_COMMUNITY_INFECTION = True
 
 
 class MainModel(mesa.Model):

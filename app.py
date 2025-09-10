@@ -1,5 +1,6 @@
 import solara
 from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
 from mesa.visualization import (
@@ -359,6 +360,11 @@ def infection_network(model):
         current_y += y_span
 
     nx.draw_networkx(model.infection_network.infection_graph, pos_dict, ax=ax, **options)
+
+    # Set margins for the axes so that nodes aren't clipped
+    ax = plt.gca()
+    ax.margins(0.20)
+    plt.axis("off")
 
     solara.FigureMatplotlib(fig)
 

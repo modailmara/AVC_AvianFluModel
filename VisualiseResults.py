@@ -62,6 +62,8 @@ def visualise_paths(infection_network):
 
     ax.get_figure().savefig('./visualisations/infection_network.png')
 
+    plt.close()
+
 
 def visualise_visit_counts(visit_dict, days):
     """
@@ -99,3 +101,5 @@ def visualise_visit_counts(visit_dict, days):
     hist.set_xlabel('Day')
 
     hist.get_figure().savefig('./visualisations/visits_hist.png')
+
+    plt.close()
