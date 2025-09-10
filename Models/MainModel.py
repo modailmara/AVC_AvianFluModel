@@ -108,7 +108,8 @@ class MainModel(mesa.Model):
             cell = self.grid[cell_x, cell_y]
             farm = DairyFarmAgent(self, cell,
                                   farm_row.farm_id, farm_row.herd_size, farm_row.visit_frequency_days,
-                                  farm_row.milking_system, farm_row.housing, farm_row.pasture, farm_row.num_infected)
+                                  farm_row.milking_system, farm_row.housing, farm_row.pasture, farm_row.num_infected,
+                                  num_farms=len(farm_df))
             self.farm_cells.append(cell)
 
             if farm_row.num_infected > 0:

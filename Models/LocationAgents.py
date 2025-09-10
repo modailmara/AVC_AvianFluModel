@@ -52,7 +52,7 @@ class DairyFarmAgent(LocationAgent):
     Maybe keep an internal network model for infected herd?
     """
     def __init__(self, model, cell, farm_id, herd_size, visit_frequency, milking_system, housing, pasture,
-                 infected_cattle=0):
+                 infected_cattle=0, num_farms=19):
         """
 
         :param model: The model that this agent belongs to
@@ -103,8 +103,8 @@ class DairyFarmAgent(LocationAgent):
 
         # work out probabilities for emergency calls
         # divide by the number of farms
-        self.non_urgent_visit_prob = NON_URGENT_CALLS_PER_STEP / len(self.model.agents_by_type[DairyFarmAgent])
-        self.emergency_visit_prob = EMERGENCY_VISITS_PER_STEP / len(self.model.agents_by_type[DairyFarmAgent])
+        self.non_urgent_visit_prob = NON_URGENT_CALLS_PER_STEP / num_farms
+        self.emergency_visit_prob = EMERGENCY_VISITS_PER_STEP / num_farms
 
         # SIR model for the cattle herd
         self.cattle_model = SIRModel(model=self.model, name=self.name,
