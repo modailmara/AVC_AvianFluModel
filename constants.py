@@ -94,8 +94,8 @@ CATTLE_RECOVERED_STEPS = convert_days_to_steps(CATTLE_RECOVERED_DAYS)
 # ----------------- COMMUNITY -------------------------------
 
 COMMUNITY = 'community'
-COMMUNITY_POPULATION = 3000
-COMMUNITY_CONTACTS_PER_STEP = 2
+COMMUNITY_POPULATION = 30000
+COMMUNITY_CONTACTS_PER_STEP = 1
 
 # -----------------------------------------------------------
 # farm

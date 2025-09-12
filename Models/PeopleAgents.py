@@ -252,7 +252,7 @@ class FarmVisitorAgent(FarmPersonAgent):
 
         Need to override here as if the visitor is at a farm, they need to do farm leaving things first
         """
-        if self.location == Location.FARM:
+        if self.location == Location.FARM and self.farm is not None:
             # do farm leaving cleanup
             self.leave_farm()
         self.location = Location.COMMUNITY
@@ -268,8 +268,11 @@ class FarmVisitorAgent(FarmPersonAgent):
         self.model.come_back_from_farm(self)
         self.farm = None
         self.steps_at_farm = 0
-        self.location = Location.HOSPITAL
-        self.move()
+        if is_business_hours(self.model.steps):
+            self.location = Location.HOSPITAL
+            self.move()
+        else:
+            self.go_home()
 
     def step(self):
         """
@@ -351,6 +354,17 @@ class FarmerAgent(FarmPersonAgent):
         else:
             # in the community
             self.cell = None
+
+    def go_home(self):
+        """
+        Farmers are quarantined if there is an infection on their farm
+        """
+        if self.farm.infected > 0:
+            # quarantined
+            self.cell = None
+        else:
+            # act as normal
+            super().go_home()
 
     def infect_cattle(self):
         """

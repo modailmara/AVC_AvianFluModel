@@ -4,7 +4,7 @@ from mesa.experimental.cell_space import OrthogonalMooreGrid
 import pandas as pd
 from collections import defaultdict
 
-from support_functions import get_input_data_dir, is_business_hours
+from support_functions import get_input_data_dir, is_business_hours, is_weekend
 from Models.SIRModel import SIRModel
 from InfectionNetwork import InfectionNetwork
 
@@ -200,15 +200,16 @@ class MainModel(mesa.Model):
             self.agents.shuffle_do('step')
             self.community_model.step()
 
-            # prioritise emergency visits
-            num_emergency_visits = min(len(self.farm_emergency_request_queue), len(self.available_farm_clinicians))
-            for emergency_visit in range(num_emergency_visits):
-                farm = self.farm_emergency_request_queue.pop(0)
-                clinician = self.available_farm_clinicians.pop(0)
-                clinician.visit_farm(farm)
+            if is_weekend(self.steps):
+                # prioritise emergency visits
+                num_emergency_visits = min(len(self.farm_emergency_request_queue), len(self.available_farm_clinicians))
+                for emergency_visit in range(num_emergency_visits):
+                    farm = self.farm_emergency_request_queue.pop(0)
+                    clinician = self.available_farm_clinicians.pop(0)
+                    clinician.visit_farm(farm)
 
-                # record the visit
-                self.farm_visits_by_vets[self.steps].append((clinician.name, farm.name))
+                    # record the visit
+                    self.farm_visits_by_vets[self.steps].append((clinician.name, farm.name))
 
             # vet visits but only during the work day
             if is_business_hours(self.steps):

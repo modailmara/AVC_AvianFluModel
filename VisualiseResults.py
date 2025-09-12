@@ -37,28 +37,37 @@ def visualise_paths(infection_network):
 
     options = {
         "font_size": 10,
-        "node_size": 700,
+        "node_size": 200,
         "node_color": "white",
         "edgecolors": "black",
-        "linewidths": 2,
-        "width": 2,
+        "linewidths": 1,
+        "width": 1,
+        'with_labels': True,
     }
 
-    pos_dict = {}
-    current_y = 0
-    for source_node in infection_network.source_nodes:
-        source_node_pos_dict, y_span = get_pos_dict_for_node(infection_network.infection_graph,
-                                                             source_node, current_y, [])
-        pos_dict.update(source_node_pos_dict)
-        current_y += y_span
-    print(infection_network.infection_graph.nodes)
-    print(infection_network.infection_graph.edges)
-    nx.draw_networkx(infection_network.infection_graph, pos_dict, **options)
+    sns.set_theme(rc={'figure.figsize': (10, 10)})
+    sns.set_style('whitegrid')
+    sns.set_context("paper")
 
     # Set margins for the axes so that nodes aren't clipped
     ax = plt.gca()
-    ax.margins(0.20)
+    # ax.margins(0.20)
     plt.axis("off")
+
+    # pos_dict = {}
+    # current_y = 0
+    # for source_node in infection_network.source_nodes:
+    #     source_node_pos_dict, y_span = get_pos_dict_for_node(infection_network.infection_graph,
+    #                                                          source_node, current_y, [])
+    #     pos_dict.update(source_node_pos_dict)
+    #     current_y += y_span
+    # pos_dict = nx.nx_agraph.graphviz_layout(infection_network.infection_graph, prog="twopi")
+    # nx.draw_networkx(infection_network.infection_graph, pos_dict)  # , **options)
+    graph = infection_network.infection_graph
+
+    nx.draw(graph, ax=ax,
+            pos=nx.bfs_layout(graph, start='F9'),
+            **options)
 
     ax.get_figure().savefig('./visualisations/infection_network.png')
 
