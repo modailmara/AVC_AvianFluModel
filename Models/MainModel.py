@@ -11,9 +11,9 @@ from InfectionNetwork import InfectionNetwork
 from Models.PeopleAgents import PersonAgent, FarmerAgent, FarmVisitorAgent
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent
 from constants import FARM_INPUT_FILENAME, HospitalDepartment, PEOPLE_INPUT_FILENAME, PersonRole, DiseaseState, \
-    input_to_role
+    input_to_role, MAX_VISITS_PER_TRIP
 
-STOP_ON_COMMUNITY_INFECTION = True
+STOP_ON_COMMUNITY_INFECTION = False
 
 
 class MainModel(mesa.Model):
@@ -200,33 +200,42 @@ class MainModel(mesa.Model):
             self.agents.shuffle_do('step')
             self.community_model.step()
 
-            if is_weekend(self.steps):
-                # prioritise emergency visits
-                num_emergency_visits = min(len(self.farm_emergency_request_queue), len(self.available_farm_clinicians))
-                for emergency_visit in range(num_emergency_visits):
-                    farm = self.farm_emergency_request_queue.pop(0)
-                    clinician = self.available_farm_clinicians.pop(0)
-                    clinician.visit_farm(farm)
+            # prioritise emergency visits anytime
+            while len(self.farm_emergency_request_queue) > 0 and len(self.available_farm_clinicians) > 0:
+                # get the next available clinician and give them a visit list
+                clinician = self.available_farm_clinicians.pop(0)
+                clinician.farms_to_visit = self.farm_emergency_request_queue[:MAX_VISITS_PER_TRIP]
+                # remove those requests from the queue
+                self.farm_emergency_request_queue = self.farm_emergency_request_queue[MAX_VISITS_PER_TRIP:]
 
-                    # record the visit
-                    self.farm_visits_by_vets[self.steps].append((clinician.name, farm.name))
+                # send them on their way
+                clinician.visit_next_farm()
 
-            # vet visits but only during the work day
+            # normal priority farm visits happen only during business hours
             if is_business_hours(self.steps):
-                # if there is a request for a vet and a vet available, send a vet to a farm
-                num_farm_visits = min(len(self.farm_request_queue), len(self.available_farm_clinicians))
-                for visit in range(num_farm_visits):
-                    farm = self.farm_request_queue.pop(0)
-                    vet = self.available_farm_clinicians.pop(0)
-                    vet.visit_farm(farm)
+                while len(self.farm_request_queue) > 0 and len(self.available_farm_clinicians) > 0:
+                    # get the list of farms to visit on this trip
+                    farms_to_visit = self.farm_request_queue[:MAX_VISITS_PER_TRIP]
+                    # remove these requests from queue
+                    self.farm_request_queue = self.farm_request_queue[MAX_VISITS_PER_TRIP:]
 
-                    # record the visit
-                    self.farm_visits_by_vets[self.steps].append((vet.name, farm.name))
+                    # set the clinician's trip
+                    clinician = self.available_farm_clinicians.pop(0)
+                    clinician.farms_to_visit = farms_to_visit.copy()
+
+                    print("{}: {} trip {}".format(self.steps, clinician.short_name,
+                                                  [f.short_name for f in clinician.farms_to_visit]))
+
+                    # send them on their way
+                    clinician.visit_next_farm()
 
                     # if there's a student around, they should go along as well
                     if len(self.available_farm_students) > 0:
                         student = self.available_farm_students.pop(0)
-                        student.visit_farm(farm)
+                        student.farms_to_visit = farms_to_visit.copy()
+                        print("{}: {} trip {}".format(self.steps, student.short_name,
+                                                      [f.short_name for f in student.farms_to_visit]))
+                        student.visit_next_farm()
 
             self.datacollector.collect(self)
 

@@ -37,12 +37,12 @@ def visualise_paths(infection_network):
 
     options = {
         "font_size": 10,
-        "node_size": 200,
-        "node_color": "white",
+        "node_size": 10,
+        "node_color": "black",
         "edgecolors": "black",
         "linewidths": 1,
         "width": 1,
-        'with_labels': True,
+        'with_labels': False,
     }
 
     sns.set_theme(rc={'figure.figsize': (10, 10)})

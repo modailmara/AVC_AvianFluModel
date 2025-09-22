@@ -3,7 +3,8 @@ import numpy as np
 
 from constants import DiseaseState, Location, STEPS_PER_DAY, WORK_DAY_STEPS, PersonRole, \
     HUMAN_INFECTIOUS_STEPS, HUMAN_RECOVERED_STEPS, HUMAN_INFECT_HUMAN_PROB, VET_STEPS_AT_FARM, VET_CONTACTS_PER_STEP, \
-    HUMAN_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB, COMMUNITY_CONTACTS_PER_STEP, NUM_MILKING_EVENTS_PER_DAY
+    HUMAN_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB, COMMUNITY_CONTACTS_PER_STEP, NUM_MILKING_EVENTS_PER_DAY, \
+    MAX_VISITS_PER_TRIP
 from support_functions import is_business_hours
 
 
@@ -207,6 +208,7 @@ class FarmPersonAgent(PersonAgent):
                 self.infect_cattle()
             elif self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.proportion_infected > 0:
                 # infected cattle - maybe get infected
+                print('susceptible {}'.format(self.name))
                 self.is_become_infected_by_cattle()
 
     def infect_cattle(self):
@@ -229,22 +231,28 @@ class FarmVisitorAgent(FarmPersonAgent):
     def __init__(self, model, person_id, role, cell, area_weights=()):
         super().__init__(model, person_id, role, cell, area_weights)
 
+        # count the number of steps at the current farm being visited
         self.steps_at_farm = 0
+        # list of farms to visit on this trip
+        self.farms_to_visit = []
 
-    def visit_farm(self, farm):
+    def visit_next_farm(self):
         """
-        Go to a farm.
-        :param farm:
-        :type farm:
+        Visit the next farm in this trip
         """
-        self.farm = farm
-        self.cell = farm.cell
+        print("  {}: {} visiting farm, remaining trip {}".format(self.model.steps, self.short_name,
+                                                                 [f.short_name for f in self.farms_to_visit]))
+        self.farm = self.farms_to_visit.pop(0)
+        self.cell = self.farm.cell
         self.location = Location.FARM
         self.steps_at_farm = 0
 
         if self.role == PersonRole.FARM_SERVICES_CLINICIAN:
             # visiting vet so register with the farm
             self.farm.visit_from_vet(self)
+
+            # record the visit
+            self.model.farm_visits_by_vets[self.model.steps].append((self.name, self.farm.name))
 
     def go_home(self):
         """
@@ -265,14 +273,20 @@ class FarmVisitorAgent(FarmPersonAgent):
         if self.role == PersonRole.FARM_SERVICES_CLINICIAN:
             # visiting vet so de-register with the farm
             self.farm.vet_leaving()
-        self.model.come_back_from_farm(self)
-        self.farm = None
-        self.steps_at_farm = 0
-        if is_business_hours(self.model.steps):
-            self.location = Location.HOSPITAL
-            self.move()
+
+        if len(self.farms_to_visit) > 0:
+            # still some farms to visit on this trip
+            self.visit_next_farm()
         else:
-            self.go_home()
+            # no more farms to visit on this trip - go back to the VTH
+            self.model.come_back_from_farm(self)
+            self.farm = None
+            self.steps_at_farm = 0
+            if is_business_hours(self.model.steps):
+                self.location = Location.HOSPITAL
+                self.move()
+            else:
+                self.go_home()
 
     def step(self):
         """
@@ -310,10 +324,10 @@ class FarmVisitorAgent(FarmPersonAgent):
 
         This is a farm services vet or student to see some cows that may be sick. This method runs once per step.
         """
-        num_infected_cows_contacted = min(self.farm.susceptible,
+        num_infected_cows_contacted = min(self.farm.infected,
                                           np.random.binomial(VET_CONTACTS_PER_STEP,
                                                              self.farm.proportion_infected))
-        num_infections = np.random.binomial(num_infected_cows_contacted, HUMAN_INFECT_CATTLE_PROB)
+        num_infections = np.random.binomial(num_infected_cows_contacted, CATTLE_INFECT_HUMAN_PROB)
 
         if num_infections > 0:
             self.become_infected()

@@ -74,11 +74,12 @@ NON_URGENT_CALLS_PER_STEP = NON_URGENT_CALLS_PER_DAY / STEPS_PER_DAY
 # -----------------------------------------------------------
 # ----------------- HPAI ------------------------------------
 
-HUMAN_INFECT_CATTLE_PROB = 0  # prob of a human infecting a cow assuming contact. 0-1
+HUMAN_INFECT_CATTLE_PROB = 0.1  # prob of a human infecting a cow assuming contact. 0-1
 HUMAN_INFECT_HUMAN_PROB = 0.1  # prob of a human infecting another human assuming contact. 0-1
 HUMAN_INFECTIOUS_DAYS = 10  # num days a human stays in Infected state
-HUMAN_INFECTIOUS_STEPS = convert_days_to_steps(HUMAN_INFECTIOUS_DAYS)
 HUMAN_RECOVERED_DAYS = 20  # num days a human stays in Recovered state
+
+HUMAN_INFECTIOUS_STEPS = convert_days_to_steps(HUMAN_INFECTIOUS_DAYS)
 HUMAN_RECOVERED_STEPS = convert_days_to_steps(HUMAN_RECOVERED_DAYS)
 
 CATTLE_INFECT_HUMAN_PROB = 0.1
@@ -103,6 +104,9 @@ COMMUNITY_CONTACTS_PER_STEP = 1
 
 VET_STEPS_AT_FARM = 1  # number of steps they spend on the farm for a visit
 VET_CONTACTS_PER_STEP = 10  # number of cows they see on the farm
+
+# maximum number of farms that can be visited in a single trip from the VTH by a farm services clinician
+MAX_VISITS_PER_TRIP = 3
 
 
 class FarmHousing(Enum):

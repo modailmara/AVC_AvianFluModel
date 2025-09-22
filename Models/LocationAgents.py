@@ -201,3 +201,6 @@ class DairyFarmAgent(LocationAgent):
         self.vet_state = FarmVetVisitState.OK
         self.steps_since_last_visit = 0
         self.visiting_vet = None
+
+    def __str__(self):
+        return self.short_name
