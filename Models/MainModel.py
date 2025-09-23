@@ -4,7 +4,7 @@ from mesa.experimental.cell_space import OrthogonalMooreGrid
 import pandas as pd
 from collections import defaultdict
 
-from support_functions import get_input_data_dir, is_business_hours, is_weekend
+from support_functions import get_input_data_dir, is_business_hours, is_start_of_workday, is_middle_of_workday
 from Models.SIRModel import SIRModel
 from InfectionNetwork import InfectionNetwork
 
@@ -211,8 +211,8 @@ class MainModel(mesa.Model):
                 # send them on their way
                 clinician.visit_next_farm()
 
-            # normal priority farm visits happen only during business hours
-            if is_business_hours(self.steps):
+            # normal priority farm trips are started at beginning and middle of workdays
+            if is_start_of_workday(self.steps) or is_middle_of_workday(self.steps):
                 while len(self.farm_request_queue) > 0 and len(self.available_farm_clinicians) > 0:
                     # get the list of farms to visit on this trip
                     farms_to_visit = self.farm_request_queue[:MAX_VISITS_PER_TRIP]
@@ -223,8 +223,8 @@ class MainModel(mesa.Model):
                     clinician = self.available_farm_clinicians.pop(0)
                     clinician.farms_to_visit = farms_to_visit.copy()
 
-                    print("{}: {} trip {}".format(self.steps, clinician.short_name,
-                                                  [f.short_name for f in clinician.farms_to_visit]))
+                    # print("{}: {} trip {}".format(self.steps, clinician.short_name,
+                    #                               [f.short_name for f in clinician.farms_to_visit]))
 
                     # send them on their way
                     clinician.visit_next_farm()
@@ -233,8 +233,8 @@ class MainModel(mesa.Model):
                     if len(self.available_farm_students) > 0:
                         student = self.available_farm_students.pop(0)
                         student.farms_to_visit = farms_to_visit.copy()
-                        print("{}: {} trip {}".format(self.steps, student.short_name,
-                                                      [f.short_name for f in student.farms_to_visit]))
+                        # print("{}: {} trip {}".format(self.steps, student.short_name,
+                        #                               [f.short_name for f in student.farms_to_visit]))
                         student.visit_next_farm()
 
             self.datacollector.collect(self)
@@ -245,6 +245,8 @@ class MainModel(mesa.Model):
         :param farm_visitor: Returning Vet or Student
         :type farm_visitor: PeopleAgents.FarmVisitorAgent object
         """
+        # print("{}: {} returning to hospital. remaining visits {}".format(
+        #     self.steps, farm_visitor.short_name, [f.short_name for f in farm_visitor.farms_to_visit]))
         if farm_visitor.role == PersonRole.FARM_SERVICES_CLINICIAN:
             self.available_farm_clinicians.append(farm_visitor)
         elif farm_visitor.role == PersonRole.FARM_SERVICES_STUDENT:

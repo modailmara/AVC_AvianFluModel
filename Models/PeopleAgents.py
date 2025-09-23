@@ -208,7 +208,7 @@ class FarmPersonAgent(PersonAgent):
                 self.infect_cattle()
             elif self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.proportion_infected > 0:
                 # infected cattle - maybe get infected
-                print('susceptible {}'.format(self.name))
+                # print('susceptible {}'.format(self.name))
                 self.is_become_infected_by_cattle()
 
     def infect_cattle(self):
@@ -240,8 +240,8 @@ class FarmVisitorAgent(FarmPersonAgent):
         """
         Visit the next farm in this trip
         """
-        print("  {}: {} visiting farm, remaining trip {}".format(self.model.steps, self.short_name,
-                                                                 [f.short_name for f in self.farms_to_visit]))
+        # print("  {}: {} visiting farm, remaining trip {}".format(self.model.steps, self.short_name,
+        #                                                          [f.short_name for f in self.farms_to_visit]))
         self.farm = self.farms_to_visit.pop(0)
         self.cell = self.farm.cell
         self.location = Location.FARM
