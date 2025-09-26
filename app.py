@@ -318,13 +318,14 @@ def num_farm_visits_per_day_plot(model):
 
 
 X_MULT = 20
-Y_INC = 15
+Y_INC = 1
+
 
 def get_pos_dict_for_node(network, node, current_x, current_y, visited):
     # print('{}: {}'.format(node, network.successors(node)))
     total_y_span = 1
-    # current_x += 2
-    current_x = network.nodes[node]['step'] * X_MULT
+    current_x += 2
+    # current_x = network.nodes[node]['step'] * X_MULT
     current_pos_dict = {node: (current_x, current_y)}
     for adj_node in network.successors(node):
         if adj_node not in visited:
