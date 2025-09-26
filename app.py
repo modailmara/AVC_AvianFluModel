@@ -15,7 +15,7 @@ import networkx as nx
 
 from support_functions import get_day_from_steps
 from Models.PeopleAgents import PersonAgent
-from Models.LocationAgents import DairyFarmAgent, HospitalAgent
+from Models.LocationAgents import DairyFarmAgent, HospitalAgent, TruckAgent
 from Models.MainModel import MainModel
 from constants import DiseaseState, HospitalDepartment, PersonRole, STEPS_PER_DAY
 
@@ -24,7 +24,14 @@ def vet_location_portrayal(agent):
     if agent is None:
         return
 
-    portrayal = {'size': 30, 'edgecolors': 'xkcd:grey', 'linewidths': 1}
+    portrayal = {'size': 30, 'linewidths': 1}
+
+    if agent.disease_state == DiseaseState.INFECTED:
+        portrayal['edgecolors'] = 'xkcd:red'
+    elif agent.disease_state == DiseaseState.RECOVERED:
+        portrayal['edgecolors'] = 'xkcd:black'
+    else:  # susceptible
+        portrayal['edgecolors'] = 'xkcd:grey'
 
     # marker and size by type
     if isinstance(agent, PersonAgent):
@@ -43,34 +50,31 @@ def vet_location_portrayal(agent):
         else:
             portrayal['color'] = 'xkcd:green'
 
-        if agent.disease_state == DiseaseState.INFECTED:
-            portrayal['edgecolors'] = 'xkcd:red'
-        elif agent.disease_state == DiseaseState.RECOVERED:
-            portrayal['edgecolors'] = 'xkcd:black'
-        else:  # susceptible
-            portrayal['edgecolors'] = 'xkcd:green'
-
     elif isinstance(agent, HospitalAgent):
         # fixed agents for the hospital areas
         portrayal['marker'] = 's'
-        portrayal['size'] = 180
+        portrayal['size'] = 70
         if agent.department == HospitalDepartment.FARM_SERVICES:
-            portrayal['color'] = 'xkcd:light grey'
+            portrayal['color'] = 'xkcd:peach'
         elif agent.department == HospitalDepartment.LARGE_ANIMAL:
             portrayal['color'] = 'xkcd:eggshell'
         elif agent.department == HospitalDepartment.SMALL_ANIMAL:
             portrayal['color'] = 'xkcd:ice blue'
         elif agent.department == HospitalDepartment.COMMON:
-            portrayal['color'] = 'xkcd:peach'
+            portrayal['color'] = 'xkcd:light grey'
     elif isinstance(agent, DairyFarmAgent):  # farm
         portrayal['marker'] = 's'
-        portrayal['size'] = 150
+        portrayal['size'] = 100
 
         # disease state
         if agent.infection_level > 0:
             portrayal['color'] = 'xkcd:light pink'
         else:
             portrayal['color'] = 'xkcd:light green'
+    elif isinstance(agent, TruckAgent):
+        portrayal['marker'] = 's'
+        portrayal['size'] = 40
+        portrayal['color'] = 'xkcd:light brown'
 
     return portrayal
 

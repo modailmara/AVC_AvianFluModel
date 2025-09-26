@@ -9,9 +9,9 @@ from Models.SIRModel import SIRModel
 from InfectionNetwork import InfectionNetwork
 
 from Models.PeopleAgents import PersonAgent, FarmerAgent, FarmVisitorAgent
-from Models.LocationAgents import DairyFarmAgent, HospitalAgent
+from Models.LocationAgents import DairyFarmAgent, HospitalAgent, TruckAgent
 from constants import FARM_INPUT_FILENAME, HospitalDepartment, PEOPLE_INPUT_FILENAME, PersonRole, DiseaseState, \
-    input_to_role, MAX_VISITS_PER_TRIP
+    input_to_role, MAX_VISITS_PER_TRIP, NUM_TRUCKS, TRUCK_ROLE
 
 STOP_ON_COMMUNITY_INFECTION = False
 
@@ -27,22 +27,23 @@ class MainModel(mesa.Model):
             self.simulator = simulator
             self.simulator.setup(self)
 
-        self.width = 20
-        self.height = 20
+        self.width = 43
+        self.height = 31
 
         # Create grid using experimental cell space
         self.grid = OrthogonalMooreGrid(
-            [self.height, self.width],
+            [self.width, self.height],
             torus=False,
             capacity=math.inf,
             random=self.random,
         )
 
-        # queue to manage farm requests for vets
+        # queues to manage farm requests for vets
         self.farm_request_queue = []
         self.farm_emergency_request_queue = []
         self.available_farm_clinicians = []
         self.available_farm_students = []
+        self.available_trucks = []
 
         self.infection_network = InfectionNetwork()
 
@@ -54,55 +55,61 @@ class MainModel(mesa.Model):
         # --------------------------
         # create the hospital
 
-        hospital_width = 9
+        hospital_width = 30
 
         # large animal clinic
+        # from map is 18x21 = 378
+        # roughly width=30, height=12
+        large_start = 0
+        large_height = 12
+
+        # farm services area
+        # from map is 4*7 + 1 = 29
+        # roughly width=30, height=1
+        farm_start = large_start + large_height
+        farm_height = 1
+
+        # common area
+        # from map: 3*3 + 2*8 + 1*4 + 24*1 + 24*1 = 77
+        # roughly width=30, height=3
+        common_start = farm_start + farm_height
+        common_height = 3
+
+        # small animal clinic
+        # from map is 14*3 + 7*6 + 4*24 + 7*12 + 18*10 = 444
+        # roughly width=30, height=15
+        small_start = common_start + common_height
+        small_height = 15
+
         for cell_x in range(hospital_width):
-            for cell_y in range(13, 20):
+            for cell_y in range(large_start, large_start+large_height):
                 cell = self.grid[cell_x, cell_y]
                 HospitalAgent(self, HospitalDepartment.LARGE_ANIMAL, cell=cell)
                 self.hospital_cells[HospitalDepartment.LARGE_ANIMAL].append(cell)
-        # add a partial row for where farm services overlaps
-        for cell_x in range(4, hospital_width):
-            cell_y = 12
-            cell = self.grid[cell_x, cell_y]
-            HospitalAgent(self, HospitalDepartment.LARGE_ANIMAL, cell=cell)
-            self.hospital_cells[HospitalDepartment.LARGE_ANIMAL].append(cell)
 
-        # small animal clinic + ???
-        for cell_x in range(hospital_width):
-            for cell_y in range(9):
-                cell = self.grid[cell_x, cell_y]
-                HospitalAgent(self, HospitalDepartment.SMALL_ANIMAL, cell=cell)
-                self.hospital_cells[HospitalDepartment.SMALL_ANIMAL].append(cell)
-        # extra partial row for where farm services overlaps
-        for cell_x in range(4, hospital_width):
-            cell_y = 9
-            cell = self.grid[cell_x, cell_y]
-            HospitalAgent(self, HospitalDepartment.SMALL_ANIMAL, cell=cell)
-            self.hospital_cells[HospitalDepartment.SMALL_ANIMAL].append(cell)
-
-        # farm services area
-        for cell_x in range(4):
-            for cell_y in range(9, 13):
+            for cell_y in range(farm_start, farm_start+farm_height):
                 cell = self.grid[cell_x, cell_y]
                 HospitalAgent(self, HospitalDepartment.FARM_SERVICES, cell=cell)
                 self.hospital_cells[HospitalDepartment.FARM_SERVICES].append(cell)
 
-        # common area
-        for cell_x in range(hospital_width, 12):
-            for cell_y in range(6, 10):
+            for cell_y in range(common_start, common_start+common_height):
                 cell = self.grid[cell_x, cell_y]
                 HospitalAgent(self, HospitalDepartment.COMMON, cell=cell)
                 self.hospital_cells[HospitalDepartment.COMMON].append(cell)
 
+            for cell_y in range(small_start, small_start+small_height):
+                cell = self.grid[cell_x, cell_y]
+                HospitalAgent(self, HospitalDepartment.SMALL_ANIMAL, cell=cell)
+                self.hospital_cells[HospitalDepartment.SMALL_ANIMAL].append(cell)
+
         # ------------------------- end hospital space definition
+        # ------------------------- Farms
 
         # load the farm file to define farms and farmers
         farm_df = pd.read_excel(get_input_data_dir() / FARM_INPUT_FILENAME)
         # add the farm cells, starting top right and every second cell to bottom then left
-        cell_x = self.width - 1  # all the way right
-        cell_y = 0  # top
+        cell_x = self.width - 2  # all the way right, with 1 padding
+        cell_y = 1  # bottom with 1 padding
         self.total_people = 0  # count the number of people, remains constant
         for _, farm_row in farm_df.iterrows():
             cell = self.grid[cell_x, cell_y]
@@ -122,9 +129,12 @@ class MainModel(mesa.Model):
 
             # increment the cell coordinates
             cell_y += 2
-            if cell_y >= self.height:
-                cell_y = 0
-                cell_x -= 2
+            if cell_y >= self.height-1:
+                cell_y = 1
+                cell_x -= 3
+
+        # ------------------------- end farm space definition
+        # ------------------------- People
 
         # load the people file to define hospital locations and staff/clinicians/students
         people_df = pd.read_excel(get_input_data_dir() / PEOPLE_INPUT_FILENAME)
@@ -159,6 +169,18 @@ class MainModel(mesa.Model):
                     PersonAgent(self, person_num, cell=None, role=person_role,
                                 area_weights=area_weights)
                 # person.move()
+
+        # ------------------------- end initial people placement
+        # ------------------------- Trucks
+        cell_x = hospital_width
+        cell_y = farm_start
+        for truck_num in range(NUM_TRUCKS):
+            cell = self.grid[cell_x, cell_y+truck_num]
+            truck = TruckAgent(self, cell, truck_num)
+
+            self.available_trucks.append(truck)
+
+        # ------------------------- end initial truck placement
 
         self.community_model = SIRModel(self, 'community')
 
@@ -200,54 +222,69 @@ class MainModel(mesa.Model):
             self.agents.shuffle_do('step')
             self.community_model.step()
 
-            # prioritise emergency visits anytime
-            while len(self.farm_emergency_request_queue) > 0 and len(self.available_farm_clinicians) > 0:
-                # get the next available clinician and give them a visit list
-                clinician = self.available_farm_clinicians.pop(0)
-                clinician.farms_to_visit = self.farm_emergency_request_queue[:MAX_VISITS_PER_TRIP]
-                # remove those requests from the queue
-                self.farm_emergency_request_queue = self.farm_emergency_request_queue[MAX_VISITS_PER_TRIP:]
-
-                # send them on their way
-                clinician.visit_next_farm()
+            # prioritise is_emergency visits anytime
+            self.start_farm_visit(is_emergency=True, take_student=False)
 
             # normal priority farm trips are started at beginning and middle of workdays
             if is_start_of_workday(self.steps) or is_middle_of_workday(self.steps):
-                while len(self.farm_request_queue) > 0 and len(self.available_farm_clinicians) > 0:
-                    # get the list of farms to visit on this trip
-                    farms_to_visit = self.farm_request_queue[:MAX_VISITS_PER_TRIP]
-                    # remove these requests from queue
-                    self.farm_request_queue = self.farm_request_queue[MAX_VISITS_PER_TRIP:]
-
-                    # set the clinician's trip
-                    clinician = self.available_farm_clinicians.pop(0)
-                    clinician.farms_to_visit = farms_to_visit.copy()
-
-                    # print("{}: {} trip {}".format(self.steps, clinician.short_name,
-                    #                               [f.short_name for f in clinician.farms_to_visit]))
-
-                    # send them on their way
-                    clinician.visit_next_farm()
-
-                    # if there's a student around, they should go along as well
-                    if len(self.available_farm_students) > 0:
-                        student = self.available_farm_students.pop(0)
-                        student.farms_to_visit = farms_to_visit.copy()
-                        # print("{}: {} trip {}".format(self.steps, student.short_name,
-                        #                               [f.short_name for f in student.farms_to_visit]))
-                        student.visit_next_farm()
+                self.start_farm_visit(is_emergency=False, take_student=True)
 
             self.datacollector.collect(self)
 
+    def start_farm_visit(self, is_emergency, take_student):
+        """
+        Send a clinician with a truck on a farm visit. Optionally check if a student is available.
+
+        Might be an emergency visit or a normal priority.
+
+        :param is_emergency: True if this trip should draw farms from the emergency queue.
+        Otherwise use the non-urgent farm request queue.
+        :type is_emergency: bool
+        :param take_student: True indicates to take a student if they are available.
+        :type take_student: bool
+        """
+        queue = self.farm_emergency_request_queue if is_emergency else self.farm_request_queue
+        while len(queue) > 0 and len(self.available_farm_clinicians) > 0 and len(self.available_trucks) > 0:
+            if is_emergency:
+                farms_to_visit = self.farm_emergency_request_queue[:MAX_VISITS_PER_TRIP]
+                # remove those requests from the queue
+                del self.farm_emergency_request_queue[:MAX_VISITS_PER_TRIP]
+            else:
+                farms_to_visit = self.farm_request_queue[:MAX_VISITS_PER_TRIP]
+                # remove those requests from the queue
+                del self.farm_request_queue[:MAX_VISITS_PER_TRIP]
+
+            # get the next available clinician and give them a visit list
+            clinician = self.available_farm_clinicians.pop(0)
+            # print(f'  c: {clinician.name}')
+            clinician.farms_to_visit = farms_to_visit.copy()
+            # send them on their way
+            clinician.visit_next_farm()
+
+            # send a truck
+            truck = self.available_trucks.pop(0)
+            # print(f'  t: {truck.name}')
+            truck.farms_to_visit = farms_to_visit.copy()
+            truck.visit_next_farm()
+
+            # optionally, send a student
+            if take_student:
+                # if there's a student around, they should go along as well
+                if len(self.available_farm_students) > 0:
+                    student = self.available_farm_students.pop(0)
+                    # print(f'  s: {student.name}')
+                    student.farms_to_visit = farms_to_visit.copy()
+                    student.visit_next_farm()
+
     def come_back_from_farm(self, farm_visitor):
         """
-        A vet or student has returned from visiting a farm. Put them back in the relevant availability queue
+        A vet or take_student has returned from visiting a farm. Put them back in the relevant availability queue
         :param farm_visitor: Returning Vet or Student
         :type farm_visitor: PeopleAgents.FarmVisitorAgent object
         """
-        # print("{}: {} returning to hospital. remaining visits {}".format(
-        #     self.steps, farm_visitor.short_name, [f.short_name for f in farm_visitor.farms_to_visit]))
-        if farm_visitor.role == PersonRole.FARM_SERVICES_CLINICIAN:
+        if farm_visitor.role == TRUCK_ROLE:
+            self.available_trucks.append(farm_visitor)
+        elif farm_visitor.role == PersonRole.FARM_SERVICES_CLINICIAN:
             self.available_farm_clinicians.append(farm_visitor)
         elif farm_visitor.role == PersonRole.FARM_SERVICES_STUDENT:
             self.available_farm_students.append(farm_visitor)

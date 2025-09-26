@@ -55,7 +55,7 @@ class PersonAgent(CellAgent):
         if self.location == Location.COMMUNITY and is_business_hours(self.model.steps):
             # out in the community and it's time to go to work
             self.start_work()
-        elif self.location in [Location.HOSPITAL, Location.FARM] and not is_business_hours(self.model.steps):
+        elif self.location in [Location.HOSPITAL] and not is_business_hours(self.model.steps):
             # at work and work time is over so time to go home from work
             self.go_home()
         elif self.location == Location.HOSPITAL and is_business_hours(self.model.steps):
@@ -243,6 +243,7 @@ class FarmVisitorAgent(FarmPersonAgent):
         # print("  {}: {} visiting farm, remaining trip {}".format(self.model.steps, self.short_name,
         #                                                          [f.short_name for f in self.farms_to_visit]))
         self.farm = self.farms_to_visit.pop(0)
+        # print(f'    {self.model.steps}: {self.name} visiting {self.farm.name}')
         self.cell = self.farm.cell
         self.location = Location.FARM
         self.steps_at_farm = 0
@@ -279,14 +280,12 @@ class FarmVisitorAgent(FarmPersonAgent):
             self.visit_next_farm()
         else:
             # no more farms to visit on this trip - go back to the VTH
+            self.location = Location.HOSPITAL
+            self.move()
+
             self.model.come_back_from_farm(self)
             self.farm = None
             self.steps_at_farm = 0
-            if is_business_hours(self.model.steps):
-                self.location = Location.HOSPITAL
-                self.move()
-            else:
-                self.go_home()
 
     def step(self):
         """

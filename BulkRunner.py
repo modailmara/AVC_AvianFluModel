@@ -5,7 +5,7 @@ from VisualiseResults import visualise_paths, visualise_visit_counts
 from Models.MainModel import MainModel
 from constants import convert_days_to_steps
 
-DAYS = 90
+DAYS = 100
 STEPS = convert_days_to_steps(DAYS)
 
 

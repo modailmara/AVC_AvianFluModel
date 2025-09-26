@@ -1,11 +1,13 @@
-from mesa.experimental.cell_space import FixedAgent
+from mesa.experimental.cell_space import FixedAgent, CellAgent
+import numpy as np
 
 from Models.SIRModel import SIRModel
 from support_functions import is_business_hours, is_weekend
 
-from constants import CATTLE_INFECT_CATTLE_PROB, CATTLE_INFECTED_DAYS, \
+from constants import CATTLE_INFECT_CATTLE_PROB, CATTLE_INFECTED_DAYS, VET_STEPS_AT_FARM, DiseaseState, \
     CATTLE_RECOVERED_DAYS, FarmMilkingSystem, FarmHousing, FarmVetVisitState, CATTLE_CONTACTS_PER_STEP, \
-    NUM_MILKING_CONTACTS, Location, EMERGENCY_VISITS_PER_STEP, NON_URGENT_CALLS_PER_STEP, convert_days_to_steps
+    NUM_MILKING_CONTACTS, Location, EMERGENCY_VISITS_PER_STEP, NON_URGENT_CALLS_PER_STEP, convert_days_to_steps, \
+    TRUCK_CONTACTS_PER_STEP, CATTLE_INFECT_TRUCK_PROB, TRUCK_INFECT_CATTLE_PROB, TRUCK_ROLE
 
 
 class LocationAgent(FixedAgent):
@@ -25,6 +27,8 @@ class LocationAgent(FixedAgent):
 
         self.location = None
         self.department = None
+
+        self.disease_state = DiseaseState.SUSCEPTIBLE
 
         self.cell = cell
 
@@ -101,7 +105,7 @@ class DairyFarmAgent(LocationAgent):
         self.vet_state = FarmVetVisitState.OK
         self.visiting_vet = None
 
-        # work out probabilities for emergency calls
+        # work out probabilities for is_emergency calls
         # divide by the number of farms
         self.non_urgent_visit_prob = NON_URGENT_CALLS_PER_STEP / num_farms
         self.emergency_visit_prob = EMERGENCY_VISITS_PER_STEP / num_farms
@@ -171,19 +175,19 @@ class DairyFarmAgent(LocationAgent):
                 self.vet_state = FarmVetVisitState.NEED_VET
                 self.model.request_vet_visit(self)
             else:
-                # don't need a vet yet
+                # not time for a scheduled visit yet, keep counting
                 self.steps_since_last_visit += 1
 
-                # check for emergency visit
-                if is_weekend(self.model.steps) and self.random.random() <= self.emergency_visit_prob:
-                    # need an emergency clinician - only applies outside business hours
-                    self.vet_state = FarmVetVisitState.NEED_VET
-                    self.model.request_emergency_vet_visit(self)
-                elif self.random.random() <= self.non_urgent_visit_prob:
-                    # need a non-urgent visit outside of schedule
-                    # can be made outside business hours but only dealt with during business hours
-                    self.vet_state = FarmVetVisitState.NEED_VET
-                    self.model.request_vet_visit(self)
+            # check for is_emergency visit
+            if is_weekend(self.model.steps) and self.random.random() <= self.emergency_visit_prob:
+                # need an is_emergency clinician - only applies outside business hours
+                self.vet_state = FarmVetVisitState.NEED_VET
+                self.model.request_emergency_vet_visit(self)
+            elif self.random.random() <= self.non_urgent_visit_prob:
+                # need a non-urgent visit outside of schedule
+                # can be made outside business hours but only dealt with during business hours
+                self.vet_state = FarmVetVisitState.NEED_VET
+                self.model.request_vet_visit(self)
 
     def visit_from_vet(self, vet):
         """
@@ -204,3 +208,127 @@ class DairyFarmAgent(LocationAgent):
 
     def __str__(self):
         return self.short_name
+
+
+class TruckAgent(CellAgent):
+    """
+    Trucks are used for farm visits. The clinician (and maybe students) go from the VTH to the farm, then to other farms
+    before back to the VTH. The truck may carry infection between farms.
+    """
+
+    def __init__(self, model, cell, truck_id):
+        super().__init__(model)
+
+        self.cell = cell
+
+        self.home_coords = cell.coordinate
+
+        self.number = truck_id
+        self.name = f"Truck_{self.number}"
+        self.short_name = f"T{self.number}"
+        self.role = TRUCK_ROLE
+
+        self.location = Location.HOSPITAL
+        self.farm = None
+
+        self.disease_state = DiseaseState.SUSCEPTIBLE
+
+        # count the number of steps at the current farm being visited
+        self.steps_at_farm = 0
+        # list of farms to visit on this trip
+        self.farms_to_visit = []
+
+    def visit_next_farm(self):
+        """
+        Visit the next farm in this trip
+        """
+        # print("  {}: {} visiting farm, remaining trip {}".format(self.model.steps, self.short_name,
+        #                                                          [f.short_name for f in self.farms_to_visit]))
+        self.farm = self.farms_to_visit.pop(0)
+        # print(f'    {self.model.steps}: {self.name} visiting {self.farm.name}')
+        coord_x, coord_y = self.farm.cell.coordinate
+        coord_x -= 1
+        self.cell = self.model.grid[coord_x, coord_y]
+        self.location = Location.FARM
+        self.steps_at_farm = 0
+
+    def leave_farm(self):
+        """
+        Leave the farm and return to the hospital
+        """
+        if len(self.farms_to_visit) > 0:
+            # still some farms to visit on this trip
+            self.visit_next_farm()
+        else:
+            # no more farms to visit on this trip - go back to the VTH
+            self.location = Location.HOSPITAL
+            self.farm = None
+            self.steps_at_farm = 0
+            self.cell = self.model.grid[self.home_coords]
+
+            self.model.come_back_from_farm(self)
+
+    def step(self):
+        """
+        Usual step stuff but also count how long at the farm and check if the agent should leave
+        """
+        super().step()
+
+        if self.location == Location.FARM:
+            # check if the truck needs to leave the farm
+            if self.steps_at_farm >= VET_STEPS_AT_FARM:
+                # been here long enough, time to leave
+                self.leave_farm()
+            else:
+                self.steps_at_farm += 1
+
+                # check if there is infection transfer between the truck and farm
+                if self.disease_state == DiseaseState.INFECTED:
+                    # possibility to infect some cattle
+                    self.infect_cattle()
+                elif self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.proportion_infected > 0:
+                    # infected cattle - maybe get infected
+                    # print('susceptible {}'.format(self.name))
+                    self.is_become_infected_by_cattle()
+
+    def infect_cattle(self):
+        """
+        This truck is infectious and on the farm. They may infect susceptible cattle on the farm.
+        """
+        num_susceptible_cows_contacted = min(self.farm.susceptible,
+                                             np.random.binomial(TRUCK_CONTACTS_PER_STEP,
+                                                                self.farm.proportion_susceptible))
+        num_infected = np.random.binomial(num_susceptible_cows_contacted, TRUCK_INFECT_CATTLE_PROB)
+
+        if num_infected > 0:
+            self.farm.cattle_model.infect_susceptible(num_infected)
+
+            self.model.infection_network.add_infection_event(source_agent=self, infected_agent=self.farm,
+                                                             time_step=self.model.steps)
+
+    def is_become_infected_by_cattle(self):
+        """
+        This truck is susceptible and on a farm. They may become infected by infectious cattle.
+        """
+        num_infected_cows_contacted = min(self.farm.infected,
+                                          np.random.binomial(TRUCK_CONTACTS_PER_STEP,
+                                                             self.farm.proportion_infected))
+        num_infections = np.random.binomial(num_infected_cows_contacted, CATTLE_INFECT_TRUCK_PROB)
+
+        if num_infections > 0:
+            self.become_infectious()
+
+            self.model.infection_network.add_infection_event(source_agent=self.farm, infected_agent=self,
+                                                             time_step=self.model.steps)
+
+    def become_infectious(self):
+        """
+        The truck is infectious.
+        """
+        self.disease_state = DiseaseState.INFECTED
+
+    def remove_infectious_material(self):
+        """
+        Any infectious material on the truck is removed.
+        """
+        self.disease_state = DiseaseState.SUSCEPTIBLE

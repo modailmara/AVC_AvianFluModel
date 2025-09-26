@@ -2,6 +2,7 @@ import networkx as nx
 
 from constants import COMMUNITY, Location
 from Models.LocationAgents import DairyFarmAgent
+from Models.PeopleAgents import PersonAgent
 
 COMMUNITY_NODE_NAME = 'C'
 
@@ -55,9 +56,13 @@ class InfectionNetwork:
         self._add_node_for_agent(infected_agent, time_step)
 
         # create an edge from source to infected, annotate with time and place
+        if isinstance(infected_agent, PersonAgent):
+            department = infected_agent.department
+        else:
+            department = None
         self.infection_graph.add_edge(source_agent.short_name, infected_agent.short_name,
                                       step=time_step, location=infected_agent.location,
-                                      department=infected_agent.department)
+                                      department=department)
 
     def add_community_spillover(self, source_agent, time_step):
         """

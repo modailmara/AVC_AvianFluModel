@@ -60,7 +60,7 @@ def convert_days_to_steps(num_days):
 # -----------------------------------------------------------
 # ----------------- FARM SERVICE VISITS TO FARMS ------------
 # these numbers are averages, in the code they will be converted to probabilities
-# also, these are for all farms, so 2-4 emergency visits overall
+# also, these are for all farms, so 2-4 is_emergency visits overall
 
 # Luke: Weekends are variable for calls but I think on average there would be 2-4 calls per month on the weekends.
 EMERGENCY_VISITS_PER_MONTH = 3
@@ -69,6 +69,8 @@ EMERGENCY_VISITS_PER_STEP = EMERGENCY_VISITS_PER_MONTH / (8 * STEPS_PER_DAY)  # 
 # Unscheduled calls that aren't emergencies, should result in 1-2 visits per day in business hours
 NON_URGENT_CALLS_PER_DAY = 2
 NON_URGENT_CALLS_PER_STEP = NON_URGENT_CALLS_PER_DAY / STEPS_PER_DAY
+
+NUM_TRUCKS = 3  # number of trucks available for farm visits
 
 
 # -----------------------------------------------------------
@@ -90,6 +92,9 @@ CATTLE_INFECTED_STEPS = convert_days_to_steps(CATTLE_INFECTED_DAYS)
 CATTLE_RECOVERED_DAYS = 100
 CATTLE_RECOVERED_STEPS = convert_days_to_steps(CATTLE_RECOVERED_DAYS)
 
+TRUCK_INFECT_CATTLE_PROB = 0.5
+CATTLE_INFECT_TRUCK_PROB = 0.5
+
 
 # -----------------------------------------------------------
 # ----------------- COMMUNITY -------------------------------
@@ -104,6 +109,8 @@ COMMUNITY_CONTACTS_PER_STEP = 1
 
 VET_STEPS_AT_FARM = 1  # number of steps they spend on the farm for a visit
 VET_CONTACTS_PER_STEP = 10  # number of cows they see on the farm
+
+TRUCK_CONTACTS_PER_STEP = 10  # number of cows the truck comes into contact with
 
 # maximum number of farms that can be visited in a single trip from the VTH by a farm services clinician
 MAX_VISITS_PER_TRIP = 3
@@ -179,6 +186,8 @@ class PersonRole(Enum):
     FLOATING_STAFF = 'Fs'
     FLOATING_STUDENT = 'Fu'
     FARMER = 'f'
+
+TRUCK_ROLE = 'truck'
 
 
 input_to_role = {
