@@ -19,14 +19,15 @@ class MainModel(mesa.Model):
     The model that coordinates the agents and environment for a Hub and Spoke model of Avian Influenza.
     """
 
-    def __init__(self, seed=None, simulator=None, is_stop_community_infection=False):
+    def __init__(self, seed=None, simulator=None, is_stop_community_infection=False, is_quarantine_farmer=True):
         super().__init__(seed=seed)
         if simulator is not None:
             self.simulator = simulator
             self.simulator.setup(self)
 
         self.is_stop_community_infection = is_stop_community_infection
-        print(self.is_stop_community_infection)
+        self.is_quarantine_farmer = is_quarantine_farmer
+
         self.width = 43
         self.height = 31
 
@@ -213,7 +214,6 @@ class MainModel(mesa.Model):
         """
         Execute one step of the model
         """
-        print('{}: {}'.format(self.steps, self.community_model.proportion_infected))
         if self.is_stop_community_infection and self.community_model.proportion_infected > 0:
             # there has been community spillover - stop here
             self.running = False

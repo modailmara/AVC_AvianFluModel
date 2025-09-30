@@ -80,16 +80,18 @@ def vet_location_portrayal(agent):
 
 
 model_params = {
+    'seed': {
+        'type': 'InputText', 'value': 42, 'label': 'Random Seed'
+    },
     'is_stop_community_infection': {
-        'type': 'Checkbox', 'value': False, 'label': 'Stop on community infection'
-    }
+        'type': 'Checkbox', 'value': True, 'label': 'Stop on community infection'
+    },
+    'is_quarantine_farmer': {
+        'type': 'Checkbox', 'value': True, 'label': 'Quarantine farmers after infection'
+    },
 }
 # model_params = {
-#     # 'seed': {
-#     #     'type': 'InputText',
-#     #     'value': 42,
-#     #     'label': 'Random Seed'
-#     # },
+#     #
 #     'human_infect_human_prob': Slider(
 #         label='Prob: Person infect Person',
 #         value=HUMAN_INFECT_HUMAN_PROB,

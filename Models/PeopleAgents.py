@@ -55,12 +55,13 @@ class PersonAgent(CellAgent):
         if self.location == Location.COMMUNITY and is_business_hours(self.model.steps):
             # out in the community and it's time to go to work
             self.start_work()
-        elif self.location in [Location.HOSPITAL] and not is_business_hours(self.model.steps):
-            # at work and work time is over so time to go home from work
-            self.go_home()
-        elif self.location == Location.HOSPITAL and is_business_hours(self.model.steps):
-            # at the hospital, time to move around
-            self.move()
+        elif self.location == Location.HOSPITAL:
+            if not is_business_hours(self.model.steps):
+                # at work and work time is over so time to go home from work
+                self.go_home()
+            elif is_business_hours(self.model.steps):
+                # at the hospital, time to move around
+                self.move()
 
         # disease stuff
         self.progress_disease()
@@ -351,6 +352,14 @@ class FarmerAgent(FarmPersonAgent):
         # farmers are always on the same farm
         self.farm = farm
 
+    def step(self):
+        super().step()
+
+        if self.location == Location.COMMUNITY and is_business_hours(self.model.steps):
+            self.start_work()
+        elif self.location == Location.FARM and not is_business_hours(self.model.steps):
+            self.go_home()
+
     def start_work(self):
         """
         Work day has started.
@@ -360,7 +369,7 @@ class FarmerAgent(FarmPersonAgent):
 
     def move(self):
         """
-        farmers stay on the farm
+        farmers stay on the farm during business hours
         """
         if self.location == Location.FARM:
             self.cell = self.farm.cell
@@ -372,10 +381,8 @@ class FarmerAgent(FarmPersonAgent):
         """
         Farmers are quarantined if there is an infection on their farm
         """
-        if self.farm.infected > 0:
-            # quarantined
-            self.cell = None
-        else:
+        # check to see if the farmer is quarantined due to an infected farm
+        if not self.model.is_quarantine_farmer or self.farm.infected == 0:
             # act as normal
             super().go_home()
 
