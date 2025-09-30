@@ -13,20 +13,20 @@ from Models.LocationAgents import DairyFarmAgent, HospitalAgent, TruckAgent
 from constants import FARM_INPUT_FILENAME, HospitalDepartment, PEOPLE_INPUT_FILENAME, PersonRole, DiseaseState, \
     input_to_role, MAX_VISITS_PER_TRIP, NUM_TRUCKS, TRUCK_ROLE
 
-STOP_ON_COMMUNITY_INFECTION = False
-
 
 class MainModel(mesa.Model):
     """
     The model that coordinates the agents and environment for a Hub and Spoke model of Avian Influenza.
     """
 
-    def __init__(self, seed=None, simulator=None):
+    def __init__(self, seed=None, simulator=None, is_stop_community_infection=False):
         super().__init__(seed=seed)
         if simulator is not None:
             self.simulator = simulator
             self.simulator.setup(self)
 
+        self.is_stop_community_infection = is_stop_community_infection
+        print(self.is_stop_community_infection)
         self.width = 43
         self.height = 31
 
@@ -213,8 +213,8 @@ class MainModel(mesa.Model):
         """
         Execute one step of the model
         """
-        # print('{}: {}'.format(self.steps, self.community_model.proportion_infected))
-        if self.community_model.proportion_infected > 0 and STOP_ON_COMMUNITY_INFECTION:
+        print('{}: {}'.format(self.steps, self.community_model.proportion_infected))
+        if self.is_stop_community_infection and self.community_model.proportion_infected > 0:
             # there has been community spillover - stop here
             self.running = False
         else:

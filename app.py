@@ -79,7 +79,11 @@ def vet_location_portrayal(agent):
     return portrayal
 
 
-model_params = {}
+model_params = {
+    'is_stop_community_infection': {
+        'type': 'Checkbox', 'value': False, 'label': 'Stop on community infection'
+    }
+}
 # model_params = {
 #     # 'seed': {
 #     #     'type': 'InputText',
