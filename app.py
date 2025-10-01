@@ -362,11 +362,11 @@ def infection_network(model):
         'connectionstyle': "arc3,rad=0.1"
     }
 
-    pos_dict = {}
+    pos_dict = {'C': (10, 2)}
     current_y = 0
     for source_node in model.infection_network.source_nodes:
         source_node_pos_dict, y_span = get_pos_dict_for_node(model.infection_network.infection_graph,
-                                                             source_node, 0, current_y, [])
+                                                             source_node, 0, current_y, ['C'])
         pos_dict.update(source_node_pos_dict)
         current_y += y_span
 

@@ -21,6 +21,7 @@ class InfectionNetwork:
 
     def __init__(self):
         self.infection_graph = nx.MultiDiGraph()
+        self.infection_graph.add_node(COMMUNITY_NODE_NAME, step=0)
         self.source_nodes = {}
 
     def _add_node_for_agent(self, agent, step):

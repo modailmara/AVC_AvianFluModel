@@ -19,7 +19,7 @@ class MainModel(mesa.Model):
     The model that coordinates the agents and environment for a Hub and Spoke model of Avian Influenza.
     """
 
-    def __init__(self, seed=None, simulator=None, is_stop_community_infection=False, is_quarantine_farmer=True):
+    def __init__(self, seed=None, simulator=None, is_stop_community_infection=True, is_quarantine_farmer=True):
         super().__init__(seed=seed)
         if simulator is not None:
             self.simulator = simulator
