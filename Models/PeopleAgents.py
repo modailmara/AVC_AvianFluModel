@@ -4,7 +4,7 @@ import numpy as np
 from constants import DiseaseState, Location, STEPS_PER_DAY, WORK_DAY_STEPS, PersonRole, \
     HUMAN_INFECTIOUS_STEPS, HUMAN_RECOVERED_STEPS, HUMAN_INFECT_HUMAN_PROB, VET_STEPS_AT_FARM, VET_CONTACTS_PER_STEP, \
     HUMAN_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB, COMMUNITY_CONTACTS_PER_STEP, NUM_MILKING_EVENTS_PER_DAY, \
-    MAX_VISITS_PER_TRIP
+    HUMAN_EXPOSED_STEPS
 from support_functions import is_business_hours
 
 
@@ -100,9 +100,17 @@ class PersonAgent(CellAgent):
 
     def progress_disease(self):
         """
-        If this person is infected or recently recovered, then progress the status of the disease.
+        If this person is exposed, infected, or recovered, then progress the status of the disease.
         """
-        if self.disease_state == DiseaseState.INFECTED:
+        if self.disease_state == DiseaseState.EXPOSED:
+            if self.steps_current_disease_state >= HUMAN_EXPOSED_STEPS:
+                # exposed time is done - now infectious
+                self.disease_state = DiseaseState.INFECTED
+                self.steps_current_disease_state = 0
+            else:
+                # more time to go being exposed - increment the counter
+                self.steps_current_disease_state += 1
+        elif self.disease_state == DiseaseState.INFECTED:
             if self.steps_current_disease_state >= HUMAN_INFECTIOUS_STEPS:
                 # they've done their time - now recovered
                 self.disease_state = DiseaseState.RECOVERED
@@ -124,7 +132,7 @@ class PersonAgent(CellAgent):
         This susceptible agent becomes infected
         """
         if self.disease_state == DiseaseState.SUSCEPTIBLE:
-            self.disease_state = DiseaseState.INFECTED
+            self.disease_state = DiseaseState.EXPOSED
             self.steps_current_disease_state = 0
 
     def infect_others(self):
@@ -154,7 +162,7 @@ class PersonAgent(CellAgent):
                 num_infections = np.random.binomial(num_possible_infections, HUMAN_INFECT_HUMAN_PROB)
 
                 if num_infections > 0:
-                    self.model.community_model.infect_susceptible(num_infections)
+                    self.model.community_model.expose_to_infection(num_infections)
                     # record the infection
                     self.model.infection_network.add_community_spillover(self, self.model.steps)
 
@@ -313,7 +321,7 @@ class FarmVisitorAgent(FarmPersonAgent):
         num_infected = np.random.binomial(num_susceptible_cows_contacted, HUMAN_INFECT_CATTLE_PROB)
 
         if num_infected > 0:
-            self.farm.cattle_model.infect_susceptible(num_infected)
+            self.farm.cattle_model.expose_to_infection(num_infected)
 
             self.model.infection_network.add_infection_event(source_agent=self, infected_agent=self.farm,
                                                              time_step=self.model.steps)
@@ -401,7 +409,7 @@ class FarmerAgent(FarmPersonAgent):
                 num_infected = np.random.binomial(num_susceptible_cows_contacted, HUMAN_INFECT_CATTLE_PROB)
 
                 if num_infected > 0:
-                    self.farm.cattle_model.infect_susceptible(num_infected)
+                    self.farm.cattle_model.expose_to_infection(num_infected)
 
                     self.model.infection_network.add_infection_event(source_agent=self, infected_agent=self.farm,
                                                                      time_step=self.model.steps)

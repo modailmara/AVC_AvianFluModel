@@ -1,31 +1,35 @@
 import numpy as np
 
-from constants import COMMUNITY_POPULATION, HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECTIOUS_DAYS, HUMAN_RECOVERED_DAYS, \
-    STEPS_PER_DAY, COMMUNITY_CONTACTS_PER_STEP
+from constants import COMMUNITY_POPULATION, HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECTIOUS_STEPS, HUMAN_RECOVERED_STEPS, \
+    STEPS_PER_DAY, COMMUNITY_CONTACTS_PER_STEP, HUMAN_EXPOSED_STEPS
 
 
 class SIRModel(object):
     """
-    Simple Susceptible-Infected-Recovered system dynamics model
+    Simple Susceptible-Infected-Recovered system dynamics model for a group of a single type of animal
     """
 
     def __init__(self, model, name,
                  population=COMMUNITY_POPULATION, infection_probability=HUMAN_INFECT_HUMAN_PROB,
-                 recovery_days=HUMAN_INFECTIOUS_DAYS, recovered_expire_days=HUMAN_RECOVERED_DAYS,
+                 exposed_steps=HUMAN_EXPOSED_STEPS,
+                 infectious_steps=HUMAN_INFECTIOUS_STEPS, recovered_steps=HUMAN_RECOVERED_STEPS,
                  num_contacts_per_step=COMMUNITY_CONTACTS_PER_STEP):
         """
+        All defaults are for human parameters.
 
         :param name: Name of this model. Identifies what this model represents.
         :type name: str
         :param population:
         :type population:
-        :param infection_probability:
+        :param infection_probability: Probability of infection between animals
         :type infection_probability:
-        :param recovery_days:
-        :type recovery_days:
-        :param recovered_expire_days:
-        :type recovered_expire_days:
-        :param num_contacts_per_step: Number of other cows a single cow comes into contact with each step
+        :param exposed_steps: Model steps that the animal spends in the Exposed state
+        :type exposed_steps: int
+        :param infectious_steps: Model steps that the animal spends in the Infectious state
+        :type infectious_steps: int
+        :param recovered_steps: Model steps that the animal spends in the Recovered state
+        :type recovered_steps: int
+        :param num_contacts_per_step: Number of other animals a single animal comes into contact with each step
         :type num_contacts_per_step: int
         """
         self.model = model
@@ -33,9 +37,10 @@ class SIRModel(object):
 
         # counts for each disease state - start off clear of the disease
         self.susceptible = population
-        self.infected = [0] * recovery_days * STEPS_PER_DAY  # each list item is count for number of steps infected
+        self.exposed = [0] * exposed_steps
+        self.infected = [0] * infectious_steps  # each list item is count for number of steps infected
         # each list item is count for number of steps recovered
-        self.recovered = [0] * recovered_expire_days * STEPS_PER_DAY
+        self.recovered = [0] * recovered_steps
 
         # model parameters
         self.infection_prob = infection_probability
@@ -48,7 +53,11 @@ class SIRModel(object):
         :return: Number of entities
         :rtype: int
         """
-        return self.susceptible + sum(self.infected) + sum(self.recovered)
+        return self.susceptible + sum(self.exposed) + sum(self.infected) + sum(self.recovered)
+
+    @property
+    def proportion_exposed(self):
+        return self.exposed / self.population
 
     @property
     def proportion_susceptible(self):
@@ -79,14 +88,18 @@ class SIRModel(object):
             self.num_contacts_per_step * sum(self.infected),
             self.proportion_susceptible
         )
-        new_infected = min(self.susceptible, np.random.binomial(potential_new_infections, self.infection_prob))
+        new_exposed = min(self.susceptible, np.random.binomial(potential_new_infections, self.infection_prob))
 
+        new_infected = self.exposed[-1]
         new_recovered = self.infected[-1]
         new_recovery_ended = self.recovered[-1]
 
         # adjust the state counts
-        self.susceptible -= new_infected
+        self.susceptible -= new_exposed
         self.susceptible += new_recovery_ended
+
+        self.exposed = self.progress_state_list_one_step(self.exposed)
+        self.exposed[0] = new_exposed
 
         self.infected = self.progress_state_list_one_step(self.infected)
         self.infected[0] = new_infected
@@ -96,7 +109,7 @@ class SIRModel(object):
 
     def progress_state_list_one_step(self, state_list):
         """
-        Progresses a list one step forward, e.g. state_list[1] -> state_list[2], state_list[0] -> state_list[1]
+        Progresses a list one step forward, e.g. state_list[n-1] -> state_list[n], ..., state_list[0] -> state_list[1]
         Assume the last list member is not needed
 
         :param state_list: The list to be progressed
@@ -127,6 +140,24 @@ class SIRModel(object):
             self.infected[0] += num_infected
 
         return num_infected
+
+    def expose_to_infection(self, num_to_expose):
+        """
+        Changes some of the model entities from susceptible to infected. If there are less susceptible than the number
+        specified, will only infect the number of susceptible.
+
+        :param num_to_expose: The requested number to change susceptible -> exposed
+        :type num_to_expose: int
+
+        :return: Number of entities infected
+        :rtype: int
+        """
+        num_exposed = min(self.susceptible, num_to_expose)
+        if num_exposed > 0:
+            self.susceptible -= num_exposed
+            self.exposed[0] += num_exposed
+
+        return num_exposed
 
     def step(self):
         self.progress_infection()

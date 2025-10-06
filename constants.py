@@ -78,18 +78,25 @@ NUM_TRUCKS = 3  # number of trucks available for farm visits
 
 HUMAN_INFECT_CATTLE_PROB = 0.1  # prob of a human infecting a cow assuming contact. 0-1
 HUMAN_INFECT_HUMAN_PROB = 0.1  # prob of a human infecting another human assuming contact. 0-1
+
+HUMAN_EXPOSED_DAYS = 2  # num days a human stays in the Exposed state
 HUMAN_INFECTIOUS_DAYS = 10  # num days a human stays in Infected state
 HUMAN_RECOVERED_DAYS = 20  # num days a human stays in Recovered state
 
+HUMAN_EXPOSED_STEPS = convert_days_to_steps(HUMAN_EXPOSED_DAYS)
 HUMAN_INFECTIOUS_STEPS = convert_days_to_steps(HUMAN_INFECTIOUS_DAYS)
 HUMAN_RECOVERED_STEPS = convert_days_to_steps(HUMAN_RECOVERED_DAYS)
 
 CATTLE_INFECT_HUMAN_PROB = 0.1
 # CATTLE_INFECT_HUMAN_PROB = 0.0000083  # per contact-step. 0-1 (from Reilly Comper)
 CATTLE_INFECT_CATTLE_PROB = 0.1  # probability per contact. 0-1
+
+CATTLE_EXPOSED_DAYS = 2
 CATTLE_INFECTED_DAYS = 10
-CATTLE_INFECTED_STEPS = convert_days_to_steps(CATTLE_INFECTED_DAYS)
 CATTLE_RECOVERED_DAYS = 100
+
+CATTLE_EXPOSED_STEPS = convert_days_to_steps(CATTLE_EXPOSED_DAYS)
+CATTLE_INFECTED_STEPS = convert_days_to_steps(CATTLE_INFECTED_DAYS)
 CATTLE_RECOVERED_STEPS = convert_days_to_steps(CATTLE_RECOVERED_DAYS)
 
 TRUCK_INFECT_CATTLE_PROB = 0.5
@@ -215,6 +222,7 @@ class DiseaseState(Enum):
     """
     Possible disease progression states.
     SEIATR model from Malek and Hoque (2024)
+    Not all these states are currently used in the model
     """
     SUSCEPTIBLE = 0
     EXPOSED = 1

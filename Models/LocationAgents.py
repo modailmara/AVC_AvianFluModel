@@ -4,10 +4,10 @@ import numpy as np
 from Models.SIRModel import SIRModel
 from support_functions import is_business_hours, is_weekend
 
-from constants import CATTLE_INFECT_CATTLE_PROB, CATTLE_INFECTED_DAYS, VET_STEPS_AT_FARM, DiseaseState, \
-    CATTLE_RECOVERED_DAYS, FarmMilkingSystem, FarmHousing, FarmVetVisitState, CATTLE_CONTACTS_PER_STEP, \
+from constants import CATTLE_INFECT_CATTLE_PROB, CATTLE_EXPOSED_STEPS, VET_STEPS_AT_FARM, DiseaseState, \
+    CATTLE_RECOVERED_STEPS, FarmMilkingSystem, FarmHousing, FarmVetVisitState, CATTLE_CONTACTS_PER_STEP, \
     NUM_MILKING_CONTACTS, Location, EMERGENCY_VISITS_PER_STEP, NON_URGENT_CALLS_PER_STEP, convert_days_to_steps, \
-    TRUCK_CONTACTS_PER_STEP, CATTLE_INFECT_TRUCK_PROB, TRUCK_INFECT_CATTLE_PROB, TRUCK_ROLE
+    TRUCK_CONTACTS_PER_STEP, CATTLE_INFECT_TRUCK_PROB, TRUCK_INFECT_CATTLE_PROB, TRUCK_ROLE, CATTLE_INFECTED_STEPS
 
 
 class LocationAgent(FixedAgent):
@@ -114,8 +114,9 @@ class DairyFarmAgent(LocationAgent):
         self.cattle_model = SIRModel(model=self.model, name=self.name,
                                      population=herd_size,
                                      infection_probability=CATTLE_INFECT_CATTLE_PROB,
-                                     recovery_days=CATTLE_INFECTED_DAYS,
-                                     recovered_expire_days=CATTLE_RECOVERED_DAYS,
+                                     exposed_steps=CATTLE_EXPOSED_STEPS,
+                                     infectious_steps=CATTLE_INFECTED_STEPS,
+                                     recovered_steps=CATTLE_RECOVERED_STEPS,
                                      num_contacts_per_step=self.cattle_contacts_per_step)
 
         self.cattle_model.infect_susceptible(infected_cattle)
@@ -301,7 +302,7 @@ class TruckAgent(CellAgent):
         num_infected = np.random.binomial(num_susceptible_cows_contacted, TRUCK_INFECT_CATTLE_PROB)
 
         if num_infected > 0:
-            self.farm.cattle_model.infect_susceptible(num_infected)
+            self.farm.cattle_model.expose_to_infection(num_infected)
 
             self.model.infection_network.add_infection_event(source_agent=self, infected_agent=self.farm,
                                                              time_step=self.model.steps)

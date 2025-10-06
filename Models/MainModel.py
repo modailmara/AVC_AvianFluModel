@@ -192,6 +192,7 @@ class MainModel(mesa.Model):
         # add collecters for the people infection trackers
         model_reporters = {
             'Infected': lambda model: model.infected_proportion(),
+            'Exposed': lambda model: model.exposed_proportion(),
             'Susceptible': lambda model: model.susceptible_proportion(),
             'Recovered': lambda model: model.recovered_proportion(),
             'paths': lambda model: model.infection_network,
@@ -315,6 +316,16 @@ class MainModel(mesa.Model):
                               if isinstance(agent, PersonAgent) and agent.disease_state == DiseaseState.SUSCEPTIBLE]
 
         return len(susceptible_people) / self.total_people
+
+    def exposed_proportion(self):
+        """
+
+        :return:
+        :rtype:
+        """
+        exposed_people = [agent for agent in self.agents
+                          if isinstance(agent, PersonAgent) and agent.disease_state == DiseaseState.EXPOSED]
+        return len(exposed_people) / self.total_people
 
     def infected_proportion(self):
         """

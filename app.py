@@ -30,6 +30,8 @@ def vet_location_portrayal(agent):
         portrayal['edgecolors'] = 'xkcd:red'
     elif agent.disease_state == DiseaseState.RECOVERED:
         portrayal['edgecolors'] = 'xkcd:black'
+    elif agent.disease_state == DiseaseState.EXPOSED:
+        portrayal['edgecolors'] = 'xkcd:mustard yellow'
     else:  # susceptible
         portrayal['edgecolors'] = 'xkcd:grey'
 
@@ -136,7 +138,7 @@ def post_process_vet_staff_lineplot(ax):
 
 
 person_infection_plot = make_plot_component(
-    {"Infected": "xkcd:red", "Susceptible": "xkcd:green", "Recovered": "xkcd:black"},
+    {"Infected": "xkcd:red", "Exposed": "xkcd:mustard yellow", "Susceptible": "xkcd:green", "Recovered": "xkcd:black"},
     post_process=post_process_vet_staff_lineplot,
 )
 
