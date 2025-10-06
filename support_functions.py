@@ -40,6 +40,10 @@ def get_input_data_dir():
     return get_root_dir() / 'InputData'
 
 
+def get_output_data_dir():
+    return get_root_dir() / 'output'
+
+
 def get_day_from_steps(step_number):
     """
     Gets the day number given a step number.

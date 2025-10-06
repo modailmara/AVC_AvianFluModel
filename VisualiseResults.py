@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import networkx as nx
 
-from support_functions import get_day_from_steps
+from support_functions import get_day_from_steps, get_output_data_dir
 
 matplotlib.use('TkAgg')
 
@@ -69,7 +69,7 @@ def visualise_paths(infection_network):
             pos=nx.bfs_layout(graph, start='F9'),
             **options)
 
-    ax.get_figure().savefig('./visualisations/infection_network.png')
+    ax.get_figure().savefig(get_output_data_dir() / 'infection_network.png')
 
     plt.close()
 
@@ -109,6 +109,41 @@ def visualise_visit_counts(visit_dict, days):
     hist.set_ylabel('# of farm visits per day')
     hist.set_xlabel('Day')
 
-    hist.get_figure().savefig('./visualisations/visits_hist.png')
+    hist.get_figure().savefig(get_output_data_dir() / 'visits_hist.png')
 
     plt.close()
+
+
+def write_scenario_summary_graph(scenario_name, scenario_results):
+    """
+    Writes a graph file in standard format that summarises a multi-trial simulation.
+
+    The output graph is a weighted directed graph. Weights indicate how many times that edge featured in
+    an infection path.
+
+    :param scenario_name: Name of the scenario being summarised.
+    :type scenario_name: str
+    :param scenario_results: All
+    :type scenario_results:
+    :return:
+    :rtype:
+    """
+    summary_graph = nx.DiGraph()
+
+    # go through the result graph and put the edges in the summary graph
+    for result_graph in scenario_results:
+        for source, target, edge_num in result_graph.edges:
+            # don't include repeated edges from the same iteration
+            if edge_num == 0:
+                if (source, target) in summary_graph.edges:
+                    # edge is already there - increase the weight
+                    summary_graph.edges[source, target]['weight'] += 1
+                else:
+                    # add the new edge with a weight of 1
+                    summary_graph.add_edge(source, target, weight=1)
+
+    # write out the summary graph in a standard format
+    nx.write_weighted_edgelist(summary_graph, get_output_data_dir() / '{}_edgelist.csv'.format(scenario_name),
+                               delimiter=',')
+
+
