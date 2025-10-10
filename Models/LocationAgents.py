@@ -2,12 +2,8 @@ from mesa.experimental.cell_space import FixedAgent, CellAgent
 import numpy as np
 
 from Models.SIRModel import SIRModel
-from support_functions import is_business_hours, is_weekend
 
-from constants import CATTLE_INFECT_CATTLE_PROB, CATTLE_EXPOSED_STEPS, VET_STEPS_AT_FARM, DiseaseState, \
-    CATTLE_RECOVERED_STEPS, FarmMilkingSystem, FarmHousing, FarmVetVisitState, CATTLE_CONTACTS_PER_STEP, \
-    NUM_MILKING_CONTACTS, Location, EMERGENCY_VISITS_PER_STEP, NON_URGENT_CALLS_PER_STEP, convert_days_to_steps, \
-    TRUCK_CONTACTS_PER_STEP, CATTLE_INFECT_TRUCK_PROB, TRUCK_INFECT_CATTLE_PROB, TRUCK_ROLE, CATTLE_INFECTED_STEPS
+from constants import FarmMilkingSystem, FarmHousing, FarmVetVisitState, Location, TRUCK_ROLE, DiseaseState
 
 
 class LocationAgent(FixedAgent):
@@ -88,16 +84,16 @@ class DairyFarmAgent(LocationAgent):
         self.short_name = '{}'.format(self.number)
 
         # set up the frequency and random counter since last (not modelled) last visit
-        self.visit_frequency_steps = convert_days_to_steps(visit_frequency)
+        self.visit_frequency_steps = self.model.params.convert_days_to_steps(visit_frequency)
         # randomly select a number of days less than visit_frequency but isn't a weekend
         days_since_last_visit = self.random.choice([day for day in range(visit_frequency) if day % 7 not in [5, 6]])
-        self.steps_since_last_visit = convert_days_to_steps(days_since_last_visit) + 1
+        self.steps_since_last_visit = self.model.params.convert_days_to_steps(days_since_last_visit) + 1
 
         self.milking_system = FarmMilkingSystem(milking_system.lower().strip())
-        self.num_milking_contacts = NUM_MILKING_CONTACTS[self.milking_system]
+        self.num_milking_contacts = self.model.params.num_milking_contacts[self.milking_system]
 
         self.housing = FarmHousing(housing.lower().strip())
-        self.cattle_contacts_per_step = CATTLE_CONTACTS_PER_STEP[self.housing]
+        self.cattle_contacts_per_step = self.model.params.cattle_contacts_per_step[self.housing]
 
         self.pasture = pasture.lower().strip()
 
@@ -107,16 +103,16 @@ class DairyFarmAgent(LocationAgent):
 
         # work out probabilities for is_emergency calls
         # divide by the number of farms
-        self.non_urgent_visit_prob = NON_URGENT_CALLS_PER_STEP / num_farms
-        self.emergency_visit_prob = EMERGENCY_VISITS_PER_STEP / num_farms
+        self.non_urgent_visit_prob = self.model.params.non_urgent_calls_per_step / num_farms
+        self.emergency_visit_prob = self.model.params.emergency_visits_per_step / num_farms
 
         # SIR model for the cattle herd
         self.cattle_model = SIRModel(model=self.model, name=self.name,
                                      population=herd_size,
-                                     infection_probability=CATTLE_INFECT_CATTLE_PROB,
-                                     exposed_steps=CATTLE_EXPOSED_STEPS,
-                                     infectious_steps=CATTLE_INFECTED_STEPS,
-                                     recovered_steps=CATTLE_RECOVERED_STEPS,
+                                     infection_probability=self.model.params.cattle_infect_cattle_prob,
+                                     exposed_steps=self.model.params.cattle_exposed_steps,
+                                     infectious_steps=self.model.params.cattle_infected_steps,
+                                     recovered_steps=self.model.params.cattle_recovered_steps,
                                      num_contacts_per_step=self.cattle_contacts_per_step)
 
         self.cattle_model.infect_susceptible(infected_cattle)
@@ -180,7 +176,7 @@ class DairyFarmAgent(LocationAgent):
                 self.steps_since_last_visit += 1
 
             # check for is_emergency visit
-            if is_weekend(self.model.steps) and self.random.random() <= self.emergency_visit_prob:
+            if self.model.is_weekend(self.model.steps) and self.random.random() <= self.emergency_visit_prob:
                 # need an is_emergency clinician - only applies outside business hours
                 self.vet_state = FarmVetVisitState.NEED_VET
                 self.model.request_emergency_vet_visit(self)
@@ -277,7 +273,7 @@ class TruckAgent(CellAgent):
 
         if self.location == Location.FARM:
             # check if the truck needs to leave the farm
-            if self.steps_at_farm >= VET_STEPS_AT_FARM:
+            if self.steps_at_farm >= self.model.params.vet_steps_at_farm:
                 # been here long enough, time to leave
                 self.leave_farm()
             else:
@@ -297,9 +293,9 @@ class TruckAgent(CellAgent):
         This truck is infectious and on the farm. They may infect susceptible cattle on the farm.
         """
         num_susceptible_cows_contacted = min(self.farm.susceptible,
-                                             np.random.binomial(TRUCK_CONTACTS_PER_STEP,
+                                             np.random.binomial(self.model.params.truck_contacts_per_step,
                                                                 self.farm.proportion_susceptible))
-        num_infected = np.random.binomial(num_susceptible_cows_contacted, TRUCK_INFECT_CATTLE_PROB)
+        num_infected = np.random.binomial(num_susceptible_cows_contacted, self.model.params.truck_infect_cattle_prob)
 
         if num_infected > 0:
             self.farm.cattle_model.expose_to_infection(num_infected)
@@ -312,9 +308,9 @@ class TruckAgent(CellAgent):
         This truck is susceptible and on a farm. They may become infected by infectious cattle.
         """
         num_infected_cows_contacted = min(self.farm.infected,
-                                          np.random.binomial(TRUCK_CONTACTS_PER_STEP,
+                                          np.random.binomial(self.model.params.truck_contacts_per_step,
                                                              self.farm.proportion_infected))
-        num_infections = np.random.binomial(num_infected_cows_contacted, CATTLE_INFECT_TRUCK_PROB)
+        num_infections = np.random.binomial(num_infected_cows_contacted, self.model.params.cattle_infect_truck_prob)
 
         if num_infections > 0:
             self.become_infectious()

@@ -20,107 +20,15 @@ Number of workers = variable, depending on herd size IQR  = [2,8], med = 4
 """
 from enum import Enum
 
-FARM_INPUT_FILENAME = "farms.xlsx"
-PEOPLE_INPUT_FILENAME = "people.xlsx"
-
 # -----------------------------------------------------------
-# ----------------- TIME ------------------------------------
-
-# total steps for 24-hour day
-STEPS_PER_DAY = 16  # 1 step = 1.5 hours
-# step numbers that are part of the working day - all VTH staff are at the hospital or farms, farmers are at farms
-DAYTIME_STEPS = 6  # 9am to 6pm
-WORK_DAY_STEPS = [step+1 for step in range(DAYTIME_STEPS)]  # model steps count from 1
-
-
-def convert_per_day_to_per_step(num_per_day):
-    """
-    Converts a number of events per day into a number of events per step. Rounds to the nearest integer.
-
-    :param num_per_day: Number of events per day
-    :type num_per_day: int
-    :return: Number of events per step
-    :rtype: int
-    """
-    return max(1, round(num_per_day / STEPS_PER_DAY))
-
-
-def convert_days_to_steps(num_days):
-    """
-    Converts a number of days into a number of steps. Rounds to the nearest integer.
-
-    :param num_days: Number of days to convert
-    :type num_days: numeric
-    :return: Number of model steps
-    :rtype: int
-    """
-    return round(num_days * STEPS_PER_DAY)
-
-
+SCENARIO_NAME = 'Default'
 # -----------------------------------------------------------
-# ----------------- FARM SERVICE VISITS TO FARMS ------------
-# these numbers are averages, in the code they will be converted to probabilities
-# also, these are for all farms, so 2-4 is_emergency visits overall
 
-# Luke: Weekends are variable for calls but I think on average there would be 2-4 calls per month on the weekends.
-EMERGENCY_VISITS_PER_MONTH = 3
-EMERGENCY_VISITS_PER_STEP = EMERGENCY_VISITS_PER_MONTH / (8 * STEPS_PER_DAY)  # 8 = number of weekend days in a month
-
-# Unscheduled calls that aren't emergencies, should result in 1-2 visits per day in business hours
-NON_URGENT_CALLS_PER_DAY = 2
-NON_URGENT_CALLS_PER_STEP = NON_URGENT_CALLS_PER_DAY / STEPS_PER_DAY
-
-NUM_TRUCKS = 3  # number of trucks available for farm visits
-
-
-# -----------------------------------------------------------
-# ----------------- HPAI ------------------------------------
-
-HUMAN_INFECT_CATTLE_PROB = 0.1  # prob of a human infecting a cow assuming contact. 0-1
-HUMAN_INFECT_HUMAN_PROB = 0.1  # prob of a human infecting another human assuming contact. 0-1
-
-HUMAN_EXPOSED_DAYS = 2  # num days a human stays in the Exposed state
-HUMAN_INFECTIOUS_DAYS = 10  # num days a human stays in Infected state
-HUMAN_RECOVERED_DAYS = 20  # num days a human stays in Recovered state
-
-HUMAN_EXPOSED_STEPS = convert_days_to_steps(HUMAN_EXPOSED_DAYS)
-HUMAN_INFECTIOUS_STEPS = convert_days_to_steps(HUMAN_INFECTIOUS_DAYS)
-HUMAN_RECOVERED_STEPS = convert_days_to_steps(HUMAN_RECOVERED_DAYS)
-
-CATTLE_INFECT_HUMAN_PROB = 0.1
-# CATTLE_INFECT_HUMAN_PROB = 0.0000083  # per contact-step. 0-1 (from Reilly Comper)
-CATTLE_INFECT_CATTLE_PROB = 0.1  # probability per contact. 0-1
-
-CATTLE_EXPOSED_DAYS = 2
-CATTLE_INFECTED_DAYS = 10
-CATTLE_RECOVERED_DAYS = 100
-
-CATTLE_EXPOSED_STEPS = convert_days_to_steps(CATTLE_EXPOSED_DAYS)
-CATTLE_INFECTED_STEPS = convert_days_to_steps(CATTLE_INFECTED_DAYS)
-CATTLE_RECOVERED_STEPS = convert_days_to_steps(CATTLE_RECOVERED_DAYS)
-
-TRUCK_INFECT_CATTLE_PROB = 0.5
-CATTLE_INFECT_TRUCK_PROB = 0.5
-
-
-# -----------------------------------------------------------
-# ----------------- COMMUNITY -------------------------------
 
 COMMUNITY = 'community'
-COMMUNITY_POPULATION = 30000
-COMMUNITY_CONTACTS_PER_STEP = 1
-
-# -----------------------------------------------------------
-# farm
-# DEFAULT_DAIRY_HERD_SIZE = 50
-
-VET_STEPS_AT_FARM = 1  # number of steps they spend on the farm for a visit
-VET_CONTACTS_PER_STEP = 10  # number of cows they see on the farm
-
-TRUCK_CONTACTS_PER_STEP = 10  # number of cows the truck comes into contact with
-
-# maximum number of farms that can be visited in a single trip from the VTH by a farm services clinician
-MAX_VISITS_PER_TRIP = 3
+FARM_INPUT_FILENAME = "farms.xlsx"
+PEOPLE_INPUT_FILENAME = "people.xlsx"
+PARAMETERS_INPUT_FILENAME = "parameters.ini"
 
 
 class FarmHousing(Enum):
@@ -133,14 +41,6 @@ class FarmHousing(Enum):
     TIE_AND_STRAW = 'tie stall and straw pack'
 
 
-CATTLE_CONTACTS_PER_STEP = {
-    FarmHousing.FREE_STALL: 10,
-    FarmHousing.TIE_STALL: 2,
-    FarmHousing.STRAW_PACK: 10,
-    FarmHousing.TIE_AND_STRAW: 5
-}
-
-
 class FarmMilkingSystem(Enum):
     """
     Types of dairy farm milking systems
@@ -149,22 +49,6 @@ class FarmMilkingSystem(Enum):
     AMS = 'ams'
     PIPELINE = 'pipeline'
     ROTARY_PARLOUR = 'rotary parlour'
-
-
-# number of times milking occurs on a farm
-# this is more about the number of times the farmer has to interact with the milking equipment
-NUM_MILKING_EVENTS_PER_DAY = 3
-
-# number of contacts cow<->farmer at each milking event
-NUM_MILKING_CONTACTS = {
-    FarmMilkingSystem.PARLOUR: 2,
-    FarmMilkingSystem.AMS: 1,
-    FarmMilkingSystem.PIPELINE: 2,
-    FarmMilkingSystem.ROTARY_PARLOUR: 2
-}
-
-# -----------------------------
-# Enums
 
 
 class Location(Enum):
@@ -249,5 +133,9 @@ class HospitalDepartment(Enum):
     SMALL_ANIMAL = "small animal"
     FARM_SERVICES = "farm services"
     COMMON = 'common'
+
+
+
+
 
 

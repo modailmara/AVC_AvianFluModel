@@ -1,11 +1,7 @@
 from mesa.experimental.cell_space import CellAgent
 import numpy as np
 
-from constants import DiseaseState, Location, STEPS_PER_DAY, WORK_DAY_STEPS, PersonRole, \
-    HUMAN_INFECTIOUS_STEPS, HUMAN_RECOVERED_STEPS, HUMAN_INFECT_HUMAN_PROB, VET_STEPS_AT_FARM, VET_CONTACTS_PER_STEP, \
-    HUMAN_INFECT_CATTLE_PROB, CATTLE_INFECT_HUMAN_PROB, COMMUNITY_CONTACTS_PER_STEP, NUM_MILKING_EVENTS_PER_DAY, \
-    HUMAN_EXPOSED_STEPS
-from support_functions import is_business_hours
+from constants import DiseaseState, Location, PersonRole
 
 
 class PersonAgent(CellAgent):
@@ -52,14 +48,14 @@ class PersonAgent(CellAgent):
         - progress their disease status
         """
         # check need to change location
-        if self.location == Location.COMMUNITY and is_business_hours(self.model.steps):
+        if self.location == Location.COMMUNITY and self.model.is_business_hours(self.model.steps):
             # out in the community and it's time to go to work
             self.start_work()
         elif self.location == Location.HOSPITAL:
-            if not is_business_hours(self.model.steps):
+            if not self.model.is_business_hours(self.model.steps):
                 # at work and work time is over so time to go home from work
                 self.go_home()
-            elif is_business_hours(self.model.steps):
+            elif self.model.is_business_hours(self.model.steps):
                 # at the hospital, time to move around
                 self.move()
 
@@ -103,7 +99,7 @@ class PersonAgent(CellAgent):
         If this person is exposed, infected, or recovered, then progress the status of the disease.
         """
         if self.disease_state == DiseaseState.EXPOSED:
-            if self.steps_current_disease_state >= HUMAN_EXPOSED_STEPS:
+            if self.steps_current_disease_state >= self.model.params.human_exposed_steps:
                 # exposed time is done - now infectious
                 self.disease_state = DiseaseState.INFECTED
                 self.steps_current_disease_state = 0
@@ -111,7 +107,7 @@ class PersonAgent(CellAgent):
                 # more time to go being exposed - increment the counter
                 self.steps_current_disease_state += 1
         elif self.disease_state == DiseaseState.INFECTED:
-            if self.steps_current_disease_state >= HUMAN_INFECTIOUS_STEPS:
+            if self.steps_current_disease_state >= self.model.params.human_infectious_steps:
                 # they've done their time - now recovered
                 self.disease_state = DiseaseState.RECOVERED
                 self.steps_current_disease_state = 0
@@ -119,7 +115,7 @@ class PersonAgent(CellAgent):
                 # still infected - record the time
                 self.steps_current_disease_state += 1
         elif self.disease_state == DiseaseState.RECOVERED:
-            if self.steps_current_disease_state >= HUMAN_RECOVERED_STEPS:
+            if self.steps_current_disease_state >= self.model.params.human_recovered_steps:
                 # immunity has expired - back to susceptible
                 self.disease_state = DiseaseState.SUSCEPTIBLE
                 self.steps_current_disease_state = 0
@@ -149,7 +145,7 @@ class PersonAgent(CellAgent):
                                               if isinstance(agent, PersonAgent)
                                               and agent.disease_state == DiseaseState.SUSCEPTIBLE]
                 for agent in susceptible_agents_in_cell:
-                    if self.random.random() < HUMAN_INFECT_HUMAN_PROB:
+                    if self.random.random() < self.model.params.human_infect_human_prob:
                         agent.become_infected()
 
                         # record in the infection graph
@@ -157,9 +153,9 @@ class PersonAgent(CellAgent):
                                                                          time_step=self.model.steps)
             elif self.location == Location.COMMUNITY:
                 # try to infect the community
-                num_possible_infections = np.random.binomial(COMMUNITY_CONTACTS_PER_STEP,
+                num_possible_infections = np.random.binomial(self.model.params.community_contacts_per_step,
                                                              self.model.community_model.proportion_susceptible)
-                num_infections = np.random.binomial(num_possible_infections, HUMAN_INFECT_HUMAN_PROB)
+                num_infections = np.random.binomial(num_possible_infections, self.model.params.human_infect_human_prob)
 
                 if num_infections > 0:
                     self.model.community_model.expose_to_infection(num_infections)
@@ -172,9 +168,10 @@ class PersonAgent(CellAgent):
         """
         if self.disease_state == DiseaseState.SUSCEPTIBLE and self.location == Location.COMMUNITY:
             num_infected_people_contacted = min(self.model.community_model.susceptible,
-                                                np.random.binomial(COMMUNITY_CONTACTS_PER_STEP,
+                                                np.random.binomial(self.model.params.community_contacts_per_step,
                                                                    self.model.community_model.proportion_infected))
-            num_infections = np.random.binomial(num_infected_people_contacted, HUMAN_INFECT_HUMAN_PROB)
+            num_infections = np.random.binomial(num_infected_people_contacted,
+                                                self.model.params.human_infect_human_prob)
 
             if num_infections > 0:
                 self.become_infected()
@@ -303,7 +300,7 @@ class FarmVisitorAgent(FarmPersonAgent):
         super().step()
 
         if self.location == Location.FARM:
-            if self.steps_at_farm >= VET_STEPS_AT_FARM:
+            if self.steps_at_farm >= self.model.params.vet_steps_at_farm:
                 # been here long enough, time to leave
                 self.leave_farm()
             else:
@@ -316,9 +313,9 @@ class FarmVisitorAgent(FarmPersonAgent):
         This is a farm services vet or student to see some cows that may be sick. This method runs once per step.
         """
         num_susceptible_cows_contacted = min(self.farm.susceptible,
-                                             np.random.binomial(VET_CONTACTS_PER_STEP,
+                                             np.random.binomial(self.model.params.vet_contacts_per_step,
                                                                 self.farm.proportion_susceptible))
-        num_infected = np.random.binomial(num_susceptible_cows_contacted, HUMAN_INFECT_CATTLE_PROB)
+        num_infected = np.random.binomial(num_susceptible_cows_contacted, self.model.params.human_infect_cattle_prob)
 
         if num_infected > 0:
             self.farm.cattle_model.expose_to_infection(num_infected)
@@ -333,9 +330,9 @@ class FarmVisitorAgent(FarmPersonAgent):
         This is a farm services vet or student to see some cows that may be sick. This method runs once per step.
         """
         num_infected_cows_contacted = min(self.farm.infected,
-                                          np.random.binomial(VET_CONTACTS_PER_STEP,
+                                          np.random.binomial(self.model.params.vet_contacts_per_step,
                                                              self.farm.proportion_infected))
-        num_infections = np.random.binomial(num_infected_cows_contacted, CATTLE_INFECT_HUMAN_PROB)
+        num_infections = np.random.binomial(num_infected_cows_contacted, self.model.params.cattle_infect_human_prob)
 
         if num_infections > 0:
             self.become_infected()
@@ -363,9 +360,9 @@ class FarmerAgent(FarmPersonAgent):
     def step(self):
         super().step()
 
-        if self.location == Location.COMMUNITY and is_business_hours(self.model.steps):
+        if self.location == Location.COMMUNITY and self.model.is_business_hours(self.model.steps):
             self.start_work()
-        elif self.location == Location.FARM and not is_business_hours(self.model.steps):
+        elif self.location == Location.FARM and not self.model.is_business_hours(self.model.steps):
             self.go_home()
 
     def start_work(self):
@@ -390,7 +387,7 @@ class FarmerAgent(FarmPersonAgent):
         Farmers are quarantined if there is an infection on their farm
         """
         # check to see if the farmer is quarantined due to an infected farm
-        if not self.model.is_quarantine_farmer or self.farm.infected == 0:
+        if not self.model.params.is_quarantine_farmer or self.farm.infected == 0:
             # act as normal
             super().go_home()
 
@@ -402,11 +399,13 @@ class FarmerAgent(FarmPersonAgent):
         """
         # put all the milking events at the beginning of the day
         # currently doesn't matter that they aren't spaced out - if it does then this has to be changed
-        if self.model.steps % STEPS_PER_DAY in WORK_DAY_STEPS[:NUM_MILKING_EVENTS_PER_DAY]:
+        if self.model.steps % self.model.params.steps_per_day in \
+                self.model.params.work_day_steps[:self.model.params.num_milking_events_per_day]:
             # contact every cow a number of times based on milking system
             for _ in range(self.farm.num_milking_contacts):
                 num_susceptible_cows_contacted = self.farm.susceptible
-                num_infected = np.random.binomial(num_susceptible_cows_contacted, HUMAN_INFECT_CATTLE_PROB)
+                num_infected = np.random.binomial(num_susceptible_cows_contacted,
+                                                  self.model.params.human_infect_cattle_prob)
 
                 if num_infected > 0:
                     self.farm.cattle_model.expose_to_infection(num_infected)
@@ -422,11 +421,13 @@ class FarmerAgent(FarmPersonAgent):
         """
         # put all the milking events at the beginning of the day
         # currently doesn't matter that they aren't spaced out - if it does then this has to be changed
-        if self.model.steps % STEPS_PER_DAY in WORK_DAY_STEPS[:NUM_MILKING_EVENTS_PER_DAY]:
+        if self.model.steps % self.model.params.steps_per_day in \
+                self.model.params.work_day_steps[:self.model.params.num_milking_events_per_day]:
             # contact every cow a number of times based on milking system
             for _ in range(self.farm.num_milking_contacts):
                 num_infected_cows_contacted = self.farm.infected
-                num_infections = np.random.binomial(num_infected_cows_contacted, CATTLE_INFECT_HUMAN_PROB)
+                num_infections = np.random.binomial(num_infected_cows_contacted,
+                                                    self.model.params.cattle_infect_human_prob)
 
                 if num_infections > 0:
                     self.become_infected()

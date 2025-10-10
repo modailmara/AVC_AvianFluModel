@@ -13,11 +13,10 @@ from mesa.experimental.devs import ABMSimulator
 from mesa.visualization.utils import update_counter
 import networkx as nx
 
-from support_functions import get_day_from_steps
 from Models.PeopleAgents import PersonAgent
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent, TruckAgent
 from Models.MainModel import MainModel
-from constants import DiseaseState, HospitalDepartment, PersonRole, STEPS_PER_DAY
+from constants import DiseaseState, HospitalDepartment, PersonRole
 
 
 def vet_location_portrayal(agent):
@@ -295,7 +294,7 @@ def num_farm_visits_per_day_plot(model):
     update_counter.get()  # update
     visit_list = []
     for step_num, visits in model.farm_visits_by_vets.items():
-        day = get_day_from_steps(step_num)
+        day = model.get_day_from_steps(step_num)
         num_visits = len(visits)
 
         visit_list += [day] * num_visits

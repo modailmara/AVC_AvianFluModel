@@ -1,8 +1,5 @@
 import numpy as np
 
-from constants import COMMUNITY_POPULATION, HUMAN_INFECT_HUMAN_PROB, HUMAN_INFECTIOUS_STEPS, HUMAN_RECOVERED_STEPS, \
-    STEPS_PER_DAY, COMMUNITY_CONTACTS_PER_STEP, HUMAN_EXPOSED_STEPS
-
 
 class SIRModel(object):
     """
@@ -10,12 +7,11 @@ class SIRModel(object):
     """
 
     def __init__(self, model, name,
-                 population=COMMUNITY_POPULATION, infection_probability=HUMAN_INFECT_HUMAN_PROB,
-                 exposed_steps=HUMAN_EXPOSED_STEPS,
-                 infectious_steps=HUMAN_INFECTIOUS_STEPS, recovered_steps=HUMAN_RECOVERED_STEPS,
-                 num_contacts_per_step=COMMUNITY_CONTACTS_PER_STEP):
+                 population, infection_probability,
+                 exposed_steps,
+                 infectious_steps, recovered_steps,
+                 num_contacts_per_step):
         """
-        All defaults are for human parameters.
 
         :param name: Name of this model. Identifies what this model represents.
         :type name: str
@@ -57,7 +53,7 @@ class SIRModel(object):
 
     @property
     def proportion_exposed(self):
-        return self.exposed / self.population
+        return sum(self.exposed) / self.population
 
     @property
     def proportion_susceptible(self):

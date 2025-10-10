@@ -4,14 +4,15 @@ from mesa.experimental.cell_space import OrthogonalMooreGrid
 import pandas as pd
 from collections import defaultdict
 
-from support_functions import get_input_data_dir, is_business_hours, is_start_of_workday, is_middle_of_workday
+from support_functions import get_input_data_dir
 from Models.SIRModel import SIRModel
 from InfectionNetwork import InfectionNetwork
+from Parameters import Parameters
 
 from Models.PeopleAgents import PersonAgent, FarmerAgent, FarmVisitorAgent
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent, TruckAgent
 from constants import FARM_INPUT_FILENAME, HospitalDepartment, PEOPLE_INPUT_FILENAME, PersonRole, DiseaseState, \
-    input_to_role, MAX_VISITS_PER_TRIP, NUM_TRUCKS, TRUCK_ROLE
+    input_to_role, TRUCK_ROLE
 
 
 class MainModel(mesa.Model):
@@ -19,14 +20,18 @@ class MainModel(mesa.Model):
     The model that coordinates the agents and environment for a Hub and Spoke model of Avian Influenza.
     """
 
-    def __init__(self, seed=None, simulator=None, is_stop_community_infection=True, is_quarantine_farmer=True):
+    def __init__(self, seed=None, simulator=None, scenario_name='Default',
+                 is_stop_community_infection=None, is_quarantine_farmer=None):
         super().__init__(seed=seed)
         if simulator is not None:
             self.simulator = simulator
             self.simulator.setup(self)
 
-        self.is_stop_community_infection = is_stop_community_infection
-        self.is_quarantine_farmer = is_quarantine_farmer
+        self.params = Parameters(scenario_name)
+        if is_stop_community_infection is not None:
+            self.params.is_stop_community_infection = is_stop_community_infection
+        if is_quarantine_farmer is not None:
+            self.params.is_quarantine_farmer = is_quarantine_farmer
 
         self.width = 43
         self.height = 31
@@ -175,7 +180,7 @@ class MainModel(mesa.Model):
         # ------------------------- Trucks
         cell_x = hospital_width
         cell_y = farm_start
-        for truck_num in range(NUM_TRUCKS):
+        for truck_num in range(self.params.num_trucks):
             cell = self.grid[cell_x, cell_y+truck_num]
             truck = TruckAgent(self, cell, truck_num)
 
@@ -183,7 +188,10 @@ class MainModel(mesa.Model):
 
         # ------------------------- end initial truck placement
 
-        self.community_model = SIRModel(self, 'community')
+        self.community_model = SIRModel(self, 'community',
+                                        self.params.community_population, self.params.human_infect_human_prob,
+                                        self.params.human_exposed_steps, self.params.human_infectious_steps,
+                                        self.params.human_recovered_steps, self.params.community_contacts_per_step)
 
         # track visits to farms by FS vets (doesn't fit with collectors)
         # farm_visits_by_vet {step_num: [(vet id, farm id), ...]
@@ -215,7 +223,7 @@ class MainModel(mesa.Model):
         """
         Execute one step of the model
         """
-        if self.is_stop_community_infection and self.community_model.proportion_infected > 0:
+        if self.params.is_stop_community_infection and self.community_model.proportion_infected > 0:
             # there has been community spillover - stop here
             self.running = False
         else:
@@ -227,7 +235,7 @@ class MainModel(mesa.Model):
             self.start_farm_visit(is_emergency=True, take_student=False)
 
             # normal priority farm trips are started at beginning and middle of workdays
-            if is_start_of_workday(self.steps) or is_middle_of_workday(self.steps):
+            if self.is_start_of_workday(self.steps) or self.is_middle_of_workday(self.steps):
                 self.start_farm_visit(is_emergency=False, take_student=True)
 
             self.datacollector.collect(self)
@@ -247,13 +255,13 @@ class MainModel(mesa.Model):
         queue = self.farm_emergency_request_queue if is_emergency else self.farm_request_queue
         while len(queue) > 0 and len(self.available_farm_clinicians) > 0 and len(self.available_trucks) > 0:
             if is_emergency:
-                farms_to_visit = self.farm_emergency_request_queue[:MAX_VISITS_PER_TRIP]
+                farms_to_visit = self.farm_emergency_request_queue[:self.params.max_visits_per_trip]
                 # remove those requests from the queue
-                del self.farm_emergency_request_queue[:MAX_VISITS_PER_TRIP]
+                del self.farm_emergency_request_queue[:self.params.max_visits_per_trip]
             else:
-                farms_to_visit = self.farm_request_queue[:MAX_VISITS_PER_TRIP]
+                farms_to_visit = self.farm_request_queue[:self.params.max_visits_per_trip]
                 # remove those requests from the queue
-                del self.farm_request_queue[:MAX_VISITS_PER_TRIP]
+                del self.farm_request_queue[:self.params.max_visits_per_trip]
 
             # get the next available clinician and give them a visit list
             clinician = self.available_farm_clinicians.pop(0)
@@ -348,4 +356,105 @@ class MainModel(mesa.Model):
                             if isinstance(agent, PersonAgent) and agent.disease_state == DiseaseState.RECOVERED]
 
         return len(recovered_people) / self.total_people
+
+    def get_day_from_steps(self, step_number):
+        """
+        Gets the day number given a step number.
+        :param step_number: The step number to convert to a day number
+        :type step_number: int
+        :return: Day number for the given step
+        :rtype: int
+        """
+        return step_number // self.params.steps_per_day
+
+    def get_weeks_days_steps(self, steps):
+        """
+        From a number of steps, calculates the number of weeks and days.
+        Also returns the number of leftover days (from week calculation), and number of leftover steps (from days).
+
+        Note that days is from the steps, not after weeks is calculated. For example (assume STEPS_PER_DAY=16):
+        get_weeks_days_steps(130) gives 1 week, 8 days, 1 leftover day, and 2 leftover steps
+
+        :param steps: Total number of model steps.
+        :type steps: int
+        :return: Tuple of (total weeks, total days, days left after weeks, steps left after days)
+        :rtype: tuple
+        """
+        days, leftover_steps = divmod(steps, self.params.steps_per_day)
+        weeks, leftover_days = divmod(days, 7)
+
+        return weeks, days, leftover_days, leftover_steps
+
+    def is_business_hours(self, all_steps):
+        """
+        True if the model step falls in business hours.
+        Step 1 is the first step of the first workday (Monday). Each 24 hours is STEPS_PER_DAY steps long.
+        The first 1 <= x <= DAYTIME_STEPS of each day is work hours.
+        Weekends (saturday and sunday) are not business hours.
+
+        :param all_steps: Total count of steps since the model started
+        :type all_steps: int
+        :return: True if the step falls in business hours
+        :rtype: bool
+        """
+        # get the number of days and the steps into the day
+        _, _, leftover_days, leftover_steps = self.get_weeks_days_steps(all_steps)
+
+        # print("{} (w={}, d={}, s={}): {}".format(all_steps, weeks, leftover_days, leftover_steps,
+        #                                          leftover_days < 5 and 1 <= leftover_steps <= DAYTIME_STEPS))
+        return leftover_days < 5 and 1 <= leftover_steps <= self.params.daytime_steps
+
+    def is_weekend(self, all_steps):
+        """
+        True if the model step falls in a weekend
+        Step 1 is the first step of the first workday (Monday). Each 24 hours is STEPS_PER_DAY steps long.
+        Weekends (saturday and sunday) are days 5 and 6 of each week
+
+        :param all_steps: Total count of steps since the model started
+        :type all_steps: int
+        :return: True if the step falls in a weekend
+        :rtype: bool
+        """
+        # get the number of days and the steps into the day
+        _, _, leftover_days, _ = self.get_weeks_days_steps(all_steps)
+
+        return leftover_days in [5, 6]
+
+    def is_start_of_workday(self, step):
+        """
+        Returns True if the step is the first step of a working day.
+
+        Step 1 is the first step of the first workday (Monday). Each 24 hours is STEPS_PER_DAY steps long.
+        The first 1 <= x <= DAYTIME_STEPS of each day is work hours.
+        Weekends (saturday and sunday, days 5 and 6) are not business hours.
+
+        :param step: Step count of the model
+        :type step: int
+        :return: True if the first step of a weekday
+        :rtype: bool
+        """
+        # get the number of days and the steps into the day
+        _, _, leftover_days, leftover_steps = self.get_weeks_days_steps(step)
+
+        # True if a weekday and the first step of the day
+        return leftover_days in range(5) and leftover_steps == 1
+
+    def is_middle_of_workday(self, step):
+        """
+        Returns True if the step is the middle step of a working day.
+
+        Step 1 is the first step of the first workday (Monday).
+        The first 1 <= x <= DAYTIME_STEPS of each day is work hours.
+        Weekends (saturday and sunday, days 5 and 6) are not business hours.
+
+        :param step: Step count of the model
+        :type step: int
+        :return: True if step is the middle step of a weekday
+        :rtype: bool
+        """
+        # get the number of days and the steps into the day
+        _, _, leftover_days, leftover_steps = self.get_weeks_days_steps(step)
+
+        # True if a weekday and the first step of the day
+        return leftover_days in range(5) and leftover_steps == self.params.daytime_steps // 2 + 1
 
