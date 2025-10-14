@@ -24,11 +24,17 @@ from enum import Enum
 SCENARIO_NAME = 'Default'
 # -----------------------------------------------------------
 
+# infection probabilities given a contact
+DEFAULT_HUMAN_INFECT_CATTLE_PROB = 0.1
+DEFAULT_HUMAN_INFECT_HUMAN_PROB = 0.1
+DEFAULT_CATTLE_INFECT_HUMAN_PROB = 0.1
+DEFAULT_CATTLE_INFECT_CATTLE_PROB = 0.1
 
 COMMUNITY = 'community'
 FARM_INPUT_FILENAME = "farms.xlsx"
 PEOPLE_INPUT_FILENAME = "people.xlsx"
-PARAMETERS_INPUT_FILENAME = "parameters.ini"
+DEFAULT_PARAMETERS_INPUT_FILENAME = "default-parameters.ini"
+SCENARIO_PARAMETERS_INPUT_FILENAME = "scenario-parameters.ini"
 
 
 class FarmHousing(Enum):

@@ -20,23 +20,35 @@ class MainModel(mesa.Model):
     The model that coordinates the agents and environment for a Hub and Spoke model of Avian Influenza.
     """
 
-    def __init__(self, seed=None, simulator=None, scenario_name='Default',
-                 is_stop_community_infection=None, is_quarantine_farmer=None):
+    def __init__(self, seed=None, simulator=None, scenario_name=None,
+                 is_stop_community_infection=None, is_quarantine_farmer=None,
+                 cattle_infect_cattle_prob=None, human_infect_human_prob=None,
+                 human_infect_cattle_prob=None, cattle_infect_human_prob=None):
+
         super().__init__(seed=seed)
         if simulator is not None:
             self.simulator = simulator
             self.simulator.setup(self)
 
+        # set up the parameters
         self.params = Parameters(scenario_name)
+        # the init argument values override the parameter values (there may be a neater way to do this)
         if is_stop_community_infection is not None:
             self.params.is_stop_community_infection = is_stop_community_infection
         if is_quarantine_farmer is not None:
             self.params.is_quarantine_farmer = is_quarantine_farmer
+        if cattle_infect_cattle_prob is not None:
+            self.params.cattle_infect_cattle_prob = cattle_infect_cattle_prob
+        if human_infect_human_prob is not None:
+            self.params.human_infect_human_prob = human_infect_human_prob
+        if human_infect_cattle_prob is not None:
+            self.params.human_infect_cattle_prob = human_infect_cattle_prob
+        if cattle_infect_human_prob is not None:
+            self.params.cattle_infect_human_prob = cattle_infect_human_prob
 
+        # set up the grid
         self.width = 43
         self.height = 31
-
-        # Create grid using experimental cell space
         self.grid = OrthogonalMooreGrid(
             [self.width, self.height],
             torus=False,
@@ -223,7 +235,8 @@ class MainModel(mesa.Model):
         """
         Execute one step of the model
         """
-        if self.params.is_stop_community_infection and self.community_model.proportion_infected > 0:
+        if self.params.is_stop_community_infection \
+                and self.community_model.susceptible < self.community_model.population:
             # there has been community spillover - stop here
             self.running = False
         else:

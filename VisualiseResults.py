@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import networkx as nx
 
-from support_functions import get_day_from_steps, get_output_data_dir
+from support_functions import get_output_data_dir
 
 matplotlib.use('TkAgg')
 
@@ -85,7 +85,7 @@ def visualise_visit_counts(visit_dict, days):
     # generate a histogram list from the visit dictionary
     hist_list = []
     for step, visit_list in visit_dict.items():
-        day = get_day_from_steps(step)
+        day = int(step/24)
         hist_list.append(day)
 
     sns.set_theme(rc={'figure.figsize': (10, 5)})
@@ -143,7 +143,8 @@ def write_scenario_summary_graph(scenario_name, scenario_results):
                     summary_graph.add_edge(source, target, weight=1)
 
     # write out the summary graph in a standard format
-    nx.write_weighted_edgelist(summary_graph, get_output_data_dir() / '{}_edgelist.csv'.format(scenario_name),
+    nx.write_weighted_edgelist(summary_graph,
+                               get_output_data_dir(scenario_name) / '{}_edgelist.csv'.format(scenario_name),
                                delimiter=',')
 
 

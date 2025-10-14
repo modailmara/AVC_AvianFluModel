@@ -1,7 +1,8 @@
 import configparser
 
-from support_functions import get_scenario_input_dir
-from constants import PARAMETERS_INPUT_FILENAME, FarmHousing, FarmMilkingSystem
+from support_functions import get_scenario_input_dir, get_input_data_dir
+from constants import DEFAULT_PARAMETERS_INPUT_FILENAME, FarmHousing, FarmMilkingSystem, \
+    SCENARIO_PARAMETERS_INPUT_FILENAME
 
 
 class Parameters:
@@ -9,12 +10,15 @@ class Parameters:
     Access to all the parameters for running the model
     """
 
-    def __init__(self, scenario_name):
-        self.scenario_path = get_scenario_input_dir(scenario_name)
+    def __init__(self, scenario_name=None):
 
-        # read the ini file
+        # read the configuration - default parameters first
         self.config = configparser.ConfigParser()
-        self.config.read(self.scenario_path / PARAMETERS_INPUT_FILENAME)
+        param_filepaths = [get_input_data_dir() / DEFAULT_PARAMETERS_INPUT_FILENAME]
+        if scenario_name is not None:
+            # override with specific parameters for the scenario
+            param_filepaths.append(get_scenario_input_dir(scenario_name) / SCENARIO_PARAMETERS_INPUT_FILENAME)
+        self.config.read(param_filepaths)
 
         # ----------------- MODEL ------------
         self.is_stop_community_infection = self.config['MODEL'].getboolean('IS_STOP_COMMUNITY_INFECTION')

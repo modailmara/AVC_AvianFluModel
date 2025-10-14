@@ -16,7 +16,8 @@ import networkx as nx
 from Models.PeopleAgents import PersonAgent
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent, TruckAgent
 from Models.MainModel import MainModel
-from constants import DiseaseState, HospitalDepartment, PersonRole
+from constants import DiseaseState, HospitalDepartment, PersonRole, DEFAULT_CATTLE_INFECT_CATTLE_PROB, \
+    DEFAULT_HUMAN_INFECT_CATTLE_PROB, DEFAULT_HUMAN_INFECT_HUMAN_PROB, DEFAULT_CATTLE_INFECT_HUMAN_PROB
 
 
 def vet_location_portrayal(agent):
@@ -78,46 +79,6 @@ def vet_location_portrayal(agent):
         portrayal['color'] = 'xkcd:light brown'
 
     return portrayal
-
-
-model_params = {
-    'seed': {
-        'type': 'InputText', 'value': 42, 'label': 'Random Seed'
-    },
-    'is_stop_community_infection': {
-        'type': 'Checkbox', 'value': True, 'label': 'Stop on community infection'
-    },
-    'is_quarantine_farmer': {
-        'type': 'Checkbox', 'value': True, 'label': 'Quarantine farmers after infection'
-    },
-}
-# model_params = {
-#     #
-#     'human_infect_human_prob': Slider(
-#         label='Prob: Person infect Person',
-#         value=HUMAN_INFECT_HUMAN_PROB,
-#         min=0,
-#         max=.5,
-#         step=.01,
-#     ),
-#
-#     'cattle_infect_human_prob': Slider(
-#         label='Prob: Cow infect Person',
-#         value=CATTLE_INFECT_HUMAN_PROB,
-#         min=0,
-#         max=.5,
-#         step=.01,
-#     ),
-#     'cattle_infect_cattle_prob': Slider(
-#         label='Prob: Cow infect Cow',
-#         value=CATTLE_INFECT_CATTLE_PROB,
-#         min=0,
-#         max=.5,
-#         step=.01,
-#     ),
-#
-# }
-
 
 def post_process_space(ax):
     ax.set_aspect('equal')
@@ -380,9 +341,29 @@ def infection_network(model):
 
     solara.FigureMatplotlib(fig)
 
+model_params = {
+    'seed': {
+        'type': 'InputText', 'value': 42, 'label': 'Random Seed'
+    },
+    'is_stop_community_infection': {
+        'type': 'Checkbox', 'value': True, 'label': 'Stop on community infection'
+    },
+    'is_quarantine_farmer': {
+        'type': 'Checkbox', 'value': True, 'label': 'Quarantine farmers after infection'
+    },
+    'cattle_infect_cattle_prob': Slider(min=0, max=1, step=.01, value=DEFAULT_CATTLE_INFECT_CATTLE_PROB,
+                                        label='Prob. cow -> cow'),
+    'human_infect_human_prob': Slider(min=0, max=1, step=.01, value=DEFAULT_HUMAN_INFECT_HUMAN_PROB,
+                                      label='Prob. person -> person'),
+    'human_infect_cattle_prob': Slider(min=0, max=1, step=.01, value=DEFAULT_HUMAN_INFECT_CATTLE_PROB,
+                                       label='Prob. person -> cow'),
+    'cattle_infect_human_prob': Slider(min=0, max=1, step=.01, value=DEFAULT_CATTLE_INFECT_HUMAN_PROB,
+                                       label='Prob. cow -> person'),
+}
+
 
 simulator = ABMSimulator()
-main_model = MainModel(simulator=simulator)
+main_model = MainModel(simulator=simulator, is_stop_community_infection=True, is_quarantine_farmer=True)
 
 page = SolaraViz(
     main_model,
