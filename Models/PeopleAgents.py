@@ -112,7 +112,7 @@ class PersonAgent(CellAgent):
                 self.disease_state = DiseaseState.RECOVERED
                 self.steps_current_disease_state = 0
             else:
-                # still infected - record the time
+                # still infected - increment time counter
                 self.steps_current_disease_state += 1
         elif self.disease_state == DiseaseState.RECOVERED:
             if self.steps_current_disease_state >= self.model.params.human_recovered_steps:
@@ -237,22 +237,28 @@ class FarmVisitorAgent(FarmPersonAgent):
     def __init__(self, model, person_id, role, cell, area_weights=()):
         super().__init__(model, person_id, role, cell, area_weights)
 
-        # count the number of steps at the current farm being visited
-        self.steps_at_farm = 0
-        # list of farms to visit on this trip
-        self.farms_to_visit = []
+        # the truck being used when visiting farms
+        self.truck = None
 
-    def visit_next_farm(self):
+    def travel(self, travel_cell):
+        """
+        Travelling between hospital and farm or between farms
+        :param travel_cell: Cell in the model grid occupied while travelling to the next location
+        :type travel_cell: Cell object
+        """
+        self.location = Location.TRAVEL
+        self.cell = travel_cell
+
+    def visit_next_farm(self, farm):
         """
         Visit the next farm in this trip
         """
         # print("  {}: {} visiting farm, remaining trip {}".format(self.model.steps, self.short_name,
         #                                                          [f.short_name for f in self.farms_to_visit]))
-        self.farm = self.farms_to_visit.pop(0)
+        self.location = Location.FARM
+        self.farm = farm
         # print(f'    {self.model.steps}: {self.name} visiting {self.farm.name}')
         self.cell = self.farm.cell
-        self.location = Location.FARM
-        self.steps_at_farm = 0
 
         if self.role == PersonRole.FARM_SERVICES_CLINICIAN:
             # visiting vet so register with the farm
@@ -267,9 +273,6 @@ class FarmVisitorAgent(FarmPersonAgent):
 
         Need to override here as if the visitor is at a farm, they need to do farm leaving things first
         """
-        if self.location == Location.FARM and self.farm is not None:
-            # do farm leaving cleanup
-            self.leave_farm()
         self.location = Location.COMMUNITY
         self.cell = None
 
@@ -281,30 +284,13 @@ class FarmVisitorAgent(FarmPersonAgent):
             # visiting vet so de-register with the farm
             self.farm.vet_leaving()
 
-        if len(self.farms_to_visit) > 0:
-            # still some farms to visit on this trip
-            self.visit_next_farm()
-        else:
-            # no more farms to visit on this trip - go back to the VTH
-            self.location = Location.HOSPITAL
-            self.move()
-
-            self.model.come_back_from_farm(self)
-            self.farm = None
-            self.steps_at_farm = 0
-
-    def step(self):
+    def return_to_hospital(self):
         """
-        Usual step stuff but also count how long at the farm and check if the agent should leave
+        Returning to the hospital after visiting farms
         """
-        super().step()
-
-        if self.location == Location.FARM:
-            if self.steps_at_farm >= self.model.params.vet_steps_at_farm:
-                # been here long enough, time to leave
-                self.leave_farm()
-            else:
-                self.steps_at_farm += 1
+        self.location = Location.HOSPITAL
+        self.model.come_back_from_farm(self)
+        self.move()
 
     def infect_cattle(self):
         """

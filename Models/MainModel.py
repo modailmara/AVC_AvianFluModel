@@ -127,6 +127,7 @@ class MainModel(mesa.Model):
         farm_df = pd.read_excel(get_input_data_dir() / FARM_INPUT_FILENAME)
         # add the farm cells, starting top right and every second cell to bottom then left
         cell_x = self.width - 2  # all the way right, with 1 padding
+        min_farm_x = cell_x  # store the smallest x position of farms
         cell_y = 1  # bottom with 1 padding
         self.total_people = 0  # count the number of people, remains constant
         for _, farm_row in farm_df.iterrows():
@@ -150,6 +151,8 @@ class MainModel(mesa.Model):
             if cell_y >= self.height-1:
                 cell_y = 1
                 cell_x -= 3
+
+            min_farm_x = min(min_farm_x, cell_x)
 
         # ------------------------- end farm space definition
         # ------------------------- People
@@ -190,11 +193,14 @@ class MainModel(mesa.Model):
 
         # ------------------------- end initial people placement
         # ------------------------- Trucks
-        cell_x = hospital_width
-        cell_y = farm_start
+        home_cell_x = hospital_width
+        home_cell_y = farm_start
+        travel_cell_x = (hospital_width + min_farm_x) // 2
+        travel_cell_y = home_cell_y - self.params.num_trucks
         for truck_num in range(self.params.num_trucks):
-            cell = self.grid[cell_x, cell_y+truck_num]
-            truck = TruckAgent(self, cell, truck_num)
+            home_cell = self.grid[home_cell_x, home_cell_y+truck_num]
+            travel_cell = self.grid[travel_cell_x, travel_cell_y + 2 * truck_num]
+            truck = TruckAgent(self, home_cell, truck_num, travel_cell)
 
             self.available_trucks.append(truck)
 
@@ -279,15 +285,8 @@ class MainModel(mesa.Model):
             # get the next available clinician and give them a visit list
             clinician = self.available_farm_clinicians.pop(0)
             # print(f'  c: {clinician.name}')
-            clinician.farms_to_visit = farms_to_visit.copy()
-            # send them on their way
-            clinician.visit_next_farm()
 
-            # send a truck
-            truck = self.available_trucks.pop(0)
-            # print(f'  t: {truck.name}')
-            truck.farms_to_visit = farms_to_visit.copy()
-            truck.visit_next_farm()
+            visit_people = [clinician]
 
             # optionally, send a student
             if take_student:
@@ -295,8 +294,12 @@ class MainModel(mesa.Model):
                 if len(self.available_farm_students) > 0:
                     student = self.available_farm_students.pop(0)
                     # print(f'  s: {student.name}')
-                    student.farms_to_visit = farms_to_visit.copy()
-                    student.visit_next_farm()
+                    visit_people.append(student)
+
+            # send a truck
+            truck = self.available_trucks.pop(0)
+            # print(f'  t: {truck.name}')
+            truck.start_travel_from_hospital(farms_to_visit, visit_people)
 
     def come_back_from_farm(self, farm_visitor):
         """

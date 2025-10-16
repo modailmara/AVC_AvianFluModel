@@ -341,6 +341,7 @@ def infection_network(model):
 
     solara.FigureMatplotlib(fig)
 
+
 model_params = {
     'seed': {
         'type': 'InputText', 'value': 42, 'label': 'Random Seed'

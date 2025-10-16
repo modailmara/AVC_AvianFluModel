@@ -48,6 +48,9 @@ class Parameters:
         # maximum number of farms that can be visited in a single trip from the VTH by a farm services clinician
         self.max_visits_per_trip = self.config['FARM VISITS'].getint('MAX_VISITS_PER_TRIP')
 
+        # number of steps to travel between hospital and farm or between farms
+        self.visit_travel_steps = self.config['FARM VISITS'].getint('VISIT_TRAVEL_STEPS')
+
         # ----------------- DISEASE ------------------------------------
         self.human_infect_cattle_prob = self.config['DISEASE'].getfloat('HUMAN_INFECT_CATTLE_PROB')
         self.human_infect_human_prob = self.config['DISEASE'].getfloat('HUMAN_INFECT_HUMAN_PROB')

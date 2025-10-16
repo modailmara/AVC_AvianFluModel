@@ -64,6 +64,8 @@ class Location(Enum):
     HOSPITAL = 0
     FARM = 1
     COMMUNITY = 2
+    TRUCK = 3
+    TRAVEL = 4
 
 
 class PersonRole(Enum):
