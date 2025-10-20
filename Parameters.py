@@ -73,6 +73,12 @@ class Parameters:
         self.cattle_recovered_days = self.config['DISEASE'].getfloat('CATTLE_RECOVERED_DAYS')
         self.cattle_recovered_steps = self.convert_days_to_steps(self.cattle_recovered_days)
 
+        # environment <-> human infection
+        self.env_infect_human_prob = self.config['DISEASE'].getfloat('ENV_INFECT_HUMAN_PROB')
+        self.human_infect_env_prob = self.config['DISEASE'].getfloat('HUMAN_INFECT_ENV_PROB')
+        self.env_infectious_days = self.config['DISEASE'].getfloat('ENV_INFECTIOUS_DAYS')
+        self.env_infectious_steps = self.convert_days_to_steps(self.env_infectious_days)
+
         # ----------------- COMMUNITY -------------------------------
         self.community_population = self.config['COMMUNITY'].getfloat('COMMUNITY_POPULATION')
         self.community_contacts_per_step = self.config['COMMUNITY'].getint('COMMUNITY_CONTACTS_PER_STEP')

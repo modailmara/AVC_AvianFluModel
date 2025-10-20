@@ -101,23 +101,27 @@ class MainModel(mesa.Model):
 
         for cell_x in range(hospital_width):
             for cell_y in range(large_start, large_start+large_height):
+                large_id = cell_x * large_height + cell_y
                 cell = self.grid[cell_x, cell_y]
-                HospitalAgent(self, HospitalDepartment.LARGE_ANIMAL, cell=cell)
+                HospitalAgent(self, HospitalDepartment.LARGE_ANIMAL, cell=cell, dept_id=large_id)
                 self.hospital_cells[HospitalDepartment.LARGE_ANIMAL].append(cell)
 
             for cell_y in range(farm_start, farm_start+farm_height):
+                farm_id = cell_x * farm_height + cell_y
                 cell = self.grid[cell_x, cell_y]
-                HospitalAgent(self, HospitalDepartment.FARM_SERVICES, cell=cell)
+                HospitalAgent(self, HospitalDepartment.FARM_SERVICES, cell=cell, dept_id=farm_id)
                 self.hospital_cells[HospitalDepartment.FARM_SERVICES].append(cell)
 
             for cell_y in range(common_start, common_start+common_height):
+                common_id = cell_x * large_height + cell_y
                 cell = self.grid[cell_x, cell_y]
-                HospitalAgent(self, HospitalDepartment.COMMON, cell=cell)
+                HospitalAgent(self, HospitalDepartment.COMMON, cell=cell, dept_id=common_id)
                 self.hospital_cells[HospitalDepartment.COMMON].append(cell)
 
             for cell_y in range(small_start, small_start+small_height):
+                small_id = cell_x * small_height + cell_y
                 cell = self.grid[cell_x, cell_y]
-                HospitalAgent(self, HospitalDepartment.SMALL_ANIMAL, cell=cell)
+                HospitalAgent(self, HospitalDepartment.SMALL_ANIMAL, cell=cell, dept_id=small_id)
                 self.hospital_cells[HospitalDepartment.SMALL_ANIMAL].append(cell)
 
         # ------------------------- end hospital space definition

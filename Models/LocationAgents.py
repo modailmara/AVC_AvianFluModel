@@ -2,7 +2,7 @@ from mesa.experimental.cell_space import FixedAgent, CellAgent
 import numpy as np
 
 from Models.SIRModel import SIRModel
-
+import Models
 from constants import FarmMilkingSystem, FarmHousing, FarmVetVisitState, Location, TRUCK_ROLE, DiseaseState
 
 
@@ -25,11 +25,33 @@ class LocationAgent(CellAgent):
         self.department = None
 
         self.disease_state = DiseaseState.SUSCEPTIBLE
+        self.num_infectious_steps = 0
 
         self.cell = cell
 
     def step(self):
-        pass
+        if self.disease_state == DiseaseState.INFECTED:
+            if self.num_infectious_steps >= self.model.params.env_infectious_steps:
+                # the infection has expired
+                self.disease_state = DiseaseState.SUSCEPTIBLE
+                self.num_infectious_steps = 0
+            else:
+                # increment the disease step counter
+                self.num_infectious_steps += 1
+
+                # if there are any people agents in this location, there's a chance to infect them
+                for person_agent in [agent for agent in self.cell.agents
+                                     if isinstance(agent, Models.PeopleAgents.PersonAgent)]:
+                    if self.random.random() <= self.model.params.env_infect_human_prob:
+                        person_agent.become_infected()
+
+                        # record the environment infecting the person
+                        self.model.infection_network.add_infection_event(self, person_agent, self.model.steps)
+
+    def become_infected(self):
+        if self.disease_state == DiseaseState.SUSCEPTIBLE:
+            self.disease_state = DiseaseState.INFECTED
+            self.num_infectious_steps = 0
 
 
 class HospitalAgent(LocationAgent):
@@ -38,11 +60,14 @@ class HospitalAgent(LocationAgent):
     Has a fixed location.
     """
 
-    def __init__(self, model, department, cell=None):
+    def __init__(self, model, department, cell=None, dept_id=None):
         super().__init__(model, cell)
 
         self.location = Location.HOSPITAL
         self.department = department
+
+        short_dept = ''.join([word[0].upper() for word in self.department.value.split()])
+        self.short_name = 'H{}_{}'.format(short_dept, dept_id)
 
 
 class DairyFarmAgent(LocationAgent):

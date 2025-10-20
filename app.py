@@ -1,3 +1,4 @@
+import networkx.exception
 import solara
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
@@ -55,7 +56,7 @@ def vet_location_portrayal(agent):
     elif isinstance(agent, HospitalAgent):
         # fixed agents for the hospital areas
         portrayal['marker'] = 's'
-        portrayal['size'] = 70
+        portrayal['size'] = 60
         if agent.department == HospitalDepartment.FARM_SERVICES:
             portrayal['color'] = 'xkcd:peach'
         elif agent.department == HospitalDepartment.LARGE_ANIMAL:
@@ -324,15 +325,28 @@ def infection_network(model):
         'connectionstyle': "arc3,rad=0.1"
     }
 
-    pos_dict = {'C': (10, 2)}
+    pos_dict = {}
     current_y = 0
     for source_node in model.infection_network.source_nodes:
         source_node_pos_dict, y_span = get_pos_dict_for_node(model.infection_network.infection_graph,
-                                                             source_node, 0, current_y, ['C'])
+                                                             source_node, 0, current_y, [])
         pos_dict.update(source_node_pos_dict)
         current_y += y_span
 
-    nx.draw_networkx(model.infection_network.infection_graph, pos_dict, ax=ax, **options)
+    max_x = 0
+    max_y = 0
+    for x, y in pos_dict.values():
+        max_x = max(x, max_x)
+        max_y = max(y, max_y)
+    pos_dict['C'] = (max_x+2, max_y // 2)
+
+    try:
+        nx.draw_networkx(model.infection_network.infection_graph, pos_dict, ax=ax, **options)
+    except networkx.exception.NetworkXException as e:
+        node_str = e.__str__().split()[1].strip("'")
+        print("successors: {}".format(list(model.infection_network.infection_graph.successors(node_str))))
+        print("predecessors: {}".format(list(model.infection_network.infection_graph.predecessors(node_str))))
+        raise e
 
     # Set margins for the axes so that nodes aren't clipped
     ax = plt.gca()

@@ -2,6 +2,7 @@ from mesa.experimental.cell_space import CellAgent
 import numpy as np
 
 from constants import DiseaseState, Location, PersonRole
+import Models
 
 
 class PersonAgent(CellAgent):
@@ -161,6 +162,19 @@ class PersonAgent(CellAgent):
                     self.model.community_model.expose_to_infection(num_infections)
                     # record the infection
                     self.model.infection_network.add_community_spillover(self, self.model.steps)
+
+            if self.location == Location.HOSPITAL or self.location == Location.TRAVEL:
+                # chance of infecting the environment
+                env_location_agents = [agent for agent in self.cell.agents
+                                       if isinstance(agent, Models.LocationAgents.LocationAgent)
+                                       and agent.disease_state == DiseaseState.SUSCEPTIBLE]
+                for location_agent in env_location_agents:
+                    # hopefully only 0 or 1 but no harm in doing a for loop
+                    if self.random.random() <= self.model.params.human_infect_env_prob:
+                        location_agent.become_infected()
+
+                        # record the infection in the infection network
+                        self.model.infection_network.add_infection_event(self, location_agent, self.model.steps)
 
     def become_infected_by_community(self):
         """

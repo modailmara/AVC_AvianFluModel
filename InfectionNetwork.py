@@ -1,7 +1,7 @@
 import networkx as nx
 
 from constants import COMMUNITY, Location
-from Models.LocationAgents import DairyFarmAgent
+from Models.LocationAgents import DairyFarmAgent, HospitalAgent
 from Models.PeopleAgents import PersonAgent
 
 COMMUNITY_NODE_NAME = 'C'
@@ -28,6 +28,8 @@ class InfectionNetwork:
         if agent.short_name not in self.infection_graph.nodes:
             if isinstance(agent, DairyFarmAgent):
                 role = 'FARM'
+            elif isinstance(agent, HospitalAgent):
+                role = 'HOSPITAL'
             else:
                 role = agent.role
             self.infection_graph.add_node(agent.short_name, role=role, step=step)
