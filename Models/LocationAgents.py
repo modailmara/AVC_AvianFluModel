@@ -143,7 +143,7 @@ class DairyFarmAgent(LocationAgent):
         self.cattle_model.infect_susceptible(infected_cattle)
 
     @property
-    def susceptible(self):
+    def num_susceptible(self):
         """
 
         :return:
@@ -153,20 +153,31 @@ class DairyFarmAgent(LocationAgent):
 
     @property
     def proportion_susceptible(self):
-        return self.susceptible / self.herd_count
+        return self.num_susceptible / self.herd_count
 
     @property
-    def infected(self):
-        """
+    def num_exposed(self):
+        return sum(self.cattle_model.exposed)
 
-        :return:
-        :rtype:
-        """
+    @property
+    def proportion_exposed(self):
+        return self.num_exposed / self.herd_count
+
+    @property
+    def num_infected(self):
         return sum(self.cattle_model.infected)
 
     @property
     def proportion_infected(self):
-        return self.infected / self.herd_count
+        return self.num_infected / self.herd_count
+
+    @property
+    def num_recovered(self):
+        return sum(self.cattle_model.recovered)
+
+    @property
+    def proportion_recovered(self):
+        return self.num_recovered / self.herd_count
 
     @property
     def herd_count(self):
@@ -385,7 +396,7 @@ class TruckAgent(LocationAgent):
         """
         This truck is infectious and on the farm. They may infect susceptible cattle on the farm.
         """
-        num_susceptible_cows_contacted = min(self.farm.susceptible,
+        num_susceptible_cows_contacted = min(self.farm.num_susceptible,
                                              np.random.binomial(self.model.params.truck_contacts_per_step,
                                                                 self.farm.proportion_susceptible))
         num_infected = np.random.binomial(num_susceptible_cows_contacted, self.model.params.truck_infect_cattle_prob)
@@ -400,7 +411,7 @@ class TruckAgent(LocationAgent):
         """
         This truck is susceptible and on a farm. They may become infected by infectious cattle.
         """
-        num_infected_cows_contacted = min(self.farm.infected,
+        num_infected_cows_contacted = min(self.farm.num_infected,
                                           np.random.binomial(self.model.params.truck_contacts_per_step,
                                                              self.farm.proportion_infected))
         num_infections = np.random.binomial(num_infected_cows_contacted, self.model.params.cattle_infect_truck_prob)

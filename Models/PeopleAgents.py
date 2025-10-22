@@ -181,7 +181,7 @@ class PersonAgent(CellAgent):
 
         """
         if self.disease_state == DiseaseState.SUSCEPTIBLE and self.location == Location.COMMUNITY:
-            num_infected_people_contacted = min(self.model.community_model.susceptible,
+            num_infected_people_contacted = min(self.model.community_model.num_susceptible,
                                                 np.random.binomial(self.model.params.community_contacts_per_step,
                                                                    self.model.community_model.proportion_infected))
             num_infections = np.random.binomial(num_infected_people_contacted,
@@ -312,7 +312,7 @@ class FarmVisitorAgent(FarmPersonAgent):
 
         This is a farm services vet or student to see some cows that may be sick. This method runs once per step.
         """
-        num_susceptible_cows_contacted = min(self.farm.susceptible,
+        num_susceptible_cows_contacted = min(self.farm.num_susceptible,
                                              np.random.binomial(self.model.params.vet_contacts_per_step,
                                                                 self.farm.proportion_susceptible))
         num_infected = np.random.binomial(num_susceptible_cows_contacted, self.model.params.human_infect_cattle_prob)
@@ -329,7 +329,7 @@ class FarmVisitorAgent(FarmPersonAgent):
 
         This is a farm services vet or student to see some cows that may be sick. This method runs once per step.
         """
-        num_infected_cows_contacted = min(self.farm.infected,
+        num_infected_cows_contacted = min(self.farm.num_infected,
                                           np.random.binomial(self.model.params.vet_contacts_per_step,
                                                              self.farm.proportion_infected))
         num_infections = np.random.binomial(num_infected_cows_contacted, self.model.params.cattle_infect_human_prob)
@@ -387,7 +387,7 @@ class FarmerAgent(FarmPersonAgent):
         Farmers are quarantined if there is an infection on their farm
         """
         # check to see if the farmer is quarantined due to an infected farm
-        if not self.model.params.is_quarantine_farmer or self.farm.infected == 0:
+        if not self.model.params.is_quarantine_farmer or self.farm.num_infected == 0:
             # act as normal
             super().go_home()
 
@@ -403,7 +403,7 @@ class FarmerAgent(FarmPersonAgent):
                 self.model.params.work_day_steps[:self.model.params.num_milking_events_per_day]:
             # contact every cow a number of times based on milking system
             for _ in range(self.farm.num_milking_contacts):
-                num_susceptible_cows_contacted = self.farm.susceptible
+                num_susceptible_cows_contacted = self.farm.num_susceptible
                 num_infected = np.random.binomial(num_susceptible_cows_contacted,
                                                   self.model.params.human_infect_cattle_prob)
 
@@ -425,7 +425,7 @@ class FarmerAgent(FarmPersonAgent):
                 self.model.params.work_day_steps[:self.model.params.num_milking_events_per_day]:
             # contact every cow a number of times based on milking system
             for _ in range(self.farm.num_milking_contacts):
-                num_infected_cows_contacted = self.farm.infected
+                num_infected_cows_contacted = self.farm.num_infected
                 num_infections = np.random.binomial(num_infected_cows_contacted,
                                                     self.model.params.cattle_infect_human_prob)
 

@@ -9,7 +9,8 @@ from VisualiseResults import visualise_paths, visualise_visit_counts, write_scen
 from Models.MainModel import MainModel
 
 # 15 weeks
-DAYS = 15 * 7
+# DAYS = 15 * 7
+DAYS = 7  # testing
 STEPS = DAYS * 24
 
 scenario_name = 'Baseline'
@@ -21,10 +22,10 @@ if __name__ == "__main__":
         parameters={
             'scenario_name': scenario_name
         },
-        iterations=10,
+        iterations=3,
         max_steps=STEPS,
-        number_processes=5,
-        data_collection_period=-1,
+        number_processes=1,
+        data_collection_period=1,
         display_progress=True
     )
 

@@ -209,28 +209,43 @@ class MainModel(mesa.Model):
             self.available_trucks.append(truck)
 
         # ------------------------- end initial truck placement
-
+        # ------------------------- Community setup
         self.community_model = SIRModel(self, 'community',
                                         self.params.community_population, self.params.human_infect_human_prob,
                                         self.params.human_exposed_steps, self.params.human_infectious_steps,
                                         self.params.human_recovered_steps, self.params.community_contacts_per_step)
 
-        # track visits to farms by FS vets (doesn't fit with collectors)
+        # ------------------------- end Community setup
+        # ------------------------- Data logging
         # farm_visits_by_vet {step_num: [(vet id, farm id), ...]
         self.farm_visits_by_vets = defaultdict(list)
 
-        # add collecters for the people infection trackers
-        model_reporters = {
-            'Infected': lambda model: model.infected_proportion(),
-            'Exposed': lambda model: model.exposed_proportion(),
-            'Susceptible': lambda model: model.susceptible_proportion(),
-            'Recovered': lambda model: model.recovered_proportion(),
-            'paths': lambda model: model.infection_network,
-            'farm_visits': lambda model: model.farm_visits_by_vets
-        }
-        # add in a model reporter for each farm
+        model_reporters = {'paths': lambda model: model.infection_network}
+
+        # log the spread of disease in the community
+        model_reporters['Community_SUSCEPTIBLE'] = lambda model: model.community_model.num_susceptible
+        model_reporters['Community_EXPOSED'] = lambda model: model.community_model.num_exposed
+        model_reporters['Community_INFECTIOUS'] = lambda model: model.community_model.num_infected
+        model_reporters['Community_RECOVERED'] = lambda model: model.community_model.num_recovered
+
+        # log counts of disease state for all the people
+        for person_role in PersonRole:
+            for disease_state in [DiseaseState.SUSCEPTIBLE, DiseaseState.EXPOSED, DiseaseState.INFECTED,
+                                  DiseaseState.RECOVERED]:
+                reporter_name = f"{person_role.name}_{disease_state.name}"
+                count_func = lambda model: len(model.agents.select(lambda a: isinstance(a, PersonAgent)
+                                                                             and a.role == person_role
+                                                                             and a.disease_state == disease_state))
+                model_reporters[reporter_name] = count_func
+
+        # add in an agent reporter for each farm
         agent_reporters = {
-            DairyFarmAgent: {'Infection': 'infection_level'}
+            DairyFarmAgent: {
+                'Farm_Population': 'herd_count',
+                'Farm_Susceptible': 'num_susceptible',
+                'Farm_Exposed': 'num_exposed',
+                'Farm_Infectious': 'num_infected',
+            }
         }
 
         self.datacollector = mesa.DataCollector(
