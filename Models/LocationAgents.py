@@ -30,7 +30,7 @@ class LocationAgent(CellAgent):
         self.cell = cell
 
     def step(self):
-        if self.disease_state == DiseaseState.INFECTED:
+        if self.disease_state == DiseaseState.INFECTIOUS:
             if self.num_infectious_steps >= self.model.params.env_infectious_steps:
                 # the infection has expired
                 self.disease_state = DiseaseState.SUSCEPTIBLE
@@ -50,7 +50,7 @@ class LocationAgent(CellAgent):
 
     def become_infected(self):
         if self.disease_state == DiseaseState.SUSCEPTIBLE:
-            self.disease_state = DiseaseState.INFECTED
+            self.disease_state = DiseaseState.INFECTIOUS
             self.num_infectious_steps = 0
 
 
@@ -305,7 +305,7 @@ class TruckAgent(LocationAgent):
                 self.steps_at_farm += 1
 
                 # check if there is infection transfer between the truck and farm
-                if self.disease_state == DiseaseState.INFECTED:
+                if self.disease_state == DiseaseState.INFECTIOUS:
                     # possibility to infect some cattle
                     self.infect_cattle()
                 elif self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.proportion_infected > 0:
@@ -426,7 +426,7 @@ class TruckAgent(LocationAgent):
         """
         The truck is infectious.
         """
-        self.disease_state = DiseaseState.INFECTED
+        self.disease_state = DiseaseState.INFECTIOUS
 
     def remove_infectious_material(self):
         """

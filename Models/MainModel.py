@@ -3,6 +3,7 @@ import math
 from mesa.experimental.cell_space import OrthogonalMooreGrid
 import pandas as pd
 from collections import defaultdict
+from functools import partial
 
 from support_functions import get_input_data_dir
 from Models.SIRModel import SIRModel
@@ -13,6 +14,37 @@ from Models.PeopleAgents import PersonAgent, FarmerAgent, FarmVisitorAgent
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent, TruckAgent
 from constants import FARM_INPUT_FILENAME, HospitalDepartment, PEOPLE_INPUT_FILENAME, PersonRole, DiseaseState, \
     input_to_role, TRUCK_ROLE
+
+
+def count_person_agents_with_disease_state(disease_state, model):
+    """
+    Returns the number of the model's person agents that have the supplied disease state.
+    :param disease_state: The disease state of person agents to count
+    :type disease_state: DiseaseState
+    :param model: The ABM model containing the agents
+    :type model: MainModel
+    :return: Count of agents with disease state matching the given disease_state
+    :rtype: int
+    """
+    return len(model.agents.select(lambda a: isinstance(a, PersonAgent) and a.disease_state == disease_state))
+
+
+def count_person_agents_with_disease_state_and_role(role, disease_state, model):
+    """
+    Returns the number of the model's person agents that have the supplied disease state and the supplied role.
+
+    :param role: The role of the person agents to count
+    :type role: PersonRole
+    :param disease_state: The disease state of person agents to count
+    :type disease_state: DiseaseState
+    :param model: The ABM model containing the agents
+    :type model: MainModel
+    :return: Count of person agents with both matching role and disease state
+    :rtype: int
+    """
+    return len(model.agents.select(lambda a: isinstance(a, PersonAgent)
+                                             and a.disease_state == disease_state
+                                             and a.role == role))
 
 
 class MainModel(mesa.Model):
@@ -220,31 +252,37 @@ class MainModel(mesa.Model):
         # farm_visits_by_vet {step_num: [(vet id, farm id), ...]
         self.farm_visits_by_vets = defaultdict(list)
 
-        model_reporters = {'paths': lambda model: model.infection_network}
+        model_reporters = {'paths': lambda model: model.infection_network,
+                           'Community_num_SUSCEPTIBLE': lambda model: model.community_model.num_susceptible,
+                           'Community_num_EXPOSED': lambda model: model.community_model.num_exposed,
+                           'Community_num_INFECTIOUS': lambda model: model.community_model.num_infected,
+                           'Community_num_RECOVERED': lambda model: model.community_model.num_recovered}
 
         # log the spread of disease in the community
-        model_reporters['Community_SUSCEPTIBLE'] = lambda model: model.community_model.num_susceptible
-        model_reporters['Community_EXPOSED'] = lambda model: model.community_model.num_exposed
-        model_reporters['Community_INFECTIOUS'] = lambda model: model.community_model.num_infected
-        model_reporters['Community_RECOVERED'] = lambda model: model.community_model.num_recovered
+
+        # log the numbers of people agents (all roles) with disease states
+        for disease_state in [DiseaseState.SUSCEPTIBLE, DiseaseState.EXPOSED, DiseaseState.INFECTIOUS,
+                              DiseaseState.RECOVERED]:
+            reporter_name = f"People_num_{disease_state.name}"
+
+            model_reporters[reporter_name] = partial(count_person_agents_with_disease_state, disease_state)
 
         # log counts of disease state for all the people
         for person_role in PersonRole:
-            for disease_state in [DiseaseState.SUSCEPTIBLE, DiseaseState.EXPOSED, DiseaseState.INFECTED,
+            for disease_state in [DiseaseState.SUSCEPTIBLE, DiseaseState.EXPOSED, DiseaseState.INFECTIOUS,
                                   DiseaseState.RECOVERED]:
-                reporter_name = f"{person_role.name}_{disease_state.name}"
-                count_func = lambda model: len(model.agents.select(lambda a: isinstance(a, PersonAgent)
-                                                                             and a.role == person_role
-                                                                             and a.disease_state == disease_state))
-                model_reporters[reporter_name] = count_func
+                reporter_name = f"{person_role.name}_num_{disease_state.name}"
+
+                model_reporters[reporter_name] = partial(count_person_agents_with_disease_state_and_role,
+                                                         person_role, disease_state)
 
         # add in an agent reporter for each farm
         agent_reporters = {
             DairyFarmAgent: {
                 'Farm_Population': 'herd_count',
-                'Farm_Susceptible': 'num_susceptible',
-                'Farm_Exposed': 'num_exposed',
-                'Farm_Infectious': 'num_infected',
+                'Farm_num_Susceptible': 'num_susceptible',
+                'Farm_num_Exposed': 'num_exposed',
+                'Farm_num_Infectious': 'num_infected',
             }
         }
 
@@ -260,6 +298,7 @@ class MainModel(mesa.Model):
         """
         Execute one step of the model
         """
+
         if self.params.is_stop_community_infection \
                 and self.community_model.susceptible < self.community_model.population:
             # there has been community spillover - stop here
@@ -352,7 +391,7 @@ class MainModel(mesa.Model):
     def susceptible_proportion(self):
         """
         Proportion of people that are susceptible
-        :return: Proportion (0-1) of the people agents with disease state INFECTED
+        :return: Proportion (0-1) of the people agents with disease state INFECTIOUS
         :rtype:
         """
         susceptible_people = [agent for agent in self.agents
@@ -373,18 +412,18 @@ class MainModel(mesa.Model):
     def infected_proportion(self):
         """
         Proportion of people that are infected
-        :return: Proportion (0-1) of the people agents with disease state INFECTED
+        :return: Proportion (0-1) of the people agents with disease state INFECTIOUS
         :rtype:
         """
         infected_people = [agent for agent in self.agents
-                           if isinstance(agent, PersonAgent) and agent.disease_state == DiseaseState.INFECTED]
+                           if isinstance(agent, PersonAgent) and agent.disease_state == DiseaseState.INFECTIOUS]
 
         return len(infected_people) / self.total_people
 
     def recovered_proportion(self):
         """
         Proportion of people that are susceptible
-        :return: Proportion (0-1) of the people agents with disease state INFECTED
+        :return: Proportion (0-1) of the people agents with disease state INFECTIOUS
         :rtype:
         """
         recovered_people = [agent for agent in self.agents

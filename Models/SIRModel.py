@@ -52,8 +52,8 @@ class SIRModel(object):
         return self.susceptible + sum(self.exposed) + sum(self.infected) + sum(self.recovered)
 
     @property
-    def proportion_exposed(self):
-        return sum(self.exposed) / self.population
+    def num_susceptible(self):
+        return self.susceptible
 
     @property
     def proportion_susceptible(self):
@@ -65,6 +65,18 @@ class SIRModel(object):
         return self.susceptible / self.population
 
     @property
+    def num_exposed(self):
+        return sum(self.exposed)
+
+    @property
+    def proportion_exposed(self):
+        return sum(self.exposed) / self.population
+
+    @property
+    def num_infected(self):
+        return sum(self.infected)
+
+    @property
     def proportion_infected(self):
         """
 
@@ -72,6 +84,10 @@ class SIRModel(object):
         :rtype: float
         """
         return sum(self.infected) / self.population
+
+    @property
+    def num_recovered(self):
+        return sum(self.recovered)
 
     def progress_infection(self):
         """

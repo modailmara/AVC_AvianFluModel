@@ -27,7 +27,7 @@ def vet_location_portrayal(agent):
 
     portrayal = {'size': 30, 'linewidths': 1}
 
-    if agent.disease_state == DiseaseState.INFECTED:
+    if agent.disease_state == DiseaseState.INFECTIOUS:
         portrayal['edgecolors'] = 'xkcd:red'
     elif agent.disease_state == DiseaseState.RECOVERED:
         portrayal['edgecolors'] = 'xkcd:black'
@@ -81,90 +81,47 @@ def vet_location_portrayal(agent):
 
     return portrayal
 
+
 def post_process_space(ax):
     ax.set_aspect('equal')
     ax.set_xticks([])
     ax.set_yticks([])
+
 
 space_component = make_space_component(
     vet_location_portrayal, draw_grid=False, post_process=post_process_space
 )
 
 
-def post_process_vet_staff_lineplot(ax):
-    ax.set_title("SIR proportions for people agents")
-    ax.set_ylim(ymin=-0.05, ymax=1.05)
-    ax.set_ylabel("Proportion Population")
+def post_process_people_lineplot(ax):
+    ax.set_title("SEIR counts for people agents")
+    # ax.set_ylim(ymin=-1, ymax=140)
+    ax.set_ylabel("Num. people agents")
     # ax.legend(bbox_to_anchor=(1.05, 1.0), loc="upper left")
 
 
 person_infection_plot = make_plot_component(
-    {"Infected": "xkcd:red", "Exposed": "xkcd:mustard yellow", "Susceptible": "xkcd:green", "Recovered": "xkcd:black"},
-    post_process=post_process_vet_staff_lineplot,
-)
-
-
-def post_process_fs_vet_lineplot(ax):
-    post_process_vet_staff_lineplot(ax)
-    ax.set_title("Farm Services Vets and Students")
-
-
-fs_vet_plot = make_plot_component(
-    {"FarmServicesVet": "xkcd:red"}, post_process=post_process_fs_vet_lineplot,
-)
-
-
-def post_process_fs_tech_lineplot(ax):
-    post_process_vet_staff_lineplot(ax)
-    ax.set_title("Farm Services Technician")
-
-fs_tech_plot = make_plot_component(
-    {"FarmServicesTechnician": "xkcd:red"}, post_process=post_process_fs_tech_lineplot,
-)
-
-
-def post_process_large_vet_lineplot(ax):
-    ax.set_title("Large Animal Vet")
-    post_process_vet_staff_lineplot(ax)
-
-large_vet_plot = make_plot_component(
-    {"LargeAnimalVet": "xkcd:red"}, post_process=post_process_large_vet_lineplot,
-)
-
-
-def post_process_small_vet_lineplot(ax):
-    ax.set_title("Small Animal Vet")
-    post_process_vet_staff_lineplot(ax)
-
-small_vet_plot = make_plot_component(
-    {"SmallAnimalVet": "xkcd:red"}, post_process=post_process_small_vet_lineplot,
-)
-
-
-def post_process_floating_staff_lineplot(ax):
-    ax.set_title("Floating Staff")
-    post_process_vet_staff_lineplot(ax)
-
-float_staff_plot = make_plot_component(
-    {"FloatingStaff": "xkcd:red"}, post_process=post_process_floating_staff_lineplot,
+    {'People_num_SUSCEPTIBLE': "xkcd:green",
+     "People_num_EXPOSED": "xkcd:mustard yellow",
+     "People_num_INFECTIOUS": "xkcd:red",
+     "People_num_RECOVERED": "xkcd:black"},
+    post_process=post_process_people_lineplot,
 )
 
 
 def post_process_community_lineplot(ax):
-    post_process_vet_staff_lineplot(ax)
-    ax.set_title("Community Infection Proportion")
-
-community_plot = make_plot_component(
-    {"Community": "xkcd:red"}, post_process=post_process_community_lineplot,
-)
+    ax.set_title("SEIR counts for the Community")
+    # ax.set_ylim(ymin=-1000, ymax=201000)
+    ax.set_ylabel("Num. community members")
 
 
-def post_process_farmer_lineplot(ax):
-    post_process_vet_staff_lineplot(ax)
-    ax.set_title("FarmerAgent")
-
-farmer_plot = make_plot_component(
-    {"FarmerAgent": "xkcd:red"}, post_process=post_process_farmer_lineplot,
+community_infection_plot = make_plot_component(
+    {'Community_num_SUSCEPTIBLE': "xkcd:green",
+     "Community_num_EXPOSED": "xkcd:mustard yellow",
+     "Community_num_INFECTIOUS": "xkcd:red",
+     "Community_num_RECOVERED": "xkcd:black"
+     },
+    post_process=post_process_community_lineplot,
 )
 
 
@@ -218,35 +175,6 @@ def dairy_farm_lineplot(model):
     ax.set_xlabel('Step')
 
     fig.tight_layout()
-
-    solara.FigureMatplotlib(fig)
-
-
-@solara.component
-def infection_path_vis(model):
-    # get the path labels and the counts
-    update_counter.get()
-    path_items = model.infection_network.get_paths_counts()
-    # print(path_items)
-    if len(path_items) > 0:
-        paths, counts = zip(*path_items)
-    else:
-        paths, counts = ([], [])
-    paths = [('-'.join(names),) for names in paths]
-    # print(paths)
-    all_paths = []
-    for i in range(len(paths)):
-        all_paths += paths[i] * counts[i]
-    # print(all_paths)
-    # make a histogram plot of the paths vs count
-    fig = Figure()
-    ax = fig.subplots()
-
-    ax.hist(all_paths, orientation='horizontal')
-
-    ax.set_title("Counts of Infection Paths")
-    ax.set_ylabel("# times infection path occurred")
-    ax.set_xlabel('')
 
     solara.FigureMatplotlib(fig)
 
@@ -382,7 +310,7 @@ main_model = MainModel(simulator=simulator, is_stop_community_infection=True, is
 
 page = SolaraViz(
     main_model,
-    components=[space_component, person_infection_plot, num_farm_visits_per_day_plot, infection_network],
+    components=[space_component, infection_network, person_infection_plot, community_infection_plot],
     # components=[space_component, dairy_farm_lineplot, infection_path_vis, community_plot
     #             fs_vet_plot, fs_tech_plot, large_vet_plot, small_vet_plot, float_staff_plot, farmer_plot],
     model_params=model_params,

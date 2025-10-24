@@ -117,7 +117,7 @@ class DiseaseState(Enum):
     """
     SUSCEPTIBLE = 0
     EXPOSED = 1
-    INFECTED = 2  # symptomatic
+    INFECTIOUS = 2  # symptomatic
     ASYMPTOMATIC = 3
     TREATED = 4
     RECOVERED = 5

@@ -102,12 +102,12 @@ class PersonAgent(CellAgent):
         if self.disease_state == DiseaseState.EXPOSED:
             if self.steps_current_disease_state >= self.model.params.human_exposed_steps:
                 # exposed time is done - now infectious
-                self.disease_state = DiseaseState.INFECTED
+                self.disease_state = DiseaseState.INFECTIOUS
                 self.steps_current_disease_state = 0
             else:
                 # more time to go being exposed - increment the counter
                 self.steps_current_disease_state += 1
-        elif self.disease_state == DiseaseState.INFECTED:
+        elif self.disease_state == DiseaseState.INFECTIOUS:
             if self.steps_current_disease_state >= self.model.params.human_infectious_steps:
                 # they've done their time - now recovered
                 self.disease_state = DiseaseState.RECOVERED
@@ -138,7 +138,7 @@ class PersonAgent(CellAgent):
           - if at the hospital, infect other people in the same cell
           - if at the community, infect the community; stop the simulation if successful
         """
-        if self.disease_state == DiseaseState.INFECTED:  # can only infect if infectious
+        if self.disease_state == DiseaseState.INFECTIOUS:  # can only infect if infectious
             if self.cell is not None:
                 # cell not None means there may be other agents to infect
                 # get all the agents in this cell
@@ -223,7 +223,7 @@ class FarmPersonAgent(PersonAgent):
         super().step()
 
         if self.location == Location.FARM and self.farm is not None:
-            if self.disease_state == DiseaseState.INFECTED:
+            if self.disease_state == DiseaseState.INFECTIOUS:
                 # possibility to infect some cattle
                 self.infect_cattle()
             elif self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.proportion_infected > 0:
