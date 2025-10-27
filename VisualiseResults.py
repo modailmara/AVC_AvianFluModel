@@ -146,5 +146,7 @@ def write_scenario_summary_graph(scenario_name, scenario_results):
     nx.write_weighted_edgelist(summary_graph,
                                get_output_data_dir(scenario_name) / '{}_edgelist.csv'.format(scenario_name),
                                delimiter=',')
+    nx.write_graphml(summary_graph, get_output_data_dir(scenario_name) / '{}.graphml'.format(scenario_name),
+                     named_key_ids=True)
 
 

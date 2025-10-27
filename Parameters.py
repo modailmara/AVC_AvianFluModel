@@ -52,6 +52,8 @@ class Parameters:
         self.visit_travel_steps = self.config['FARM VISITS'].getint('VISIT_TRAVEL_STEPS')
 
         # ----------------- DISEASE ------------------------------------
+        self.num_init_infected_farms = self.config['DISEASE'].getint('NUM_INIT_INFECTED_FARMS')
+
         self.human_infect_cattle_prob = self.config['DISEASE'].getfloat('HUMAN_INFECT_CATTLE_PROB')
         self.human_infect_human_prob = self.config['DISEASE'].getfloat('HUMAN_INFECT_HUMAN_PROB')
         self.cattle_infect_human_prob = self.config['DISEASE'].getfloat('CATTLE_INFECT_HUMAN_PROB')

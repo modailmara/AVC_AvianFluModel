@@ -55,7 +55,8 @@ class MainModel(mesa.Model):
     def __init__(self, seed=None, simulator=None, scenario_name=None,
                  is_stop_community_infection=None, is_quarantine_farmer=None,
                  cattle_infect_cattle_prob=None, human_infect_human_prob=None,
-                 human_infect_cattle_prob=None, cattle_infect_human_prob=None):
+                 human_infect_cattle_prob=None, cattle_infect_human_prob=None,
+                 num_infected_farms=None):
 
         super().__init__(seed=seed)
         if simulator is not None:
@@ -77,6 +78,8 @@ class MainModel(mesa.Model):
             self.params.human_infect_cattle_prob = human_infect_cattle_prob
         if cattle_infect_human_prob is not None:
             self.params.cattle_infect_human_prob = cattle_infect_human_prob
+        if num_infected_farms is not None:
+            self.params.num_init_infected_farms = num_infected_farms
 
         # set up the grid
         self.width = 43

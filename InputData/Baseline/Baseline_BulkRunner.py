@@ -25,7 +25,7 @@ if __name__ == "__main__":
         iterations=3,
         max_steps=STEPS,
         number_processes=1,
-        data_collection_period=1,
+        data_collection_period=-1,
         display_progress=True
     )
 
