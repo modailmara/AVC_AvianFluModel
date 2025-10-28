@@ -77,7 +77,7 @@ class DairyFarmAgent(LocationAgent):
     Maybe keep an internal network model for infected herd?
     """
     def __init__(self, model, cell, farm_id, herd_size, visit_frequency, milking_system, housing, pasture,
-                 infected_cattle=0, num_farms=19):
+                 num_farms=19):
         """
 
         :param model: The model that this agent belongs to
@@ -96,8 +96,6 @@ class DairyFarmAgent(LocationAgent):
         :type pasture: str`
         :param cell: Cell assigned to this farm in the model environment
         :type cell: mesa cell object
-        :param infected_cattle: Number of the herd that are initially infected
-        :type infected_cattle: int
         """
         super().__init__(model, cell)
 
@@ -139,8 +137,6 @@ class DairyFarmAgent(LocationAgent):
                                      infectious_steps=self.model.params.cattle_infected_steps,
                                      recovered_steps=self.model.params.cattle_recovered_steps,
                                      num_contacts_per_step=self.cattle_contacts_per_step)
-
-        self.cattle_model.infect_susceptible(infected_cattle)
 
     @property
     def num_susceptible(self):

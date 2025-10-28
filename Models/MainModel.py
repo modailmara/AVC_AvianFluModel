@@ -173,13 +173,8 @@ class MainModel(mesa.Model):
             cell = self.grid[cell_x, cell_y]
             farm = DairyFarmAgent(self, cell,
                                   farm_row.farm_id, farm_row.herd_size, farm_row.visit_frequency_days,
-                                  farm_row.milking_system, farm_row.housing, farm_row.pasture, farm_row.num_infected,
-                                  num_farms=len(farm_df))
+                                  farm_row.milking_system, farm_row.housing, farm_row.pasture, num_farms=len(farm_df))
             self.farm_cells.append(cell)
-
-            if farm_row.num_infected > 0:
-                # record this starting infection
-                self.infection_network.add_infection_source(farm)
 
             # one farmer per farm
             FarmerAgent(self, farm)
@@ -192,6 +187,16 @@ class MainModel(mesa.Model):
                 cell_x -= 3
 
             min_farm_x = min(min_farm_x, cell_x)
+
+        # do the initial infections - 1 on params.num_init_infected_farms farms
+        infected_farms = self.random.sample(
+            self.agents_by_type[DairyFarmAgent],
+            min(self.params.num_init_infected_farms, len(self.agents_by_type[DairyFarmAgent]))
+        )
+        for farm in infected_farms:
+            farm.cattle_model.infect_susceptible(1)
+            # record this source of infection in the network
+            self.infection_network.add_infection_source(farm)
 
         # ------------------------- end farm space definition
         # ------------------------- People
@@ -279,6 +284,10 @@ class MainModel(mesa.Model):
                 model_reporters[reporter_name] = partial(count_person_agents_with_disease_state_and_role,
                                                          person_role, disease_state)
 
+        # log the number of steps to first reach the community
+        self.step_community_infected = math.nan
+        model_reporters['steps_to_community'] = 'step_community_infected'
+
         # add in an agent reporter for each farm
         agent_reporters = {
             DairyFarmAgent: {
@@ -301,10 +310,16 @@ class MainModel(mesa.Model):
         """
         Execute one step of the model
         """
-
-        if self.params.is_stop_community_infection \
-                and self.community_model.susceptible < self.community_model.population:
-            # there has been community spillover - stop here
+        # print('step community infected: {}'.format(self.step_community_infected))
+        if self.community_model.susceptible < self.community_model.population:
+            if pd.isna(self.step_community_infected):
+                # there has been community spillover and this is the first time the community is exposed
+                # record the step of the first community exposure
+                self.step_community_infected = self.steps
+                print('   {}: first infected {}'.format(self.steps, self.step_community_infected))
+        if self.community_model.susceptible < self.community_model.population \
+                and self.params.is_stop_community_infection:
+            # stop running here
             self.running = False
         else:
             # go ahead with another model step

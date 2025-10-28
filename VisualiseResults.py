@@ -1,5 +1,6 @@
 import seaborn as sns
 import pandas as pd
+import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -74,6 +75,12 @@ def visualise_paths(infection_network):
     plt.close()
 
 
+def set_seaborn_context():
+    sns.set_theme(rc={'figure.figsize': (10, 5)})
+    sns.set_style('whitegrid')
+    sns.set_context("paper")
+
+
 def visualise_visit_counts(visit_dict, days):
     """
 
@@ -88,9 +95,7 @@ def visualise_visit_counts(visit_dict, days):
         day = int(step/24)
         hist_list.append(day)
 
-    sns.set_theme(rc={'figure.figsize': (10, 5)})
-    sns.set_style('whitegrid')
-    sns.set_context("paper")
+    set_seaborn_context()
 
     hist = sns.histplot(hist_list, discrete=True)
     max_x = days
@@ -110,6 +115,36 @@ def visualise_visit_counts(visit_dict, days):
     hist.set_xlabel('Day')
 
     hist.get_figure().savefig(get_output_data_dir() / 'visits_hist.png')
+
+    plt.close()
+
+
+def visualise_steps_to_spillover(scenario_name, result_df, var_name, var_values):
+    """
+    Draws and saves a boxplot of number of steps to first community spillover.
+
+    :param scenario_name:
+    :type scenario_name:
+    :param result_df:
+    :type result_df:
+    :param var_name:
+    :type var_name:
+    :param var_values:
+    :type var_values:
+
+    """
+    set_seaborn_context()
+
+    # restrict results to just one line per iteration, var_name pair
+    result_group = result_df.groupby(by=['iteration', var_name])
+    spillover_result_df = result_group['steps_to_community'].aggregate('max').reset_index()
+    print('sr_df ({}):\n{}'.format(spillover_result_df.shape, spillover_result_df))
+
+    plot = sns.boxplot(spillover_result_df, x=var_name, y='steps_to_community',  # palette='colorblind',
+                       legend=False, hue_order=var_values)
+    plt.ylim(0, np.nanmax(result_df.steps_to_community) + 10)
+
+    plot.get_figure().savefig(get_output_data_dir(scenario_name) / 'spillover_steps-box.png')
 
     plt.close()
 

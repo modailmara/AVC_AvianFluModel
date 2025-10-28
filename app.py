@@ -17,8 +17,8 @@ import networkx as nx
 from Models.PeopleAgents import PersonAgent
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent, TruckAgent
 from Models.MainModel import MainModel
-from constants import DiseaseState, HospitalDepartment, PersonRole, DEFAULT_CATTLE_INFECT_CATTLE_PROB, \
-    DEFAULT_HUMAN_INFECT_CATTLE_PROB, DEFAULT_HUMAN_INFECT_HUMAN_PROB, DEFAULT_CATTLE_INFECT_HUMAN_PROB
+from constants import DiseaseState, HospitalDepartment, PersonRole
+from Parameters import Parameters
 
 
 def vet_location_portrayal(agent):
@@ -123,28 +123,6 @@ community_infection_plot = make_plot_component(
      },
     post_process=post_process_community_lineplot,
 )
-
-
-@solara.component
-def people_infection_plots(model):
-    """
-    Creates a plot for each type of Person Agent, showing the infection levels on that type.
-    """
-    fig = Figure()
-    axs = fig.subplots(ncols=len(model.person_agent_types), sharex=True, sharey=True)
-
-    # get the infection values to chart
-    update_counter.get()  # update
-
-    vars_df = model.datacollector.get_model_vars_dataframe()
-    print(vars_df.head())
-
-    axs[0].set_ylim(ymin=0, ymax=1)
-    for ax in axs:
-        ax.set_ylabel("infected / total")
-        ax.set_xlabel('Step')
-
-    solara.FigureMatplotlib(fig)
 
 
 @solara.component
@@ -283,7 +261,8 @@ def infection_network(model):
 
     solara.FigureMatplotlib(fig)
 
-
+# load the default parameters for starting values
+params = Parameters()
 model_params = {
     'seed': {
         'type': 'InputText', 'value': 42, 'label': 'Random Seed'
@@ -294,13 +273,13 @@ model_params = {
     'is_quarantine_farmer': {
         'type': 'Checkbox', 'value': True, 'label': 'Quarantine farmers after infection'
     },
-    'cattle_infect_cattle_prob': Slider(min=0, max=1, step=.01, value=DEFAULT_CATTLE_INFECT_CATTLE_PROB,
+    'cattle_infect_cattle_prob': Slider(min=0, max=1, step=.01, value=params.cattle_infect_cattle_prob,
                                         label='Prob. cow -> cow'),
-    'human_infect_human_prob': Slider(min=0, max=1, step=.01, value=DEFAULT_HUMAN_INFECT_HUMAN_PROB,
+    'human_infect_human_prob': Slider(min=0, max=1, step=.01, value=params.human_infect_human_prob,
                                       label='Prob. person -> person'),
-    'human_infect_cattle_prob': Slider(min=0, max=1, step=.01, value=DEFAULT_HUMAN_INFECT_CATTLE_PROB,
+    'human_infect_cattle_prob': Slider(min=0, max=1, step=.01, value=params.human_infect_cattle_prob,
                                        label='Prob. person -> cow'),
-    'cattle_infect_human_prob': Slider(min=0, max=1, step=.01, value=DEFAULT_CATTLE_INFECT_HUMAN_PROB,
+    'cattle_infect_human_prob': Slider(min=0, max=1, step=.01, value=params.cattle_infect_human_prob,
                                        label='Prob. cow -> person'),
 }
 
@@ -311,8 +290,6 @@ main_model = MainModel(simulator=simulator, is_stop_community_infection=True, is
 page = SolaraViz(
     main_model,
     components=[space_component, infection_network, person_infection_plot, community_infection_plot],
-    # components=[space_component, dairy_farm_lineplot, infection_path_vis, community_plot
-    #             fs_vet_plot, fs_tech_plot, large_vet_plot, small_vet_plot, float_staff_plot, farmer_plot],
     model_params=model_params,
     name="Avian Influenza in the Veterinary Teaching Hospital",
     simulator=simulator,
