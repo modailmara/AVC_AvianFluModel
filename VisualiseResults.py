@@ -10,6 +10,9 @@ from support_functions import get_output_data_dir
 
 matplotlib.use('TkAgg')
 
+SCENARIOS = [('QuarantineFarmers', 'is_quarantine_farmer', [False, True])]
+NUM_ITERATIONS = 10
+
 X_MULT = 20
 Y_INC = 15
 
@@ -138,13 +141,41 @@ def visualise_steps_to_spillover(scenario_name, result_df, var_name, var_values)
     # restrict results to just one line per iteration, var_name pair
     result_group = result_df.groupby(by=['iteration', var_name])
     spillover_result_df = result_group['steps_to_community'].aggregate('max').reset_index()
-    print('sr_df ({}):\n{}'.format(spillover_result_df.shape, spillover_result_df))
+    # print('sr_df ({}):\n{}'.format(spillover_result_df.shape, spillover_result_df))
 
-    plot = sns.boxplot(spillover_result_df, x=var_name, y='steps_to_community',  # palette='colorblind',
-                       legend=False, hue_order=var_values)
+    plot = sns.boxplot(spillover_result_df, x=var_name, y='steps_to_community', order=var_values)
     plt.ylim(0, np.nanmax(result_df.steps_to_community) + 10)
 
-    plot.get_figure().savefig(get_output_data_dir(scenario_name) / 'spillover_steps-box.png')
+    plot.get_figure().savefig(get_output_data_dir(scenario_name) / '{}-spillover_steps-box.png'.format(scenario_name))
+
+    plt.close()
+
+
+def visualise_community_infectious_proportion(scenario_name, result_df, var_name):
+    """
+
+    :param scenario_name:
+    :type scenario_name:
+    :param result_df:
+    :type result_df:
+    :param var_name:
+    :type var_name:
+    :return:
+    :rtype:
+    """
+    set_seaborn_context()
+
+    # make a column with the sum of all community numbers
+    community_cols = ['Community_num_SUSCEPTIBLE', 'Community_num_EXPOSED', 'Community_num_INFECTIOUS',
+                      'Community_num_RECOVERED']
+    result_df['Community_num_TOTAL'] = result_df[community_cols].sum(axis=1)
+    # make a column with the proportion of infectious community members
+    result_df['Community_prop_INFECTIOUS'] = result_df['Community_num_INFECTIOUS'] / result_df['Community_num_TOTAL']
+
+    # make a line plot comparing outcomes
+    plot = sns.lineplot(result_df, x='Step', y='Community_prop_INFECTIOUS', hue=var_name)
+
+    plot.get_figure().savefig(get_output_data_dir(scenario_name) / '{}-prop_infectious-line.png'.format(scenario_name))
 
     plt.close()
 
@@ -184,4 +215,14 @@ def write_scenario_summary_graph(scenario_name, scenario_results):
     nx.write_graphml(summary_graph, get_output_data_dir(scenario_name) / '{}.graphml'.format(scenario_name),
                      named_key_ids=True)
 
+
+if __name__ == "__main__":
+    for scenario_name, var_name, var_values in SCENARIOS:
+        print('reading data')
+        scenario_df = pd.read_csv(get_output_data_dir(scenario_name) / '{}_data-{}.csv'.format(scenario_name,
+                                                                                               NUM_ITERATIONS))
+        print('plotting steps to spillover')
+        visualise_steps_to_spillover(scenario_name, scenario_df, var_name, var_values)
+        print('plotting community infectious proportion')
+        visualise_community_infectious_proportion(scenario_name, scenario_df, var_name)
 
