@@ -42,6 +42,7 @@ class InfectionNetwork:
         """
         self._add_node_for_agent(source_agent, 0)
         self.source_nodes[source_agent.short_name] = 0
+        # print("Source: {}".format(source_agent.short_name))
 
     def add_infection_event(self, source_agent, infected_agent, time_step):
         """
@@ -66,6 +67,7 @@ class InfectionNetwork:
         self.infection_graph.add_edge(source_agent.short_name, infected_agent.short_name,
                                       step=time_step, location=infected_agent.location,
                                       department=department)
+        # print('{} Edge: {} > {}'.format(time_step, source_agent.short_name, infected_agent.short_name))
 
     def add_community_spillover(self, source_agent, time_step):
         """
@@ -104,5 +106,6 @@ class InfectionNetwork:
 
         self.infection_graph.add_edge(source_node_name, infected_node_name,
                                       step=step, location=Location.COMMUNITY, department=None)
+        # print('{} Edge: {} > {}'.format(step, source_node_name, infected_node_name))
 
 

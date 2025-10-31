@@ -153,7 +153,7 @@ class PersonAgent(CellAgent):
                         self.model.infection_network.add_infection_event(source_agent=self, infected_agent=agent,
                                                                          time_step=self.model.steps)
             elif self.location == Location.COMMUNITY:
-                # try to infect the community
+                # can only infect the community
                 num_possible_infections = np.random.binomial(self.model.params.community_contacts_per_step,
                                                              self.model.community_model.proportion_susceptible)
                 num_infections = np.random.binomial(num_possible_infections, self.model.params.human_infect_human_prob)
@@ -163,7 +163,7 @@ class PersonAgent(CellAgent):
                     # record the infection
                     self.model.infection_network.add_community_spillover(self, self.model.steps)
 
-            if self.location == Location.HOSPITAL or self.location == Location.TRAVEL:
+            if self.location in [Location.HOSPITAL, Location.TRAVEL, Location.FARM]:
                 # chance of infecting the environment
                 env_location_agents = [agent for agent in self.cell.agents
                                        if isinstance(agent, Models.LocationAgents.LocationAgent)
@@ -312,16 +312,17 @@ class FarmVisitorAgent(FarmPersonAgent):
 
         This is a farm services vet or student to see some cows that may be sick. This method runs once per step.
         """
-        num_susceptible_cows_contacted = min(self.farm.num_susceptible,
-                                             np.random.binomial(self.model.params.vet_contacts_per_step,
-                                                                self.farm.proportion_susceptible))
-        num_infected = np.random.binomial(num_susceptible_cows_contacted, self.model.params.human_infect_cattle_prob)
+        if self.disease_state == DiseaseState.INFECTIOUS and self.farm.num_susceptible > 0:
+            num_susceptible_cows_contacted = min(self.farm.num_susceptible,
+                                                 np.random.binomial(self.model.params.vet_contacts_per_step,
+                                                                    self.farm.proportion_susceptible))
+            num_infected = np.random.binomial(num_susceptible_cows_contacted, self.model.params.human_infect_cattle_prob)
 
-        if num_infected > 0:
-            self.farm.cattle_model.expose_to_infection(num_infected)
+            if num_infected > 0:
+                self.farm.cattle_model.expose_to_infection(num_infected)
 
-            self.model.infection_network.add_infection_event(source_agent=self, infected_agent=self.farm,
-                                                             time_step=self.model.steps)
+                self.model.infection_network.add_infection_event(source_agent=self, infected_agent=self.farm,
+                                                                 time_step=self.model.steps)
 
     def is_become_infected_by_cattle(self):
         """
@@ -329,16 +330,17 @@ class FarmVisitorAgent(FarmPersonAgent):
 
         This is a farm services vet or student to see some cows that may be sick. This method runs once per step.
         """
-        num_infected_cows_contacted = min(self.farm.num_infected,
-                                          np.random.binomial(self.model.params.vet_contacts_per_step,
-                                                             self.farm.proportion_infected))
-        num_infections = np.random.binomial(num_infected_cows_contacted, self.model.params.cattle_infect_human_prob)
+        if self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.num_infected > 0:
+            num_infected_cows_contacted = min(self.farm.num_infected,
+                                              np.random.binomial(self.model.params.vet_contacts_per_step,
+                                                                 self.farm.proportion_infected))
+            num_infections = np.random.binomial(num_infected_cows_contacted, self.model.params.cattle_infect_human_prob)
 
-        if num_infections > 0:
-            self.become_infected()
+            if num_infections > 0:
+                self.become_infected()
 
-            self.model.infection_network.add_infection_event(source_agent=self.farm, infected_agent=self,
-                                                             time_step=self.model.steps)
+                self.model.infection_network.add_infection_event(source_agent=self.farm, infected_agent=self,
+                                                                 time_step=self.model.steps)
 
 
 class FarmerAgent(FarmPersonAgent):
@@ -397,21 +399,22 @@ class FarmerAgent(FarmPersonAgent):
 
         This is a farmer, so contacts happen to all cows at milking time. Number of contacts depend on milking system.
         """
-        # put all the milking events at the beginning of the day
-        # currently doesn't matter that they aren't spaced out - if it does then this has to be changed
-        if self.model.steps % self.model.params.steps_per_day in \
-                self.model.params.work_day_steps[:self.model.params.num_milking_events_per_day]:
-            # contact every cow a number of times based on milking system
-            for _ in range(self.farm.num_milking_contacts):
-                num_susceptible_cows_contacted = self.farm.num_susceptible
-                num_infected = np.random.binomial(num_susceptible_cows_contacted,
-                                                  self.model.params.human_infect_cattle_prob)
+        if self.disease_state == DiseaseState.INFECTIOUS and self.farm.num_susceptible > 0:
+            # put all the milking events at the beginning of the day
+            # currently doesn't matter that they aren't spaced out - if it does then this has to be changed
+            if self.model.steps % self.model.params.steps_per_day in \
+                    self.model.params.work_day_steps[:self.model.params.num_milking_events_per_day]:
+                # contact every cow a number of times based on milking system
+                for _ in range(self.farm.num_milking_contacts):
+                    num_susceptible_cows_contacted = self.farm.num_susceptible
+                    num_infected = np.random.binomial(num_susceptible_cows_contacted,
+                                                      self.model.params.human_infect_cattle_prob)
 
-                if num_infected > 0:
-                    self.farm.cattle_model.expose_to_infection(num_infected)
+                    if num_infected > 0:
+                        self.farm.cattle_model.expose_to_infection(num_infected)
 
-                    self.model.infection_network.add_infection_event(source_agent=self, infected_agent=self.farm,
-                                                                     time_step=self.model.steps)
+                        self.model.infection_network.add_infection_event(source_agent=self, infected_agent=self.farm,
+                                                                         time_step=self.model.steps)
 
     def is_become_infected_by_cattle(self):
         """
@@ -419,23 +422,24 @@ class FarmerAgent(FarmPersonAgent):
 
         This is a farm services vet or student to see some cows that may be sick. This method runs once per step.
         """
-        # put all the milking events at the beginning of the day
-        # currently doesn't matter that they aren't spaced out - if it does then this has to be changed
-        if self.model.steps % self.model.params.steps_per_day in \
-                self.model.params.work_day_steps[:self.model.params.num_milking_events_per_day]:
-            # contact every cow a number of times based on milking system
-            for _ in range(self.farm.num_milking_contacts):
-                num_infected_cows_contacted = self.farm.num_infected
-                num_infections = np.random.binomial(num_infected_cows_contacted,
-                                                    self.model.params.cattle_infect_human_prob)
+        if self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.num_infected > 0:
+            # put all the milking events at the beginning of the day
+            # currently doesn't matter that they aren't spaced out - if it does then this has to be changed
+            if self.model.steps % self.model.params.steps_per_day in \
+                    self.model.params.work_day_steps[:self.model.params.num_milking_events_per_day]:
+                # contact every cow a number of times based on milking system
+                for _ in range(self.farm.num_milking_contacts):
+                    num_infected_cows_contacted = self.farm.num_infected
+                    num_infections = np.random.binomial(num_infected_cows_contacted,
+                                                        self.model.params.cattle_infect_human_prob)
 
-                if num_infections > 0:
-                    self.become_infected()
+                    if num_infections > 0:
+                        self.become_infected()
 
-                    self.model.infection_network.add_infection_event(source_agent=self.farm, infected_agent=self,
-                                                                     time_step=self.model.steps)
+                        self.model.infection_network.add_infection_event(source_agent=self.farm, infected_agent=self,
+                                                                         time_step=self.model.steps)
 
-                    break  # can only become infected once
+                        break  # can only become infected once
 
 
 

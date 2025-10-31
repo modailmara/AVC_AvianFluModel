@@ -197,6 +197,22 @@ class DairyFarmAgent(LocationAgent):
         # progress the system dynamics model on the farm
         self.cattle_model.progress_infection()
 
+        # farm location agent (not cattle) can infect people agents
+        super().step()
+
+        # farm location agent (not cattle) can infect susceptible cattle
+        if self.disease_state == DiseaseState.INFECTIOUS and self.cattle_model.num_susceptible > 0:
+            num_infected = np.random.binomial(self.cattle_model.num_susceptible,
+                                              self.model.params.env_infect_cattle_prob)
+            self.cattle_model.infect_susceptible(num_infected)
+
+        # infectious cattle can infect the farm location agent
+        if self.disease_state == DiseaseState.SUSCEPTIBLE and self.cattle_model.num_infected > 0:
+            for _ in range(self.cattle_model.num_infected):
+                if self.random.random() < self.model.params.cattle_infect_env_prob:
+                    self.become_infected()
+                    break  # farm location agent can only be infected once
+
         # does the farm need a vet?
         if self.vet_state == FarmVetVisitState.OK:
             if self.steps_since_last_visit >= self.visit_frequency_steps:
@@ -247,7 +263,7 @@ class TruckAgent(LocationAgent):
     The truck agent coordinates travel around locations. It tells PersonAgents where they are on the trip.
     """
 
-    def __init__(self, model, home_cell, truck_id, travel_cell):
+    def __init__(self, model, home_cell, truck_id, travel_cell, truck_bay_agent):
         """
 
         :param model: Main model instance that the truck agent belongs to
@@ -263,6 +279,9 @@ class TruckAgent(LocationAgent):
 
         self.home_cell = home_cell
         self.travel_cell = travel_cell
+
+        # hospital farm services location agent that is the bay for the trucks
+        self.truck_bay = truck_bay_agent
 
         self.number = truck_id
         self.name = f"Truck_{self.number}"
@@ -282,6 +301,7 @@ class TruckAgent(LocationAgent):
         """
         Usual step stuff but also count how long at the farm and check if the agent should leave
         """
+        # if Infectious, infect any people agents
         super().step()
 
         if self.location == Location.TRAVEL:
@@ -301,13 +321,36 @@ class TruckAgent(LocationAgent):
                 self.steps_at_farm += 1
 
                 # check if there is infection transfer between the truck and farm
-                if self.disease_state == DiseaseState.INFECTIOUS:
-                    # possibility to infect some cattle
-                    self.infect_cattle()
-                elif self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.proportion_infected > 0:
-                    # infected cattle - maybe get infected
-                    # print('susceptible {}'.format(self.name))
-                    self.is_become_infected_by_cattle()
+                if self.disease_state == DiseaseState.INFECTIOUS \
+                        and self.farm.disease_state == DiseaseState.SUSCEPTIBLE:
+                    # possibility to infect the farm
+                    if self.random.random() < self.model.params.truck_infect_env_prob:
+                        self.farm.become_infected()
+                        # record the truck infecting the farm location
+                        self.model.infection_network.add_infection_event(self, self.farm, self.model.steps)
+                elif self.disease_state == DiseaseState.SUSCEPTIBLE \
+                        and self.farm.disease_state == DiseaseState.INFECTIOUS:
+                    # infected farm - maybe get infected
+                    if self.random.random() < self.model.params.env_infect_truck_prob:
+                        self.become_infected()
+                        # record the farm location infecting the truck
+                        self.model.infection_network.add_infection_event(self.farm, self, self.model.steps)
+        elif self.location == Location.HOSPITAL:
+            if self.disease_state == DiseaseState.INFECTIOUS \
+                    and self.truck_bay.disease_state == DiseaseState.SUSCEPTIBLE:
+                # possibility to infect the truck bay at the hospital
+                if self.random.random() < self.model.params.truck_infect_env_prob:
+                    self.truck_bay.become_infected()
+                    # record the truck infecting the hospital truck bay
+                    self.model.infection_network.add_infection_event(self, self.truck_bay, self.model.steps)
+
+            elif self.disease_state == DiseaseState.SUSCEPTIBLE \
+                    and self.truck_bay.disease_state == DiseaseState.INFECTIOUS:
+                # possibility to be infected by the truck bay
+                if self.random.random() < self.model.params.env_infect_truck_prob:
+                    self.become_infected()
+                    # record the hospital truck bay infecting the truck
+                    self.model.infection_network.add_infection_event(self.truck_bay, self, self.model.steps)
 
     def start_travel_from_hospital(self, farms_to_visit, passengers):
         """
@@ -387,36 +430,6 @@ class TruckAgent(LocationAgent):
 
         for passenger in self.passengers:
             passenger.return_to_hospital()
-
-    def infect_cattle(self):
-        """
-        This truck is infectious and on the farm. They may infect susceptible cattle on the farm.
-        """
-        num_susceptible_cows_contacted = min(self.farm.num_susceptible,
-                                             np.random.binomial(self.model.params.truck_contacts_per_step,
-                                                                self.farm.proportion_susceptible))
-        num_infected = np.random.binomial(num_susceptible_cows_contacted, self.model.params.truck_infect_cattle_prob)
-
-        if num_infected > 0:
-            self.farm.cattle_model.expose_to_infection(num_infected)
-
-            self.model.infection_network.add_infection_event(source_agent=self, infected_agent=self.farm,
-                                                             time_step=self.model.steps)
-
-    def is_become_infected_by_cattle(self):
-        """
-        This truck is susceptible and on a farm. They may become infected by infectious cattle.
-        """
-        num_infected_cows_contacted = min(self.farm.num_infected,
-                                          np.random.binomial(self.model.params.truck_contacts_per_step,
-                                                             self.farm.proportion_infected))
-        num_infections = np.random.binomial(num_infected_cows_contacted, self.model.params.cattle_infect_truck_prob)
-
-        if num_infections > 0:
-            self.become_infectious()
-
-            self.model.infection_network.add_infection_event(source_agent=self.farm, infected_agent=self,
-                                                             time_step=self.model.steps)
 
     def become_infectious(self):
         """

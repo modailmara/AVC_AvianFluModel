@@ -135,24 +135,30 @@ class MainModel(mesa.Model):
         small_height = 15
 
         for cell_x in range(hospital_width):
+            # large animal clinic
             for cell_y in range(large_start, large_start+large_height):
                 large_id = cell_x * large_height + cell_y
                 cell = self.grid[cell_x, cell_y]
                 HospitalAgent(self, HospitalDepartment.LARGE_ANIMAL, cell=cell, dept_id=large_id)
                 self.hospital_cells[HospitalDepartment.LARGE_ANIMAL].append(cell)
 
+            # farm services
             for cell_y in range(farm_start, farm_start+farm_height):
                 farm_id = cell_x * farm_height + cell_y
                 cell = self.grid[cell_x, cell_y]
-                HospitalAgent(self, HospitalDepartment.FARM_SERVICES, cell=cell, dept_id=farm_id)
+                farm_services_agent = HospitalAgent(self, HospitalDepartment.FARM_SERVICES, cell=cell, dept_id=farm_id)
                 self.hospital_cells[HospitalDepartment.FARM_SERVICES].append(cell)
+            # the last farm services location agent is the truck bay
+            self.truck_bay = farm_services_agent
 
+            # Common areas
             for cell_y in range(common_start, common_start+common_height):
                 common_id = cell_x * large_height + cell_y
                 cell = self.grid[cell_x, cell_y]
                 HospitalAgent(self, HospitalDepartment.COMMON, cell=cell, dept_id=common_id)
                 self.hospital_cells[HospitalDepartment.COMMON].append(cell)
 
+            # small animal clinic
             for cell_y in range(small_start, small_start+small_height):
                 small_id = cell_x * small_height + cell_y
                 cell = self.grid[cell_x, cell_y]
@@ -244,7 +250,7 @@ class MainModel(mesa.Model):
         for truck_num in range(self.params.num_trucks):
             home_cell = self.grid[home_cell_x, home_cell_y+truck_num]
             travel_cell = self.grid[travel_cell_x, travel_cell_y + 2 * truck_num]
-            truck = TruckAgent(self, home_cell, truck_num, travel_cell)
+            truck = TruckAgent(self, home_cell, truck_num, travel_cell, self.truck_bay)
 
             self.available_trucks.append(truck)
 
@@ -260,7 +266,7 @@ class MainModel(mesa.Model):
         # farm_visits_by_vet {step_num: [(vet id, farm id), ...]
         self.farm_visits_by_vets = defaultdict(list)
 
-        model_reporters = {'paths': lambda model: model.infection_network,
+        model_reporters = {  # 'paths': lambda model: model.infection_network,
                            'Community_num_SUSCEPTIBLE': lambda model: model.community_model.num_susceptible,
                            'Community_num_EXPOSED': lambda model: model.community_model.num_exposed,
                            'Community_num_INFECTIOUS': lambda model: model.community_model.num_infected,
@@ -316,7 +322,7 @@ class MainModel(mesa.Model):
                 # there has been community spillover and this is the first time the community is exposed
                 # record the step of the first community exposure
                 self.step_community_infected = self.steps
-                print('   {}: first infected {}'.format(self.steps, self.step_community_infected))
+                # print('   {}: first infected {}'.format(self.steps, self.step_community_infected))
         if self.community_model.susceptible < self.community_model.population \
                 and self.params.is_stop_community_infection:
             # stop running here

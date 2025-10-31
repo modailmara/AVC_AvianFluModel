@@ -78,6 +78,15 @@ class Parameters:
         # environment <-> human infection
         self.env_infect_human_prob = self.config['DISEASE'].getfloat('ENV_INFECT_HUMAN_PROB')
         self.human_infect_env_prob = self.config['DISEASE'].getfloat('HUMAN_INFECT_ENV_PROB')
+
+        # environment <-> cattle interaction
+        self.env_infect_cattle_prob = self.config['DISEASE'].getfloat('ENV_INFECT_CATTLE_PROB')
+        self.cattle_infect_env_prob = self.config['DISEASE'].getfloat('CATTLE_INFECT_ENV_PROB')
+
+        # environment <-> truck interaction
+        self.env_infect_truck_prob = self.config['DISEASE'].getfloat('ENV_INFECT_TRUCK_PROB')
+        self.truck_infect_env_prob = self.config['DISEASE'].getfloat('TRUCK_INFECT_ENV_PROB')
+
         self.env_infectious_days = self.config['DISEASE'].getfloat('ENV_INFECTIOUS_DAYS')
         self.env_infectious_steps = self.convert_days_to_steps(self.env_infectious_days)
 
