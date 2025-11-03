@@ -10,8 +10,13 @@ from support_functions import get_output_data_dir
 
 matplotlib.use('TkAgg')
 
-SCENARIOS = [('QuarantineFarmers', 'is_quarantine_farmer', [False, True])]
-NUM_ITERATIONS = 10
+SCENARIOS = [
+    # ('QuarantineFarmers', 'is_quarantine_farmer', [False, True]),
+    # ('TransmissionCowCow', 'cattle_infect_cattle_prob', [i / 10 for i in range(1, 10, 2)]),
+    ('TransmissionPersonPerson', 'human_infect_human_prob', [i / 10 for i in range(1, 10, 2)]),
+]
+
+NUM_ITERATIONS = 100
 
 X_MULT = 20
 Y_INC = 15

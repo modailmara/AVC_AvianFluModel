@@ -1,8 +1,8 @@
 """
-The Quarantine Farmers scenario
+Increased/Decreased transmissibility between cows (Beta_cow2cow) scenario
   - uses the default parameters
   - uses the default farms and people input files
-  - farmers remain on their farm if there are any infectious cattle on the farm
+  - varies the transmission probability between cows
 """
 import pandas as pd
 
@@ -13,9 +13,10 @@ from support_functions import get_output_data_dir
 from Models.MainModel import MainModel
 
 
-scenario_name = 'QuarantineFarmers'
-var_name = 'is_quarantine_farmer'
-var_values = [False, True]
+scenario_name = 'TransmissionCowCow'
+var_name = 'cattle_infect_cattle_prob'
+var_values = [i / 10 for i in range(1, 10, 2)]
+
 
 if __name__ == "__main__":
     # simulator = ABMSimulator()

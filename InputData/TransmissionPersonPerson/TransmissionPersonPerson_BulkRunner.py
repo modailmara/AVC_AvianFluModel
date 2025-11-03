@@ -1,21 +1,22 @@
 """
-The Quarantine Farmers scenario
+Increased/Decreased transmissibility between people scenario
   - uses the default parameters
   - uses the default farms and people input files
-  - farmers remain on their farm if there are any infectious cattle on the farm
+  - varies the transmission probability between cows
 """
 import pandas as pd
 
 from mesa.batchrunner import batch_run
 
-from InputData.scenario_constants import NUM_ITERATIONS, STEPS
 from support_functions import get_output_data_dir
 from Models.MainModel import MainModel
+from InputData.scenario_constants import NUM_ITERATIONS, STEPS
 
 
-scenario_name = 'QuarantineFarmers'
-var_name = 'is_quarantine_farmer'
-var_values = [False, True]
+scenario_name = 'TransmissionPersonPerson'
+var_name = 'human_infect_human_prob'
+var_values = [i / 10 for i in range(1, 10, 2)]
+
 
 if __name__ == "__main__":
     # simulator = ABMSimulator()
