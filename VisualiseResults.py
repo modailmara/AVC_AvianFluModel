@@ -7,16 +7,17 @@ import matplotlib.patches as patches
 import networkx as nx
 
 from support_functions import get_output_data_dir
+from InputData.scenario_constants import NUM_ITERATIONS, STEPS
 
 matplotlib.use('TkAgg')
 
 SCENARIOS = [
     # ('QuarantineFarmers', 'is_quarantine_farmer', [False, True]),
     # ('TransmissionCowCow', 'cattle_infect_cattle_prob', [i / 10 for i in range(1, 10, 2)]),
-    ('TransmissionPersonPerson', 'human_infect_human_prob', [i / 10 for i in range(1, 10, 2)]),
+    # ('TransmissionPersonPerson', 'human_infect_human_prob', [i / 10 for i in range(1, 10, 2)]),
+    ('AnimalIntroduction', 'num_infected_farms', [1, 5, 10, 15, 20]),
 ]
 
-NUM_ITERATIONS = 100
 
 X_MULT = 20
 Y_INC = 15

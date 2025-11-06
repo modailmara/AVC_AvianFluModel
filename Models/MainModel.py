@@ -6,7 +6,7 @@ from collections import defaultdict
 from functools import partial
 
 from support_functions import get_input_data_dir
-from Models.SIRModel import SIRModel
+from Models.CompartmentModel import SEIRModel
 from InfectionNetwork import InfectionNetwork
 from Parameters import Parameters
 
@@ -256,10 +256,10 @@ class MainModel(mesa.Model):
 
         # ------------------------- end initial truck placement
         # ------------------------- Community setup
-        self.community_model = SIRModel(self, 'community',
-                                        self.params.community_population, self.params.human_infect_human_prob,
-                                        self.params.human_exposed_steps, self.params.human_infectious_steps,
-                                        self.params.human_recovered_steps, self.params.community_contacts_per_step)
+        self.community_model = SEIRModel(self, 'community',
+                                         self.params.community_population, self.params.human_infect_human_prob,
+                                         self.params.human_exposed_steps, self.params.human_infectious_steps,
+                                         self.params.human_recovered_steps, self.params.community_contacts_per_step)
 
         # ------------------------- end Community setup
         # ------------------------- Data logging

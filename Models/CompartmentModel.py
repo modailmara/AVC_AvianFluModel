@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class SIRModel(object):
+class SEIRModel(object):
     """
     Simple Susceptible-Infected-Recovered system dynamics model for a group of a single type of animal
     """
@@ -15,8 +15,8 @@ class SIRModel(object):
 
         :param name: Name of this model. Identifies what this model represents.
         :type name: str
-        :param population:
-        :type population:
+        :param population: Total number of entities to be modelled
+        :type population: int
         :param infection_probability: Probability of infection between animals
         :type infection_probability:
         :param exposed_steps: Model steps that the animal spends in the Exposed state

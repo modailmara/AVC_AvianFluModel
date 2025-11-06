@@ -1,7 +1,7 @@
 from mesa.experimental.cell_space import FixedAgent, CellAgent
 import numpy as np
 
-from Models.SIRModel import SIRModel
+from Models.CompartmentModel import SEIRModel
 import Models
 from constants import FarmMilkingSystem, FarmHousing, FarmVetVisitState, Location, TRUCK_ROLE, DiseaseState
 
@@ -130,13 +130,13 @@ class DairyFarmAgent(LocationAgent):
         self.emergency_visit_prob = self.model.params.emergency_visits_per_step / num_farms
 
         # SIR model for the cattle herd
-        self.cattle_model = SIRModel(model=self.model, name=self.name,
-                                     population=herd_size,
-                                     infection_probability=self.model.params.cattle_infect_cattle_prob,
-                                     exposed_steps=self.model.params.cattle_exposed_steps,
-                                     infectious_steps=self.model.params.cattle_infected_steps,
-                                     recovered_steps=self.model.params.cattle_recovered_steps,
-                                     num_contacts_per_step=self.cattle_contacts_per_step)
+        self.cattle_model = SEIRModel(model=self.model, name=self.name,
+                                      population=herd_size,
+                                      infection_probability=self.model.params.cattle_infect_cattle_prob,
+                                      exposed_steps=self.model.params.cattle_exposed_steps,
+                                      infectious_steps=self.model.params.cattle_infected_steps,
+                                      recovered_steps=self.model.params.cattle_recovered_steps,
+                                      num_contacts_per_step=self.cattle_contacts_per_step)
 
     @property
     def num_susceptible(self):

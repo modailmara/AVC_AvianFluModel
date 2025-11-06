@@ -1,21 +1,21 @@
 """
-The Quarantine Farmers scenario
+Scenario exploring the effect of changing the initial number of infected farms
   - uses the default parameters
   - uses the default farms and people input files
-  - farmers remain on their farm if there are any infectious cattle on the farm
+  - varies the number of starting infected farms (1 infected cow each)
 """
 import pandas as pd
 
 from mesa.batchrunner import batch_run
 
-from InputData.scenario_constants import NUM_ITERATIONS, STEPS
 from support_functions import get_output_data_dir
 from Models.MainModel import MainModel
+from InputData.scenario_constants import NUM_ITERATIONS, STEPS
 
 
-scenario_name = 'QuarantineFarmers'
-var_name = 'is_quarantine_farmer'
-var_values = [False, True]
+scenario_name = 'AnimalIntroduction'
+var_name = 'num_infected_farms'
+var_values = [1, 5, 10, 15, 20]  # range(1, 20)
 
 
 if __name__ == "__main__":
