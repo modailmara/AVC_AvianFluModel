@@ -5,7 +5,8 @@ import pandas as pd
 from collections import defaultdict
 from functools import partial
 
-from support_functions import get_input_data_dir
+from InputData.scenario_constants import STEPS
+from support_functions import get_input_data_dir, get_output_data_dir
 from Models.CompartmentModel import SEIRModel
 from InfectionNetwork import InfectionNetwork
 from Parameters import Parameters
@@ -64,22 +65,30 @@ class MainModel(mesa.Model):
             self.simulator.setup(self)
 
         # set up the parameters
+        self.scenario_name = scenario_name
+        self.scenario_value = None  # the value of the variable in this iteration
         self.params = Parameters(scenario_name)
         # the init argument values override the parameter values (there may be a neater way to do this)
         if is_stop_community_infection is not None:
             self.params.is_stop_community_infection = is_stop_community_infection
         if is_quarantine_farmer is not None:
             self.params.is_quarantine_farmer = is_quarantine_farmer
+            self.scenario_value = is_quarantine_farmer
         if cattle_infect_cattle_prob is not None:
             self.params.cattle_infect_cattle_prob = cattle_infect_cattle_prob
+            self.scenario_value = cattle_infect_human_prob
         if human_infect_human_prob is not None:
             self.params.human_infect_human_prob = human_infect_human_prob
+            self.scenario_value = human_infect_human_prob
         if human_infect_cattle_prob is not None:
             self.params.human_infect_cattle_prob = human_infect_cattle_prob
+            self.scenario_value = human_infect_cattle_prob
         if cattle_infect_human_prob is not None:
             self.params.cattle_infect_human_prob = cattle_infect_human_prob
+            self.scenario_value = cattle_infect_human_prob
         if num_infected_farms is not None:
             self.params.num_init_infected_farms = num_infected_farms
+            self.scenario_value = num_infected_farms
 
         # set up the grid
         self.width = 43
@@ -316,10 +325,12 @@ class MainModel(mesa.Model):
         """
         Execute one step of the model
         """
-        # print('step community infected: {}'.format(self.step_community_infected))
         if self.community_model.susceptible < self.community_model.population:
             if pd.isna(self.step_community_infected):
                 # there has been community spillover and this is the first time the community is exposed
+                # write out the infection graph
+                self.infection_network.write_network(get_output_data_dir(self.scenario_name), "spillover",
+                                                     self.scenario_name, self.scenario_value)
                 # record the step of the first community exposure
                 self.step_community_infected = self.steps
                 # print('   {}: first infected {}'.format(self.steps, self.step_community_infected))
@@ -340,6 +351,11 @@ class MainModel(mesa.Model):
                 self.start_farm_visit(is_emergency=False, take_student=True)
 
             self.datacollector.collect(self)
+
+        if self.steps == STEPS:
+            # at the end of the simulation - write out the completed disease network
+            self.infection_network.write_network(get_output_data_dir(self.scenario_name), "complete",
+                                                 self.scenario_name, self.scenario_value)
 
     def start_farm_visit(self, is_emergency, take_student):
         """

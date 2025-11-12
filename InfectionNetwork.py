@@ -1,4 +1,5 @@
 import networkx as nx
+import uuid
 
 from constants import COMMUNITY, Location
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent
@@ -20,7 +21,7 @@ class InfectionNetwork:
     """
 
     def __init__(self):
-        self.infection_graph = nx.MultiDiGraph()
+        self.infection_graph = nx.DiGraph()
         self.infection_graph.add_node(COMMUNITY_NODE_NAME, step=0)
         self.source_nodes = {}
 
@@ -30,8 +31,10 @@ class InfectionNetwork:
                 role = 'FARM'
             elif isinstance(agent, HospitalAgent):
                 role = 'HOSPITAL'
-            else:
+            elif isinstance(agent.role, str):
                 role = agent.role
+            else:
+                role = agent.role.value
             self.infection_graph.add_node(agent.short_name, role=role, step=step)
 
     def add_infection_source(self, source_agent):
@@ -59,15 +62,12 @@ class InfectionNetwork:
         # create a node for the new infected agent
         self._add_node_for_agent(infected_agent, time_step)
 
-        # create an edge from source to infected, annotate with time and place
-        if isinstance(infected_agent, PersonAgent):
-            department = infected_agent.department
+        if (source_agent.short_name, infected_agent.short_name) in self.infection_graph.edges:
+            # existing edge so increase the weight
+            self.infection_graph.edges[source_agent.short_name, infected_agent.short_name]['weight'] += 1
         else:
-            department = None
-        self.infection_graph.add_edge(source_agent.short_name, infected_agent.short_name,
-                                      step=time_step, location=infected_agent.location,
-                                      department=department)
-        # print('{} Edge: {} > {}'.format(time_step, source_agent.short_name, infected_agent.short_name))
+            # new edge
+            self.infection_graph.add_edge(source_agent.short_name, infected_agent.short_name, step=time_step, weight=1)
 
     def add_community_spillover(self, source_agent, time_step):
         """
@@ -104,8 +104,35 @@ class InfectionNetwork:
             source_node_name = COMMUNITY_NODE_NAME
             infected_node_name = agent.short_name
 
-        self.infection_graph.add_edge(source_node_name, infected_node_name,
-                                      step=step, location=Location.COMMUNITY, department=None)
-        # print('{} Edge: {} > {}'.format(step, source_node_name, infected_node_name))
+        if (source_node_name, infected_node_name) in self.infection_graph.edges:
+            # existing edge so increase the weight
+            self.infection_graph.edges[source_node_name, infected_node_name]['weight'] += 1
+        else:
+            # new edge
+            self.infection_graph.add_edge(source_node_name, infected_node_name, step=step, weight=1)
 
+    def write_network(self, location_dir, label, scenario_name, param_value=None):
+        """
 
+        :param location_dir:
+        :type location_dir:
+        :param label:
+        :type label:
+        :param scenario_name:
+        :type scenario_name:
+        :param param_value: (optional)
+        :type param_value:
+
+        :return:
+        :rtype:
+        """
+        working_dir = location_dir / 'working'
+        working_dir.mkdir(parents=True, exist_ok=True)
+
+        filename = "{}_{}_{}_{}".format(scenario_name, label, param_value, uuid.uuid4())
+
+        # write the edgelist
+        nx.write_edgelist(self.infection_graph, working_dir / '{}.{}'.format(filename, 'csv'), delimiter=',',
+                          data=['weight', 'step'])
+        # write the graphml
+        nx.write_graphml(self.infection_graph, working_dir / '{}.{}'.format(filename, 'graphml'))

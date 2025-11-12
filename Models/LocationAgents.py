@@ -1,4 +1,4 @@
-from mesa.experimental.cell_space import FixedAgent, CellAgent
+from mesa.experimental.cell_space import CellAgent
 import numpy as np
 
 from Models.CompartmentModel import SEIRModel
@@ -67,7 +67,7 @@ class HospitalAgent(LocationAgent):
         self.department = department
 
         short_dept = ''.join([word[0].upper() for word in self.department.value.split()])
-        self.short_name = 'H{}_{}'.format(short_dept, dept_id)
+        self.short_name = '{}_{}'.format(short_dept, dept_id)
 
 
 class DairyFarmAgent(LocationAgent):
@@ -82,8 +82,8 @@ class DairyFarmAgent(LocationAgent):
 
         :param model: The model that this agent belongs to
         :type model: MainModel object
-        :param farm_id: Unique ID of this farm
-        :type farm_id: int
+        :param farm_id: Unique ID of this farm: 'F' + int
+        :type farm_id: str
         :param herd_size: Number of milking cows
         :type herd_size: int
         :param visit_frequency: Number of days between vet visits
@@ -102,9 +102,9 @@ class DairyFarmAgent(LocationAgent):
         self.location = Location.FARM
 
         # unique ID (number is only unique within farms)
-        self.number = farm_id
+        self.number = int(farm_id[1:])
         self.name = 'Farm_{}'.format(self.number)
-        self.short_name = '{}'.format(self.number)
+        self.short_name = 'F_{}'.format(self.number)
 
         # set up the frequency and random counter since last (not modelled) last visit
         self.visit_frequency_steps = self.model.params.convert_days_to_steps(visit_frequency)

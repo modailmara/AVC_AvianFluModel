@@ -31,7 +31,7 @@ class PersonAgent(CellAgent):
         self.number = person_id
         self.role = role
         self.name = '{}_{}'.format(self.role.name, self.number)
-        self.short_name = '{}{}'.format(self.role.value, self.number)
+        self.short_name = '{}_{}'.format(self.role.value, self.number)
         self.area_weights = area_weights
 
         # disease information
