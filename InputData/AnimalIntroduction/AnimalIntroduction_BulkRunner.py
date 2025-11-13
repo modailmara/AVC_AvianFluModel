@@ -10,7 +10,7 @@ from mesa.batchrunner import batch_run
 
 from support_functions import get_output_data_dir
 from Models.MainModel import MainModel
-from InputData.scenario_constants import NUM_ITERATIONS, STEPS
+from InputData.scenario_constants import NUM_ITERATIONS, STEPS, clear_working_directory
 
 
 scenario_name = 'AnimalIntroduction'
@@ -19,7 +19,8 @@ var_values = [1, 5, 10, 15, 20]  # range(1, 20)
 
 
 if __name__ == "__main__":
-    # simulator = ABMSimulator()
+    clear_working_directory(scenario_name)
+
     results = batch_run(
         MainModel,
         parameters={

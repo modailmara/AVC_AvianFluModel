@@ -57,7 +57,8 @@ class MainModel(mesa.Model):
                  is_stop_community_infection=None, is_quarantine_farmer=None,
                  cattle_infect_cattle_prob=None, human_infect_human_prob=None,
                  human_infect_cattle_prob=None, cattle_infect_human_prob=None,
-                 num_infected_farms=None):
+                 num_infected_farms=None,
+                 people_sheet=None):
 
         super().__init__(seed=seed)
         if simulator is not None:
@@ -89,6 +90,9 @@ class MainModel(mesa.Model):
         if num_infected_farms is not None:
             self.params.num_init_infected_farms = num_infected_farms
             self.scenario_value = num_infected_farms
+        if people_sheet is not None:
+            self.params.people_sheet = people_sheet
+            self.scenario_value = people_sheet
 
         # set up the grid
         self.width = 43
@@ -217,7 +221,7 @@ class MainModel(mesa.Model):
         # ------------------------- People
 
         # load the people file to define hospital locations and staff/clinicians/students
-        people_df = pd.read_excel(get_input_data_dir() / PEOPLE_INPUT_FILENAME)
+        people_df = pd.read_excel(get_input_data_dir() / PEOPLE_INPUT_FILENAME, sheet_name=self.params.people_sheet)
         people_df.columns = people_df.columns.str.lower()
         area_names = [name.split(':')[1].strip()
                       for name in people_df.columns if name.startswith('area:')]

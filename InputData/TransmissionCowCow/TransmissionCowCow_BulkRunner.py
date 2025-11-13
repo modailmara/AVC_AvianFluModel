@@ -8,7 +8,7 @@ import pandas as pd
 
 from mesa.batchrunner import batch_run
 
-from InputData.scenario_constants import NUM_ITERATIONS, STEPS
+from InputData.scenario_constants import NUM_ITERATIONS, STEPS, clear_working_directory
 from support_functions import get_output_data_dir
 from Models.MainModel import MainModel
 
@@ -19,7 +19,8 @@ var_values = [i / 10 for i in range(1, 10, 2)]
 
 
 if __name__ == "__main__":
-    # simulator = ABMSimulator()
+    clear_working_directory(scenario_name)
+
     results = batch_run(
         MainModel,
         parameters={

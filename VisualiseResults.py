@@ -76,7 +76,7 @@ def visualise_community_infectious_proportion(scenario_name, result_df, var_name
 
 
 def visualise_infection_network(scenario_name, result_type, var_value):
-    print("Scenario: {}_{}_{}".format(scenario_name, result_type, var_value))
+    print("    {}_{}".format(result_type, var_value))
     # get the dir with the edgelist files
     edgelist_dir = get_output_data_dir(scenario_name) / 'working'
     # read in all the iteration result edge lists and put them together
@@ -138,22 +138,24 @@ def visualise_infection_network(scenario_name, result_type, var_value):
                                                                                                var_value))
 
 SCENARIOS = [
-    ('QuarantineFarmers', 'is_quarantine_farmer', [False, True]),
+    # ('QuarantineFarmers', 'is_quarantine_farmer', [False, True]),
     # ('TransmissionCowCow', 'cattle_infect_cattle_prob', [i / 10 for i in range(1, 10, 2)]),
     # ('TransmissionPersonPerson', 'human_infect_human_prob', [i / 10 for i in range(1, 10, 2)]),
     # ('AnimalIntroduction', 'num_infected_farms', [1, 5, 10, 15, 20]),
+    ('PeopleMixing', 'people_sheet', ['default', 'no_common', 'dept_only']),
 ]
 
 if __name__ == "__main__":
     for scenario_name, var_name, var_values in SCENARIOS:
-        print('reading data')
+        print(scenario_name)
+        print('  reading data')
         scenario_df = pd.read_csv(get_output_data_dir(scenario_name) / '{}_data-{}.csv'.format(scenario_name,
                                                                                                NUM_ITERATIONS))
-        print('plotting number of steps to spillover')
-        # visualise_steps_to_spillover(scenario_name, scenario_df, var_name, var_values)
-        print('plotting community infectious proportion')
-        # visualise_community_infectious_proportion(scenario_name, scenario_df, var_name)
-        print('drawing the infection networks')
+        print('  plotting number of steps to spillover')
+        visualise_steps_to_spillover(scenario_name, scenario_df, var_name, var_values)
+        print('  plotting community infectious proportion')
+        visualise_community_infectious_proportion(scenario_name, scenario_df, var_name)
+        print('  drawing the infection networks')
         for var_value in var_values:
             visualise_infection_network(scenario_name, 'spillover', var_value)
             visualise_infection_network(scenario_name, 'complete', var_value)

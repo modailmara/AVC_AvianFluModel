@@ -112,6 +112,13 @@ class Parameters:
             FarmMilkingSystem.ROTARY_PARLOUR: self.config['FARM'].getint('ROTARY_PARLOUR_MILKING_CONTACTS')
         }
 
+        # ----------------- CLEANING -------------------------------
+        self.truck_cleaning_schedule = self.config['CLEANING'].get('TRUCK').strip().lower()
+        self.hospital_cleaning_schedule = self.config['CLEANING'].get('HOSPITAL').strip().lower()
+
+        # ----------------- PEOPLE -------------------------------
+        self.people_sheet = self.config['PEOPLE'].get('SHEET_NAME').strip().lower()
+
     # ---------------------------------------------------------
     # useful functions
 

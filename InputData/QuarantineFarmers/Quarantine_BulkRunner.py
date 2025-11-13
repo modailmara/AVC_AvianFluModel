@@ -8,7 +8,7 @@ import pandas as pd
 
 from mesa.batchrunner import batch_run
 
-from InputData.scenario_constants import NUM_ITERATIONS, STEPS
+from InputData.scenario_constants import NUM_ITERATIONS, STEPS, clear_working_directory
 from support_functions import get_output_data_dir
 from Models.MainModel import MainModel
 
@@ -19,11 +19,7 @@ var_values = [False, True]
 
 
 if __name__ == "__main__":
-    # clear the working directory
-    working_dir = get_output_data_dir(scenario_name) / 'working'
-    if working_dir.exists():
-        for filepath in [x for x in working_dir.iterdir() if x.is_file()]:
-            filepath.unlink()
+    clear_working_directory(scenario_name)
 
     # simulator = ABMSimulator()
     results = batch_run(
