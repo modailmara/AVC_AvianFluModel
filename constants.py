@@ -142,6 +142,17 @@ class HospitalDepartment(Enum):
     COMMON = 'common'
 
 
+class Cleaning(Enum):
+    """
+    How often cleaning happens.
+
+    To be clear, this is specifically cleaning that removes infectious material of the disease being tracked.
+    These areas are cleaned regularly and frequently.
+    """
+    NONE = 'no cleaning'
+    DAILY = 'end of day'
+    VISIT = 'after visiting farms'
+
 
 
 
