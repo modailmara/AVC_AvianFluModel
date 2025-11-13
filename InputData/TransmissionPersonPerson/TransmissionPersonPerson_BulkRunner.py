@@ -15,7 +15,7 @@ from InputData.scenario_constants import NUM_ITERATIONS, STEPS, clear_working_di
 
 scenario_name = 'TransmissionPersonPerson'
 var_name = 'human_infect_human_prob'
-var_values = [i / 10 for i in range(1, 10, 2)]
+var_values = [i / 10 for i in range(1, 10, 4)]
 
 
 if __name__ == "__main__":

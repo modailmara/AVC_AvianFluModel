@@ -15,7 +15,7 @@ from Models.MainModel import MainModel
 
 scenario_name = 'TransmissionCowCow'
 var_name = 'cattle_infect_cattle_prob'
-var_values = [i / 10 for i in range(1, 10, 2)]
+var_values = [i / 10 for i in range(1, 10, 4)]
 
 
 if __name__ == "__main__":

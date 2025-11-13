@@ -3,7 +3,7 @@ import numpy as np
 
 from Models.CompartmentModel import SEIRModel
 import Models
-from constants import FarmMilkingSystem, FarmHousing, FarmVetVisitState, Location, TRUCK_ROLE, DiseaseState
+from constants import FarmMilkingSystem, FarmHousing, FarmVetVisitState, Location, TRUCK_ROLE, DiseaseState, Cleaning
 
 
 class LocationAgent(CellAgent):
@@ -56,6 +56,12 @@ class LocationAgent(CellAgent):
             self.disease_state = DiseaseState.INFECTIOUS
             self.num_infectious_steps = 0
 
+    def clean(self):
+        """
+        Clean the location so there is no infectious material.
+        """
+        self.disease_state = DiseaseState.SUSCEPTIBLE
+
 
 class HospitalAgent(LocationAgent):
     """
@@ -71,6 +77,15 @@ class HospitalAgent(LocationAgent):
 
         short_dept = ''.join([word[0].upper() for word in self.department.value.split()])
         self.short_name = 'H{}_{}'.format(short_dept, dept_id)
+
+    def step(self):
+        super().step()
+
+        if self.disease_state == DiseaseState.INFECTIOUS \
+                and self.model.params.hospital_cleaning_schedule == Cleaning.DAILY \
+                and self.model.is_after_hours_workday(self.model.steps):
+            # do a daily clean
+            self.clean()
 
 
 class DairyFarmAgent(LocationAgent):
@@ -368,7 +383,6 @@ class TruckAgent(LocationAgent):
                     # record the truck infecting the hospital truck bay
                     self.model.infection_network.add_infection_event(self.short_name, self.truck_bay.short_name,
                                                                      self.model.steps)
-
             elif self.disease_state == DiseaseState.SUSCEPTIBLE \
                     and self.truck_bay.disease_state == DiseaseState.INFECTIOUS:
                 # possibility to be infectious by the truck bay
@@ -377,6 +391,12 @@ class TruckAgent(LocationAgent):
                     # record the hospital truck bay infecting the truck
                     self.model.infection_network.add_infection_event(self.truck_bay.short_name, self.short_name,
                                                                      self.model.steps)
+
+            if self.disease_state == DiseaseState.INFECTIOUS \
+                    and self.model.params.truck_cleaning_schedule == Cleaning.DAILY \
+                    and self.model.is_after_hours_workday(self.model.steps):
+                # do a daily clean
+                self.clean()
 
     def start_travel_from_hospital(self, farms_to_visit, passengers):
         """
@@ -451,6 +471,11 @@ class TruckAgent(LocationAgent):
         self.location = Location.HOSPITAL
         self.farm = None
         self.cell = self.home_cell
+
+        if self.disease_state == DiseaseState.INFECTIOUS \
+                and self.model.params.truck_cleaning_schedule == Cleaning.VISIT:
+            # clean on return from visiting farms
+            self.clean()
 
         self.model.come_back_from_farm(self)
 

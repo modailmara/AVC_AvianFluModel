@@ -14,7 +14,7 @@ from Parameters import Parameters
 from Models.PeopleAgents import PersonAgent, FarmerAgent, FarmVisitorAgent
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent, TruckAgent
 from constants import FARM_INPUT_FILENAME, HospitalDepartment, PEOPLE_INPUT_FILENAME, PersonRole, DiseaseState, \
-    input_to_role, TRUCK_ROLE
+    input_to_role, TRUCK_ROLE, Cleaning
 
 
 def count_person_agents_with_disease_state(disease_state, model):
@@ -58,7 +58,8 @@ class MainModel(mesa.Model):
                  cattle_infect_cattle_prob=None, human_infect_human_prob=None,
                  human_infect_cattle_prob=None, cattle_infect_human_prob=None,
                  num_infected_farms=None,
-                 people_sheet=None):
+                 people_sheet=None,
+                 truck_cleaning=None, hospital_cleaning=None):
 
         super().__init__(seed=seed)
         if simulator is not None:
@@ -77,7 +78,7 @@ class MainModel(mesa.Model):
             self.scenario_value = is_quarantine_farmer
         if cattle_infect_cattle_prob is not None:
             self.params.cattle_infect_cattle_prob = cattle_infect_cattle_prob
-            self.scenario_value = cattle_infect_human_prob
+            self.scenario_value = cattle_infect_cattle_prob
         if human_infect_human_prob is not None:
             self.params.human_infect_human_prob = human_infect_human_prob
             self.scenario_value = human_infect_human_prob
@@ -91,8 +92,26 @@ class MainModel(mesa.Model):
             self.params.num_init_infected_farms = num_infected_farms
             self.scenario_value = num_infected_farms
         if people_sheet is not None:
-            self.params.people_sheet = people_sheet
-            self.scenario_value = people_sheet
+            self.params.people_sheet = people_sheet.strip().lower()
+            self.scenario_value = people_sheet.strip().lower()
+        if truck_cleaning is not None:
+            arg_value = truck_cleaning.strip().lower()
+            self.scenario_value = arg_value
+            if arg_value == 'daily':
+                self.params.truck_cleaning_schedule = Cleaning.DAILY
+            elif arg_value == 'visit':
+                self.params.truck_cleaning_schedule = Cleaning.VISIT
+            else:
+                # default to none on any other input
+                self.params.truck_cleaning_schedule = Cleaning.NONE
+        if hospital_cleaning is not None:
+            arg_value = hospital_cleaning.strip().lower()
+            self.scenario_value = arg_value
+            if arg_value == 'daily':
+                self.params.hospital_cleaning_schedule = Cleaning.DAILY
+            else:
+                # default to none on any other input
+                self.params.hospital_cleaning_schedule = Cleaning.NONE
 
         # set up the grid
         self.width = 43
@@ -576,3 +595,15 @@ class MainModel(mesa.Model):
         # True if a weekday and the first step of the day
         return leftover_days in range(5) and leftover_steps == self.params.daytime_steps // 2 + 1
 
+    def is_after_hours_workday(self, step):
+        """
+        Returns True if the step is after hours on a workday
+
+        :param step: Step count of the model
+        :type step: int
+        :return: True if step is the middle step of a weekday
+        :rtype: bool
+        """
+        _, _, leftover_days, leftover_steps = self.get_weeks_days_steps(step)
+
+        return leftover_steps in range(5) and leftover_steps >= self.params.daytime_steps

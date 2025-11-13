@@ -2,7 +2,7 @@ import configparser
 
 from support_functions import get_scenario_input_dir, get_input_data_dir
 from constants import DEFAULT_PARAMETERS_INPUT_FILENAME, FarmHousing, FarmMilkingSystem, \
-    SCENARIO_PARAMETERS_INPUT_FILENAME
+    SCENARIO_PARAMETERS_INPUT_FILENAME, Cleaning
 
 
 class Parameters:
@@ -113,8 +113,21 @@ class Parameters:
         }
 
         # ----------------- CLEANING -------------------------------
-        self.truck_cleaning_schedule = self.config['CLEANING'].get('TRUCK').strip().lower()
-        self.hospital_cleaning_schedule = self.config['CLEANING'].get('HOSPITAL').strip().lower()
+        truck_cleaning_input = self.config['CLEANING'].get('TRUCK').strip().lower()
+        if truck_cleaning_input == 'daily':
+            self.truck_cleaning_schedule = Cleaning.DAILY
+        elif truck_cleaning_input == 'visit':
+            self.truck_cleaning_schedule = Cleaning.VISIT
+        else:
+            # default to none on any other input
+            self.truck_cleaning_schedule = Cleaning.NONE
+
+        hospital_cleaning_input = self.config['CLEANING'].get('HOSPITAL').strip().lower()
+        if hospital_cleaning_input == 'daily':
+            self.hospital_cleaning_schedule = Cleaning.DAILY
+        else:
+            # default to none on any other input
+            self.hospital_cleaning_schedule = Cleaning.NONE
 
         # ----------------- PEOPLE -------------------------------
         self.people_sheet = self.config['PEOPLE'].get('SHEET_NAME').strip().lower()

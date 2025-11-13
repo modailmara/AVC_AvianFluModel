@@ -1,8 +1,5 @@
 """
-Scenario exploring the effect of changing the initial number of infectious farms
-  - uses the default parameters
-  - uses the default farms and people input files
-  - varies the number of starting infectious farms (1 infectious cow each)
+Change the frequency of cleaning the trucks.
 """
 import pandas as pd
 
@@ -13,9 +10,9 @@ from Models.MainModel import MainModel
 from InputData.scenario_constants import NUM_ITERATIONS, STEPS, clear_working_directory
 
 
-scenario_name = 'AnimalIntroduction'
-var_name = 'num_infected_farms'
-var_values = [1, 5, 10, 15, 19]  # range(1, 20)
+scenario_name = 'TruckCleaning'
+var_name = 'truck_cleaning'
+var_values = ['none', 'daily', 'visit']
 
 
 if __name__ == "__main__":

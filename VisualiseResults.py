@@ -138,11 +138,13 @@ def visualise_infection_network(scenario_name, result_type, var_value):
                                                                                                var_value))
 
 SCENARIOS = [
+    # ('AnimalIntroduction', 'num_infected_farms', [1, 5, 10, 15, 19]),
+    # ('HospitalCleaning', 'hospital_cleaning', ['none', 'daily']),
+    # ('PeopleMixing', 'people_sheet', ['default', 'no_common', 'dept_only']),
     # ('QuarantineFarmers', 'is_quarantine_farmer', [False, True]),
-    # ('TransmissionCowCow', 'cattle_infect_cattle_prob', [i / 10 for i in range(1, 10, 2)]),
-    # ('TransmissionPersonPerson', 'human_infect_human_prob', [i / 10 for i in range(1, 10, 2)]),
-    # ('AnimalIntroduction', 'num_infected_farms', [1, 5, 10, 15, 20]),
-    ('PeopleMixing', 'people_sheet', ['default', 'no_common', 'dept_only']),
+    ('TransmissionCowCow', 'cattle_infect_cattle_prob', [i / 10 for i in range(1, 10, 4)]),
+    # ('TransmissionPersonPerson', 'human_infect_human_prob', [i / 10 for i in range(1, 10, 4)]),
+    # ('TruckCleaning', 'truck_cleaning', ['none', 'daily', 'visit']),
 ]
 
 if __name__ == "__main__":
