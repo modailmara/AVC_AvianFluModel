@@ -1,8 +1,8 @@
 """
-Scenario exploring the effect of changing the initial number of infected farms
+Scenario exploring the effect of changing the initial number of infectious farms
   - uses the default parameters
   - uses the default farms and people input files
-  - varies the number of starting infected farms (1 infected cow each)
+  - varies the number of starting infectious farms (1 infectious cow each)
 """
 import pandas as pd
 

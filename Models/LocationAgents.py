@@ -23,6 +23,7 @@ class LocationAgent(CellAgent):
 
         self.location = None
         self.department = None
+        self.short_name = '<location>'
 
         self.disease_state = DiseaseState.SUSCEPTIBLE
         self.num_infectious_steps = 0
@@ -41,12 +42,14 @@ class LocationAgent(CellAgent):
 
                 # if there are any people agents in this location, there's a chance to infect them
                 for person_agent in [agent for agent in self.cell.agents
-                                     if isinstance(agent, Models.PeopleAgents.PersonAgent)]:
+                                     if isinstance(agent, Models.PeopleAgents.PersonAgent)
+                                        and agent.disease_state == DiseaseState.SUSCEPTIBLE]:
                     if self.random.random() <= self.model.params.env_infect_human_prob:
                         person_agent.become_infected()
 
                         # record the environment infecting the person
-                        self.model.infection_network.add_infection_event(self, person_agent, self.model.steps)
+                        self.model.infection_network.add_infection_event(self.short_name, person_agent.short_name,
+                                                                         self.model.steps)
 
     def become_infected(self):
         if self.disease_state == DiseaseState.SUSCEPTIBLE:
@@ -67,14 +70,14 @@ class HospitalAgent(LocationAgent):
         self.department = department
 
         short_dept = ''.join([word[0].upper() for word in self.department.value.split()])
-        self.short_name = '{}_{}'.format(short_dept, dept_id)
+        self.short_name = 'H{}_{}'.format(short_dept, dept_id)
 
 
 class DairyFarmAgent(LocationAgent):
     """
     Agent for a dairy farm.
 
-    Maybe keep an internal network model for infected herd?
+    Maybe keep an internal network model for infectious herd?
     """
     def __init__(self, model, cell, farm_id, herd_size, visit_frequency, milking_system, housing, pasture,
                  num_farms=19):
@@ -160,12 +163,12 @@ class DairyFarmAgent(LocationAgent):
         return self.num_exposed / self.herd_count
 
     @property
-    def num_infected(self):
-        return sum(self.cattle_model.infected)
+    def num_infectious(self):
+        return sum(self.cattle_model.infectious)
 
     @property
     def proportion_infected(self):
-        return self.num_infected / self.herd_count
+        return self.num_infectious / self.herd_count
 
     @property
     def num_recovered(self):
@@ -187,8 +190,8 @@ class DairyFarmAgent(LocationAgent):
     @property
     def infection_level(self):
         """
-        Get the proportion of infected cattle in the herd
-        :return: #infected / #total
+        Get the proportion of infectious cattle in the herd
+        :return: #infectious / #total
         :rtype: float
         """
         return self.cattle_model.proportion_infected
@@ -200,19 +203,38 @@ class DairyFarmAgent(LocationAgent):
         # farm location agent (not cattle) can infect people agents
         super().step()
 
+        self.farm_infect_herd()
+        self.herd_infect_farm()
+
+        self.request_vet()
+
+    def farm_infect_herd(self):
+        """
+        The farm agent (location/environment) infecting others.
+        """
         # farm location agent (not cattle) can infect susceptible cattle
         if self.disease_state == DiseaseState.INFECTIOUS and self.cattle_model.num_susceptible > 0:
             num_infected = np.random.binomial(self.cattle_model.num_susceptible,
                                               self.model.params.env_infect_cattle_prob)
             self.cattle_model.infect_susceptible(num_infected)
 
+            # don't record this for now as it will swamp the rest of the network
+            # self.model.infection_network.add_infection_event(self.short_name, 'h_{}'.format(self.number),
+            #                                                  time_step=self.model.steps)
+
+    def herd_infect_farm(self):
         # infectious cattle can infect the farm location agent
-        if self.disease_state == DiseaseState.SUSCEPTIBLE and self.cattle_model.num_infected > 0:
-            for _ in range(self.cattle_model.num_infected):
+        if self.disease_state == DiseaseState.SUSCEPTIBLE and self.cattle_model.num_infectious > 0:
+            for _ in range(self.cattle_model.num_infectious):
                 if self.random.random() < self.model.params.cattle_infect_env_prob:
                     self.become_infected()
-                    break  # farm location agent can only be infected once
 
+                    # don't record this for now as it will swamp the rest of the network
+                    # self.model.infection_network.add_infection_event('h_{}'.format(self.number), self.short_name,
+                    #                                                  time_step=self.model.steps)
+                    break  # farm location agent can only be infectious once
+
+    def request_vet(self):
         # does the farm need a vet?
         if self.vet_state == FarmVetVisitState.OK:
             if self.steps_since_last_visit >= self.visit_frequency_steps:
@@ -327,14 +349,16 @@ class TruckAgent(LocationAgent):
                     if self.random.random() < self.model.params.truck_infect_env_prob:
                         self.farm.become_infected()
                         # record the truck infecting the farm location
-                        self.model.infection_network.add_infection_event(self, self.farm, self.model.steps)
+                        self.model.infection_network.add_infection_event(self.short_name, self.farm.short_name,
+                                                                         self.model.steps)
                 elif self.disease_state == DiseaseState.SUSCEPTIBLE \
                         and self.farm.disease_state == DiseaseState.INFECTIOUS:
-                    # infected farm - maybe get infected
+                    # infectious farm - maybe get infectious
                     if self.random.random() < self.model.params.env_infect_truck_prob:
                         self.become_infected()
                         # record the farm location infecting the truck
-                        self.model.infection_network.add_infection_event(self.farm, self, self.model.steps)
+                        self.model.infection_network.add_infection_event(self.farm.short_name, self.short_name,
+                                                                         self.model.steps)
         elif self.location == Location.HOSPITAL:
             if self.disease_state == DiseaseState.INFECTIOUS \
                     and self.truck_bay.disease_state == DiseaseState.SUSCEPTIBLE:
@@ -342,15 +366,17 @@ class TruckAgent(LocationAgent):
                 if self.random.random() < self.model.params.truck_infect_env_prob:
                     self.truck_bay.become_infected()
                     # record the truck infecting the hospital truck bay
-                    self.model.infection_network.add_infection_event(self, self.truck_bay, self.model.steps)
+                    self.model.infection_network.add_infection_event(self.short_name, self.truck_bay.short_name,
+                                                                     self.model.steps)
 
             elif self.disease_state == DiseaseState.SUSCEPTIBLE \
                     and self.truck_bay.disease_state == DiseaseState.INFECTIOUS:
-                # possibility to be infected by the truck bay
+                # possibility to be infectious by the truck bay
                 if self.random.random() < self.model.params.env_infect_truck_prob:
                     self.become_infected()
                     # record the hospital truck bay infecting the truck
-                    self.model.infection_network.add_infection_event(self.truck_bay, self, self.model.steps)
+                    self.model.infection_network.add_infection_event(self.truck_bay.short_name, self.short_name,
+                                                                     self.model.steps)
 
     def start_travel_from_hospital(self, farms_to_visit, passengers):
         """

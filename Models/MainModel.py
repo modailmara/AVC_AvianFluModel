@@ -278,7 +278,7 @@ class MainModel(mesa.Model):
         model_reporters = {  # 'paths': lambda model: model.infection_network,
                            'Community_num_SUSCEPTIBLE': lambda model: model.community_model.num_susceptible,
                            'Community_num_EXPOSED': lambda model: model.community_model.num_exposed,
-                           'Community_num_INFECTIOUS': lambda model: model.community_model.num_infected,
+                           'Community_num_INFECTIOUS': lambda model: model.community_model.num_infectious,
                            'Community_num_RECOVERED': lambda model: model.community_model.num_recovered}
 
         # log the spread of disease in the community
@@ -333,7 +333,7 @@ class MainModel(mesa.Model):
                                                      self.scenario_name, self.scenario_value)
                 # record the step of the first community exposure
                 self.step_community_infected = self.steps
-                # print('   {}: first infected {}'.format(self.steps, self.step_community_infected))
+                # print('   {}: first infectious {}'.format(self.steps, self.step_community_infected))
         if self.community_model.susceptible < self.community_model.population \
                 and self.params.is_stop_community_infection:
             # stop running here
@@ -451,7 +451,7 @@ class MainModel(mesa.Model):
 
     def infected_proportion(self):
         """
-        Proportion of people that are infected
+        Proportion of people that are infectious
         :return: Proportion (0-1) of the people agents with disease state INFECTIOUS
         :rtype:
         """

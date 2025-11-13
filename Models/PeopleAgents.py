@@ -62,8 +62,8 @@ class PersonAgent(CellAgent):
 
         # disease stuff
         self.progress_disease()
-        self.infect_others()  # maybe infect other people agents or community
-        self.become_infected_by_community()  # maybe get infected by the community
+        self.infect_others()  # maybe infect other people agents or community or truck or farm or cows
+        self.become_infected_by_community()  # maybe get infectious by the community
 
     def move(self):
         """
@@ -97,7 +97,7 @@ class PersonAgent(CellAgent):
 
     def progress_disease(self):
         """
-        If this person is exposed, infected, or recovered, then progress the status of the disease.
+        If this person is exposed, infectious, or recovered, then progress the status of the disease.
         """
         if self.disease_state == DiseaseState.EXPOSED:
             if self.steps_current_disease_state >= self.model.params.human_exposed_steps:
@@ -113,7 +113,7 @@ class PersonAgent(CellAgent):
                 self.disease_state = DiseaseState.RECOVERED
                 self.steps_current_disease_state = 0
             else:
-                # still infected - increment time counter
+                # still infectious - increment time counter
                 self.steps_current_disease_state += 1
         elif self.disease_state == DiseaseState.RECOVERED:
             if self.steps_current_disease_state >= self.model.params.human_recovered_steps:
@@ -126,7 +126,7 @@ class PersonAgent(CellAgent):
 
     def become_infected(self):
         """
-        This susceptible agent becomes infected
+        This susceptible agent becomes infectious
         """
         if self.disease_state == DiseaseState.SUSCEPTIBLE:
             self.disease_state = DiseaseState.EXPOSED
@@ -134,7 +134,7 @@ class PersonAgent(CellAgent):
 
     def infect_others(self):
         """
-        If this person is infected/infectious:
+        If this person is infectious/infectious:
           - if at the hospital, infect other people in the same cell
           - if at the community, infect the community; stop the simulation if successful
         """
@@ -150,9 +150,10 @@ class PersonAgent(CellAgent):
                         agent.become_infected()
 
                         # record in the infection graph
-                        self.model.infection_network.add_infection_event(source_agent=self, infected_agent=agent,
+                        self.model.infection_network.add_infection_event(source_name=self.short_name,
+                                                                         target_name=agent.short_name,
                                                                          time_step=self.model.steps)
-            elif self.location == Location.COMMUNITY:
+            elif self.location == Location.COMMUNITY and self.model.community_model.num_susceptible > 0:
                 # can only infect the community
                 num_possible_infections = np.random.binomial(self.model.params.community_contacts_per_step,
                                                              self.model.community_model.proportion_susceptible)
@@ -161,7 +162,7 @@ class PersonAgent(CellAgent):
                 if num_infections > 0:
                     self.model.community_model.expose_to_infection(num_infections)
                     # record the infection
-                    self.model.infection_network.add_community_spillover(self, self.model.steps)
+                    self.model.infection_network.add_community_spillover(self.short_name, self.model.steps)
 
             if self.location in [Location.HOSPITAL, Location.TRAVEL, Location.FARM]:
                 # chance of infecting the environment
@@ -174,14 +175,16 @@ class PersonAgent(CellAgent):
                         location_agent.become_infected()
 
                         # record the infection in the infection network
-                        self.model.infection_network.add_infection_event(self, location_agent, self.model.steps)
+                        self.model.infection_network.add_infection_event(self.short_name, location_agent.short_name,
+                                                                         self.model.steps)
 
     def become_infected_by_community(self):
         """
 
         """
-        if self.disease_state == DiseaseState.SUSCEPTIBLE and self.location == Location.COMMUNITY:
-            num_infected_people_contacted = min(self.model.community_model.num_susceptible,
+        if self.disease_state == DiseaseState.SUSCEPTIBLE and self.location == Location.COMMUNITY \
+                and self.model.community_model.num_infectious > 0:
+            num_infected_people_contacted = min(self.model.community_model.num_infectious,
                                                 np.random.binomial(self.model.params.community_contacts_per_step,
                                                                    self.model.community_model.proportion_infected))
             num_infections = np.random.binomial(num_infected_people_contacted,
@@ -190,7 +193,8 @@ class PersonAgent(CellAgent):
             if num_infections > 0:
                 self.become_infected()
 
-                self.model.infection_network.add_community_infection(infected_agent=self, time_step=self.model.steps)
+                self.model.infection_network.add_community_infection(target_name=self.short_name,
+                                                                     time_step=self.model.steps)
 
 
 class FarmPersonAgent(PersonAgent):
@@ -227,7 +231,7 @@ class FarmPersonAgent(PersonAgent):
                 # possibility to infect some cattle
                 self.infect_cattle()
             elif self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.proportion_infected > 0:
-                # infected cattle - maybe get infected
+                # infectious cattle - maybe get infectious
                 # print('susceptible {}'.format(self.name))
                 self.is_become_infected_by_cattle()
 
@@ -239,7 +243,7 @@ class FarmPersonAgent(PersonAgent):
 
     def is_become_infected_by_cattle(self):
         """
-        This person is susceptible and on a farm. They may become infected by infectious cattle.
+        This person is susceptible and on a farm. They may become infectious by infectious cattle.
         """
         raise NotImplementedError("Base class. Implement infecting cattle.")
 
@@ -321,17 +325,18 @@ class FarmVisitorAgent(FarmPersonAgent):
             if num_infected > 0:
                 self.farm.cattle_model.expose_to_infection(num_infected)
 
-                self.model.infection_network.add_infection_event(source_agent=self, infected_agent=self.farm,
+                self.model.infection_network.add_infection_event(source_name=self.short_name,
+                                                                 target_name=self.farm.short_name,
                                                                  time_step=self.model.steps)
 
     def is_become_infected_by_cattle(self):
         """
-        This person is susceptible and on a farm. They may become infected by infectious cattle.
+        This person is susceptible and on a farm. They may become infectious by infectious cattle.
 
         This is a farm services vet or student to see some cows that may be sick. This method runs once per step.
         """
-        if self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.num_infected > 0:
-            num_infected_cows_contacted = min(self.farm.num_infected,
+        if self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.num_infectious > 0:
+            num_infected_cows_contacted = min(self.farm.num_infectious,
                                               np.random.binomial(self.model.params.vet_contacts_per_step,
                                                                  self.farm.proportion_infected))
             num_infections = np.random.binomial(num_infected_cows_contacted, self.model.params.cattle_infect_human_prob)
@@ -339,7 +344,8 @@ class FarmVisitorAgent(FarmPersonAgent):
             if num_infections > 0:
                 self.become_infected()
 
-                self.model.infection_network.add_infection_event(source_agent=self.farm, infected_agent=self,
+                self.model.infection_network.add_infection_event(source_name=self.farm.short_name,
+                                                                 target_name=self.short_name,
                                                                  time_step=self.model.steps)
 
 
@@ -358,6 +364,9 @@ class FarmerAgent(FarmPersonAgent):
 
         # farmers are always on the same farm
         self.farm = farm
+
+        steps_between_milking = self.model.params.daytime_steps // self.model.params.num_milking_events_per_day
+        self.milking_time_steps = list(range(1, self.model.params.daytime_steps+1, steps_between_milking))
 
     def step(self):
         super().step()
@@ -388,8 +397,8 @@ class FarmerAgent(FarmPersonAgent):
         """
         Farmers are quarantined if there is an infection on their farm
         """
-        # check to see if the farmer is quarantined due to an infected farm
-        if not self.model.params.is_quarantine_farmer or self.farm.num_infected == 0:
+        # check to see if the farmer is quarantined due to an infectious farm
+        if not self.model.params.is_quarantine_farmer or self.farm.num_infectious == 0:
             # act as normal
             super().go_home()
 
@@ -400,10 +409,8 @@ class FarmerAgent(FarmPersonAgent):
         This is a farmer, so contacts happen to all cows at milking time. Number of contacts depend on milking system.
         """
         if self.disease_state == DiseaseState.INFECTIOUS and self.farm.num_susceptible > 0:
-            # put all the milking events at the beginning of the day
-            # currently doesn't matter that they aren't spaced out - if it does then this has to be changed
-            if self.model.steps % self.model.params.steps_per_day in \
-                    self.model.params.work_day_steps[:self.model.params.num_milking_events_per_day]:
+            # direct contact with cattle is just at milking
+            if self.model.steps % self.model.params.steps_per_day in self.milking_time_steps:
                 # contact every cow a number of times based on milking system
                 for _ in range(self.farm.num_milking_contacts):
                     num_susceptible_cows_contacted = self.farm.num_susceptible
@@ -413,33 +420,33 @@ class FarmerAgent(FarmPersonAgent):
                     if num_infected > 0:
                         self.farm.cattle_model.expose_to_infection(num_infected)
 
-                        self.model.infection_network.add_infection_event(source_agent=self, infected_agent=self.farm,
+                        self.model.infection_network.add_infection_event(source_name=self.short_name,
+                                                                         target_name=self.farm.short_name,
                                                                          time_step=self.model.steps)
 
     def is_become_infected_by_cattle(self):
         """
-        This person is susceptible and on a farm. They may become infected by infectious cattle.
+        This person is susceptible and on a farm. They may become infectious by infectious cattle.
 
         This is a farm services vet or student to see some cows that may be sick. This method runs once per step.
         """
-        if self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.num_infected > 0:
-            # put all the milking events at the beginning of the day
-            # currently doesn't matter that they aren't spaced out - if it does then this has to be changed
-            if self.model.steps % self.model.params.steps_per_day in \
-                    self.model.params.work_day_steps[:self.model.params.num_milking_events_per_day]:
+        if self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.num_infectious > 0:
+            # direct contact with cattle is just at milking
+            if self.model.steps % self.model.params.steps_per_day in self.milking_time_steps:
                 # contact every cow a number of times based on milking system
                 for _ in range(self.farm.num_milking_contacts):
-                    num_infected_cows_contacted = self.farm.num_infected
+                    num_infected_cows_contacted = self.farm.num_infectious
                     num_infections = np.random.binomial(num_infected_cows_contacted,
                                                         self.model.params.cattle_infect_human_prob)
 
                     if num_infections > 0:
                         self.become_infected()
 
-                        self.model.infection_network.add_infection_event(source_agent=self.farm, infected_agent=self,
+                        self.model.infection_network.add_infection_event(source_name=self.farm.short_name,
+                                                                         target_name=self.short_name,
                                                                          time_step=self.model.steps)
 
-                        break  # can only become infected once
+                        break  # can only become infectious once
 
 
 

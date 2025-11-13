@@ -34,7 +34,7 @@ class SEIRModel(object):
         # counts for each disease state - start off clear of the disease
         self.susceptible = population
         self.exposed = [0] * exposed_steps
-        self.infected = [0] * infectious_steps  # each list item is count for number of steps infected
+        self.infectious = [0] * infectious_steps  # each list item is count for number of steps infectious
         # each list item is count for number of steps recovered
         self.recovered = [0] * recovered_steps
 
@@ -49,7 +49,7 @@ class SEIRModel(object):
         :return: Number of entities
         :rtype: int
         """
-        return self.susceptible + sum(self.exposed) + sum(self.infected) + sum(self.recovered)
+        return self.susceptible + sum(self.exposed) + sum(self.infectious) + sum(self.recovered)
 
     @property
     def num_susceptible(self):
@@ -73,17 +73,17 @@ class SEIRModel(object):
         return sum(self.exposed) / self.population
 
     @property
-    def num_infected(self):
-        return sum(self.infected)
+    def num_infectious(self):
+        return sum(self.infectious)
 
     @property
     def proportion_infected(self):
         """
 
-        :return: Proportion of the population that is infected.
+        :return: Proportion of the population that is infectious.
         :rtype: float
         """
-        return sum(self.infected) / self.population
+        return sum(self.infectious) / self.population
 
     @property
     def num_recovered(self):
@@ -92,18 +92,18 @@ class SEIRModel(object):
     def progress_infection(self):
         """
         Progress one step of the disease.
-        - infected can infect susceptible
-        - infected recover
+        - infectious can infect susceptible
+        - infectious recover
         - recovery immunity expires
         """
         potential_new_infections = np.random.binomial(
-            self.num_contacts_per_step * sum(self.infected),
+            self.num_contacts_per_step * sum(self.infectious),
             self.proportion_susceptible
         )
         new_exposed = min(self.susceptible, np.random.binomial(potential_new_infections, self.infection_prob))
 
         new_infected = self.exposed[-1]
-        new_recovered = self.infected[-1]
+        new_recovered = self.infectious[-1]
         new_recovery_ended = self.recovered[-1]
 
         # adjust the state counts
@@ -113,8 +113,8 @@ class SEIRModel(object):
         self.exposed = self.progress_state_list_one_step(self.exposed)
         self.exposed[0] = new_exposed
 
-        self.infected = self.progress_state_list_one_step(self.infected)
-        self.infected[0] = new_infected
+        self.infectious = self.progress_state_list_one_step(self.infectious)
+        self.infectious[0] = new_infected
 
         self.recovered = self.progress_state_list_one_step(self.recovered)
         self.recovered[0] = new_recovered
@@ -137,31 +137,31 @@ class SEIRModel(object):
 
     def infect_susceptible(self, num_to_infect):
         """
-        Changes some of the model entities from susceptible to infected. If there are less susceptible than the number
+        Changes some of the model entities from susceptible to infectious. If there are less susceptible than the number
         specified, will only infect the number of susceptible.
 
-        :param num_to_infect: The requested number to change susceptible -> infected
+        :param num_to_infect: The requested number to change susceptible -> infectious
         :type num_to_infect: int
 
-        :return: Number of entities infected
+        :return: Number of entities infectious
         :rtype: int
         """
         num_infected = min(self.susceptible, num_to_infect)
         if num_infected > 0:
             self.susceptible -= num_infected
-            self.infected[0] += num_infected
+            self.infectious[0] += num_infected
 
         return num_infected
 
     def expose_to_infection(self, num_to_expose):
         """
-        Changes some of the model entities from susceptible to infected. If there are less susceptible than the number
+        Changes some of the model entities from susceptible to infectious. If there are less susceptible than the number
         specified, will only infect the number of susceptible.
 
         :param num_to_expose: The requested number to change susceptible -> exposed
         :type num_to_expose: int
 
-        :return: Number of entities infected
+        :return: Number of entities infectious
         :rtype: int
         """
         num_exposed = min(self.susceptible, num_to_expose)

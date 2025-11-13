@@ -149,7 +149,7 @@ def dairy_farm_lineplot(model):
 
     ax.set_title("Infection Proportion on Dairy Farms")
     ax.set_ylim(ymin=-0.05, ymax=1.05)
-    ax.set_ylabel("infected / total")
+    ax.set_ylabel("infectious / total")
     ax.set_xlabel('Step')
 
     fig.tight_layout()

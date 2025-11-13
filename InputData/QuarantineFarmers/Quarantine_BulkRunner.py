@@ -19,6 +19,12 @@ var_values = [False, True]
 
 
 if __name__ == "__main__":
+    # clear the working directory
+    working_dir = get_output_data_dir(scenario_name) / 'working'
+    if working_dir.exists():
+        for filepath in [x for x in working_dir.iterdir() if x.is_file()]:
+            filepath.unlink()
+
     # simulator = ABMSimulator()
     results = batch_run(
         MainModel,

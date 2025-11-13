@@ -25,51 +25,42 @@ class InfectionNetwork:
         self.infection_graph.add_node(COMMUNITY_NODE_NAME, step=0)
         self.source_nodes = {}
 
-    def _add_node_for_agent(self, agent, step):
-        if agent.short_name not in self.infection_graph.nodes:
-            if isinstance(agent, DairyFarmAgent):
-                role = 'FARM'
-            elif isinstance(agent, HospitalAgent):
-                role = 'HOSPITAL'
-            elif isinstance(agent.role, str):
-                role = agent.role
-            else:
-                role = agent.role.value
-            self.infection_graph.add_node(agent.short_name, role=role, step=step)
+    def _add_node_for_agent(self, node_name, step):
+        self.infection_graph.add_node(node_name, step=step)
 
-    def add_infection_source(self, source_agent):
+    def add_infection_source(self, node_name):
         """
 
         :param source_agent:
         :type source_agent:
         """
-        self._add_node_for_agent(source_agent, 0)
-        self.source_nodes[source_agent.short_name] = 0
+        self._add_node_for_agent(node_name, 0)
+        self.source_nodes[node_name] = 0
         # print("Source: {}".format(source_agent.short_name))
 
-    def add_infection_event(self, source_agent, infected_agent, time_step):
+    def add_infection_event(self, source_name, target_name, time_step):
         """
-        Adds an infection event to the network: source <=> edge <=> infected.
+        Adds an infection event to the network: source <=> edge <=> infectious.
         The source_agent already exists. Use add_infection_source() for infection source nodes.
 
-        :param source_agent: The agent that infected another agent. None if this is a starting infection.
+        :param source_agent: The agent that infectious another agent. None if this is a starting infection.
         :type source_agent: DairyFarmAgent or PeopleAgent object
         :param infected_agent:
         :type infected_agent:
         :param time_step:
         :type time_step:
         """
-        # create a node for the new infected agent
-        self._add_node_for_agent(infected_agent, time_step)
+        # create a node for the new infectious agent
+        self._add_node_for_agent(target_name, time_step)
 
-        if (source_agent.short_name, infected_agent.short_name) in self.infection_graph.edges:
+        if (source_name, target_name) in self.infection_graph.edges:
             # existing edge so increase the weight
-            self.infection_graph.edges[source_agent.short_name, infected_agent.short_name]['weight'] += 1
+            self.infection_graph.edges[source_name, target_name]['weight'] += 1
         else:
             # new edge
-            self.infection_graph.add_edge(source_agent.short_name, infected_agent.short_name, step=time_step, weight=1)
+            self.infection_graph.add_edge(source_name, target_name, step=time_step, weight=1)
 
-    def add_community_spillover(self, source_agent, time_step):
+    def add_community_spillover(self, source_name, time_step):
         """
 
         :param source_agent:
@@ -77,12 +68,12 @@ class InfectionNetwork:
         :param time_step:
         :type time_step:
         """
-        self._add_community_infection_edge(source_agent, time_step, True)
+        self._add_community_infection_edge(source_name, time_step, True)
 
-    def add_community_infection(self, infected_agent, time_step):
-        self._add_community_infection_edge(infected_agent, time_step, False)
+    def add_community_infection(self, target_name, time_step):
+        self._add_community_infection_edge(target_name, time_step, False)
 
-    def _add_community_infection_edge(self, agent, step, is_agent_source):
+    def _add_community_infection_edge(self, agent_name, step, is_agent_source):
         """
 
         :param agent:
@@ -96,20 +87,20 @@ class InfectionNetwork:
             # add a community node
             self.infection_graph.add_node(COMMUNITY_NODE_NAME, step=step)
 
-        self._add_node_for_agent(agent, step)
+        self._add_node_for_agent(agent_name, step)
         if is_agent_source:
-            source_node_name = agent.short_name
-            infected_node_name = COMMUNITY_NODE_NAME
+            source_name = agent_name
+            target_name = COMMUNITY_NODE_NAME
         else:
-            source_node_name = COMMUNITY_NODE_NAME
-            infected_node_name = agent.short_name
+            source_name = COMMUNITY_NODE_NAME
+            target_name = agent_name
 
-        if (source_node_name, infected_node_name) in self.infection_graph.edges:
+        if (source_name, target_name) in self.infection_graph.edges:
             # existing edge so increase the weight
-            self.infection_graph.edges[source_node_name, infected_node_name]['weight'] += 1
+            self.infection_graph.edges[source_name, target_name]['weight'] += 1
         else:
             # new edge
-            self.infection_graph.add_edge(source_node_name, infected_node_name, step=step, weight=1)
+            self.infection_graph.add_edge(source_name, target_name, step=step, weight=1)
 
     def write_network(self, location_dir, label, scenario_name, param_value=None):
         """
