@@ -234,7 +234,7 @@ class MainModel(mesa.Model):
         for farm in infected_farms:
             farm.cattle_model.infect_susceptible(1)
             # record this source of infection in the network
-            self.infection_network.add_infection_source(farm)
+            self.infection_network.add_infection_source(farm.short_name)
 
         # ------------------------- end farm space definition
         # ------------------------- People
