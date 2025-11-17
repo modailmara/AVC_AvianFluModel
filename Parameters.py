@@ -2,7 +2,7 @@ import configparser
 
 from support_functions import get_scenario_input_dir, get_input_data_dir
 from constants import DEFAULT_PARAMETERS_INPUT_FILENAME, FarmHousing, FarmMilkingSystem, \
-    SCENARIO_PARAMETERS_INPUT_FILENAME, Cleaning
+    SCENARIO_PARAMETERS_INPUT_FILENAME, Cleaning, input_to_role
 
 
 class Parameters:
@@ -60,6 +60,22 @@ class Parameters:
         self.cattle_infect_cattle_prob = self.config['DISEASE'].getfloat('CATTLE_INFECT_CATTLE_PROB')
         self.truck_infect_cattle_prob = self.config['DISEASE'].getfloat('TRUCK_INFECT_CATTLE_PROB')
         self.cattle_infect_truck_prob = self.config['DISEASE'].getfloat('CATTLE_INFECT_TRUCK_PROB')
+
+        # vaccination reduces the probabilities of both being infected and infecting. Only people/humans are vaccinated
+        # VACC_ROLES is either None or a comma (,) separated list of the roles of people that are getting vaccinated
+        # possible roles are: farmer, farm services vet, farm services technician, farm services student,
+        # large animal vet, large animal staff, large animal student, small animal vet, small animal staff,
+        # small animal student, floating vet, floating clinician, floating staff, floating student
+        role_input_list = [role.strip().lower() for role in self.config['DISEASE'].get('VACC_ROLES').split(',')]
+        self.vacc_roles = []
+        for role_input in role_input_list:
+            if role_input in input_to_role:
+                self.vacc_roles.append(input_to_role[role_input])
+        self.vacc_human_infect_cattle_prob = self.config['DISEASE'].get('VACC_HUMAN_INFECT_CATTLE_PROB')
+        self.vacc_cattle_infect_human_prob = self.config['DISEASE'].get('VACC_CATTLE_INFECT_HUMAN_PROB')
+        self.vacc_human_infect_human_prob = self.config['DISEASE'].get('VACC_HUMAN_INFECT_HUMAN_PROB')
+        self.vacc_human_infect_env_prob = self.config['DISEASE'].get('VACC_HUMAN_INFECT_ENV_PROB')
+        self.vacc_env_infect_human_prob = self.config['DISEASE'].get('VACC_ENV_INFECT_HUMAN_PROB')
 
         self.human_exposed_days = self.config['DISEASE'].getfloat('HUMAN_EXPOSED_DAYS')
         self.human_exposed_steps = self.convert_days_to_steps(self.human_exposed_days)

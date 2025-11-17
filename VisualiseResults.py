@@ -94,6 +94,10 @@ def visualise_infection_network(scenario_name, result_type, var_value):
     edgelist_group = edgelist_df.groupby(by=['source', 'target'])
     edgelist_df = edgelist_group.agg({'weight': 'sum', 'step': 'min'}).reset_index()
 
+    # write the edgelist to a csv file
+    filename = '{}_{}_{}_edgelist.csv'.format(scenario_name, result_type, var_value)
+    edgelist_df.to_csv(get_output_data_dir(scenario_name) / filename, index=False)
+
     # convert to a network graph
     infection_graph = nx.from_pandas_edgelist(edgelist_df, source='source', target='target', edge_attr=True,
                                               create_using=nx.DiGraph)
@@ -142,9 +146,9 @@ SCENARIOS = [
     # ('HospitalCleaning', 'hospital_cleaning', ['none', 'daily']),
     # ('PeopleMixing', 'people_sheet', ['default', 'no_common', 'dept_only']),
     # ('QuarantineFarmers', 'is_quarantine_farmer', [False, True]),
-    ('TransmissionCowCow', 'cattle_infect_cattle_prob', [i / 10 for i in range(1, 10, 4)]),
+    # ('TransmissionCowCow', 'cattle_infect_cattle_prob', [i / 10 for i in range(1, 10, 4)]),
     # ('TransmissionPersonPerson', 'human_infect_human_prob', [i / 10 for i in range(1, 10, 4)]),
-    # ('TruckCleaning', 'truck_cleaning', ['none', 'daily', 'visit']),
+    ('TruckCleaning', 'truck_cleaning', ['none', 'daily', 'visit']),
 ]
 
 if __name__ == "__main__":
@@ -154,9 +158,9 @@ if __name__ == "__main__":
         scenario_df = pd.read_csv(get_output_data_dir(scenario_name) / '{}_data-{}.csv'.format(scenario_name,
                                                                                                NUM_ITERATIONS))
         print('  plotting number of steps to spillover')
-        visualise_steps_to_spillover(scenario_name, scenario_df, var_name, var_values)
+        # visualise_steps_to_spillover(scenario_name, scenario_df, var_name, var_values)
         print('  plotting community infectious proportion')
-        visualise_community_infectious_proportion(scenario_name, scenario_df, var_name)
+        # visualise_community_infectious_proportion(scenario_name, scenario_df, var_name)
         print('  drawing the infection networks')
         for var_value in var_values:
             visualise_infection_network(scenario_name, 'spillover', var_value)
