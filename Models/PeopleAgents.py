@@ -35,6 +35,7 @@ class PersonAgent(CellAgent):
         self.area_weights = area_weights
 
         # disease information
+        self.vaccinated = False
         self.disease_state = DiseaseState.SUSCEPTIBLE
         self.steps_current_disease_state = 0
 
@@ -140,13 +141,17 @@ class PersonAgent(CellAgent):
         """
         if self.disease_state == DiseaseState.INFECTIOUS:  # can only infect if infectious
             if self.cell is not None:
+                if self.vaccinated:
+                    infection_prob = self.model.params.vacc_human_infect_human_prob
+                else:
+                    infection_prob = self.model.params.human_infect_human_prob
                 # cell not None means there may be other agents to infect
                 # get all the agents in this cell
                 susceptible_agents_in_cell = [agent for agent in self.cell.agents
                                               if isinstance(agent, PersonAgent)
                                               and agent.disease_state == DiseaseState.SUSCEPTIBLE]
                 for agent in susceptible_agents_in_cell:
-                    if self.random.random() < self.model.params.human_infect_human_prob:
+                    if self.random.random() < infection_prob:
                         agent.become_infected()
 
                         # record in the infection graph
@@ -154,10 +159,14 @@ class PersonAgent(CellAgent):
                                                                          target_name=agent.short_name,
                                                                          time_step=self.model.steps)
             elif self.location == Location.COMMUNITY and self.model.community_model.num_susceptible > 0:
+                if self.vaccinated:
+                    infection_prob = self.model.params.vacc_human_infect_human_prob
+                else:
+                    infection_prob = self.model.params.human_infect_human_prob
                 # can only infect the community
                 num_possible_infections = np.random.binomial(self.model.params.community_contacts_per_step,
                                                              self.model.community_model.proportion_susceptible)
-                num_infections = np.random.binomial(num_possible_infections, self.model.params.human_infect_human_prob)
+                num_infections = np.random.binomial(num_possible_infections, infection_prob)
 
                 if num_infections > 0:
                     self.model.community_model.expose_to_infection(num_infections)
@@ -165,13 +174,18 @@ class PersonAgent(CellAgent):
                     self.model.infection_network.add_community_spillover(self.short_name, self.model.steps)
 
             if self.location in [Location.HOSPITAL, Location.TRAVEL, Location.FARM]:
+                if self.vaccinated:
+                    infection_prob = self.model.params.vacc_human_infect_env_prob
+                else:
+                    infection_prob = self.model.params.human_infect_env_prob
                 # chance of infecting the environment
                 env_location_agents = [agent for agent in self.cell.agents
                                        if isinstance(agent, Models.LocationAgents.LocationAgent)
                                        and agent.disease_state == DiseaseState.SUSCEPTIBLE]
                 for location_agent in env_location_agents:
+
                     # hopefully only 0 or 1 but no harm in doing a for loop
-                    if self.random.random() <= self.model.params.human_infect_env_prob:
+                    if self.random.random() <= infection_prob:
                         location_agent.become_infected()
 
                         # record the infection in the infection network
@@ -184,11 +198,14 @@ class PersonAgent(CellAgent):
         """
         if self.disease_state == DiseaseState.SUSCEPTIBLE and self.location == Location.COMMUNITY \
                 and self.model.community_model.num_infectious > 0:
+            if self.vaccinated:
+                infection_prob = self.model.params.vacc_human_infect_human_prob
+            else:
+                infection_prob = self.model.params.human_infect_human_prob
             num_infected_people_contacted = min(self.model.community_model.num_infectious,
                                                 np.random.binomial(self.model.params.community_contacts_per_step,
                                                                    self.model.community_model.proportion_infected))
-            num_infections = np.random.binomial(num_infected_people_contacted,
-                                                self.model.params.human_infect_human_prob)
+            num_infections = np.random.binomial(num_infected_people_contacted, infection_prob)
 
             if num_infections > 0:
                 self.become_infected()
@@ -317,10 +334,14 @@ class FarmVisitorAgent(FarmPersonAgent):
         This is a farm services vet or student to see some cows that may be sick. This method runs once per step.
         """
         if self.disease_state == DiseaseState.INFECTIOUS and self.farm.num_susceptible > 0:
+            if self.vaccinated:
+                infection_prob = self.model.params.vacc_human_infect_cattle_prob
+            else:
+                infection_prob = self.model.params.human_infect_cattle_prob
             num_susceptible_cows_contacted = min(self.farm.num_susceptible,
                                                  np.random.binomial(self.model.params.vet_contacts_per_step,
                                                                     self.farm.proportion_susceptible))
-            num_infected = np.random.binomial(num_susceptible_cows_contacted, self.model.params.human_infect_cattle_prob)
+            num_infected = np.random.binomial(num_susceptible_cows_contacted, infection_prob)
 
             if num_infected > 0:
                 self.farm.cattle_model.expose_to_infection(num_infected)
@@ -336,10 +357,14 @@ class FarmVisitorAgent(FarmPersonAgent):
         This is a farm services vet or student to see some cows that may be sick. This method runs once per step.
         """
         if self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.num_infectious > 0:
+            if self.vaccinated:
+                infection_prob = self.model.params.vacc_cattle_infect_human_prob
+            else:
+                infection_prob = self.model.params.cattle_infect_human_prob
             num_infected_cows_contacted = min(self.farm.num_infectious,
                                               np.random.binomial(self.model.params.vet_contacts_per_step,
                                                                  self.farm.proportion_infected))
-            num_infections = np.random.binomial(num_infected_cows_contacted, self.model.params.cattle_infect_human_prob)
+            num_infections = np.random.binomial(num_infected_cows_contacted, infection_prob)
 
             if num_infections > 0:
                 self.become_infected()
@@ -411,11 +436,14 @@ class FarmerAgent(FarmPersonAgent):
         if self.disease_state == DiseaseState.INFECTIOUS and self.farm.num_susceptible > 0:
             # direct contact with cattle is just at milking
             if self.model.steps % self.model.params.steps_per_day in self.milking_time_steps:
+                if self.vaccinated:
+                    infection_prob = self.model.params.vacc_human_infect_cattle_prob
+                else:
+                    infection_prob = self.model.params.human_infect_cattle_prob
                 # contact every cow a number of times based on milking system
                 for _ in range(self.farm.num_milking_contacts):
                     num_susceptible_cows_contacted = self.farm.num_susceptible
-                    num_infected = np.random.binomial(num_susceptible_cows_contacted,
-                                                      self.model.params.human_infect_cattle_prob)
+                    num_infected = np.random.binomial(num_susceptible_cows_contacted, infection_prob)
 
                     if num_infected > 0:
                         self.farm.cattle_model.expose_to_infection(num_infected)
@@ -433,11 +461,14 @@ class FarmerAgent(FarmPersonAgent):
         if self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.num_infectious > 0:
             # direct contact with cattle is just at milking
             if self.model.steps % self.model.params.steps_per_day in self.milking_time_steps:
+                if self.vaccinated:
+                    infection_prob = self.model.params.vacc_cattle_infect_human_prob
+                else:
+                    infection_prob = self.model.params.cattle_infect_human_prob
                 # contact every cow a number of times based on milking system
                 for _ in range(self.farm.num_milking_contacts):
                     num_infected_cows_contacted = self.farm.num_infectious
-                    num_infections = np.random.binomial(num_infected_cows_contacted,
-                                                        self.model.params.cattle_infect_human_prob)
+                    num_infections = np.random.binomial(num_infected_cows_contacted, infection_prob)
 
                     if num_infections > 0:
                         self.become_infected()

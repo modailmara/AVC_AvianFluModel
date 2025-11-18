@@ -36,7 +36,6 @@ class InfectionNetwork:
         """
         self._add_node_for_agent(node_name, 0)
         self.source_nodes[node_name] = 0
-        # print("Source: {}".format(source_agent.short_name))
 
     def add_infection_event(self, source_name, target_name, time_step):
         """
@@ -120,7 +119,9 @@ class InfectionNetwork:
         working_dir = location_dir / 'working'
         working_dir.mkdir(parents=True, exist_ok=True)
 
-        filename = "{}_{}_{}_{}".format(scenario_name, label, param_value, uuid.uuid4())
+        # The uuid is to make sure there is a separate file for each iteration. The iteration number would be ideal
+        # but I don't think I can access it from here.
+        filename = "{}::{}::{}::{}".format(scenario_name, label, param_value, uuid.uuid4())
 
         # write the edgelist
         nx.write_edgelist(self.infection_graph, working_dir / '{}.{}'.format(filename, 'csv'), delimiter=',',

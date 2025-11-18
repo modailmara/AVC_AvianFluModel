@@ -6,15 +6,45 @@ import matplotlib.pyplot as plt
 import networkx as nx
 
 from support_functions import get_output_data_dir
-from InputData.scenario_constants import NUM_ITERATIONS, STEPS
+from InputData.scenario_constants import NUM_ITERATIONS
+
 
 matplotlib.use('TkAgg')
+
+STEPS_PER_DAY = 24
 
 
 def set_seaborn_context():
     sns.set_theme(rc={'figure.figsize': (10, 5)})
     sns.set_style('whitegrid')
     sns.set_context("paper")
+
+
+def _convert_person_role_list_to_string(person_role_list):
+    """
+    Converts a stringified list of PersonRole to a string of PersonRole names separated by '-'
+    Example: input "[<PersonRole.FARMER: 'f'>, <PersonRole.FARM_SERVICES_CLINICIAN: 'FSc'>]"
+                   -> "FARMER-FARM_SERVICES_CLINICIAN"
+    Input can be "[None]", then output is "None"
+
+    :param person_role_list: Stringified list of PersonRole or "[None]"
+    :type person_role_list: str
+    :return: string of short PersonRole codes separated by '-', or 'None'
+    :rtype: str
+    """
+    if '[none]' in person_role_list.strip().lower():
+        return 'None'
+    else:
+        name_list = []
+        for role_str in [r.strip() for r in person_role_list[1:-1].split(',')]:
+            # role_str is "<PersonRole.ROLE: 'short_code'>"
+            role_name = role_str[1:-1].split(':')[0]
+            # role_name is "PersonRole.ROLE"
+            role_name = role_name.split('.')[1]
+            name_list.append(role_name)
+        names = '-'.join(name_list)
+        # print('  {} from {}'.format(short_codes, person_role_list))
+        return names
 
 
 def visualise_steps_to_spillover(scenario_name, result_df, var_name, var_values):
@@ -31,15 +61,22 @@ def visualise_steps_to_spillover(scenario_name, result_df, var_name, var_values)
     :type var_values:
 
     """
+    if 'vacc_roles' in result_df:
+        # this column entries are stringified lists of either None or list of one or more PersonRole
+        # print(list(result_df['vacc_roles'].unique()))
+        result_df['vacc_roles'] = result_df.vacc_roles.apply(_convert_person_role_list_to_string)
+        # print(list(result_df['vacc_roles'].unique()))
+
     set_seaborn_context()
 
     # restrict results to just one line per iteration, var_name pair
     result_group = result_df.groupby(by=['iteration', var_name])
     spillover_result_df = result_group['steps_to_community'].aggregate('max').reset_index()
     # print('sr_df ({}):\n{}'.format(spillover_result_df.shape, spillover_result_df))
+    spillover_result_df['Days to Community Spillover'] = spillover_result_df.steps_to_community / STEPS_PER_DAY
 
-    plot = sns.boxplot(spillover_result_df, x=var_name, y='steps_to_community', order=var_values)
-    plt.ylim(0, np.nanmax(result_df.steps_to_community) + 10)
+    plot = sns.boxplot(spillover_result_df, x=var_name, y='Days to Community Spillover', order=var_values)
+    plt.ylim(0, np.nanmax(spillover_result_df['Days to Community Spillover']) + 1)
 
     plot.get_figure().savefig(get_output_data_dir(scenario_name) / '{}-spillover_steps-box.png'.format(scenario_name))
 
@@ -67,8 +104,11 @@ def visualise_community_infectious_proportion(scenario_name, result_df, var_name
     # make a column with the proportion of infectious community members
     result_df['Community_prop_INFECTIOUS'] = result_df['Community_num_INFECTIOUS'] / result_df['Community_num_TOTAL']
 
+    # make a day column as it's easier to read
+    result_df['Days'] = result_df.Step / STEPS_PER_DAY
+
     # make a line plot comparing outcomes
-    plot = sns.lineplot(result_df, x='Step', y='Community_prop_INFECTIOUS', hue=var_name)
+    plot = sns.lineplot(result_df, x='Days', y='Community_prop_INFECTIOUS', hue=var_name)
 
     plot.get_figure().savefig(get_output_data_dir(scenario_name) / '{}-prop_infectious-line.png'.format(scenario_name))
 
@@ -81,7 +121,7 @@ def visualise_infection_network(scenario_name, result_type, var_value):
     edgelist_dir = get_output_data_dir(scenario_name) / 'working'
     # read in all the iteration result edge lists and put them together
     edge_df_list = []
-    for edgelist_filepath in [edgelist_dir / filename for filename in list(edgelist_dir.glob('{}_{}_{}_*.csv'.format(
+    for edgelist_filepath in [edgelist_dir / filename for filename in list(edgelist_dir.glob('{}::{}::{}::*.csv'.format(
             scenario_name, result_type, var_value)))]:
         edge_df_list.append(pd.read_csv(edgelist_filepath, names=['source', 'target', 'weight', 'step']))
     edgelist_df = pd.concat(edge_df_list)
@@ -95,7 +135,7 @@ def visualise_infection_network(scenario_name, result_type, var_value):
     edgelist_df = edgelist_group.agg({'weight': 'sum', 'step': 'min'}).reset_index()
 
     # write the edgelist to a csv file
-    filename = '{}_{}_{}_edgelist.csv'.format(scenario_name, result_type, var_value)
+    filename = '{}::{}::{}::edgelist.csv'.format(scenario_name, result_type, var_value)
     edgelist_df.to_csv(get_output_data_dir(scenario_name) / filename, index=False)
 
     # convert to a network graph
@@ -137,9 +177,12 @@ def visualise_infection_network(scenario_name, result_type, var_value):
     plt.axis("off")
     # plt.tight_layout()
 
-    ax.get_figure().savefig(get_output_data_dir(scenario_name) / '{}_{}_{}_network.png'.format(scenario_name,
-                                                                                               result_type,
-                                                                                               var_value))
+    ax.get_figure().savefig(get_output_data_dir(scenario_name) / '{}::{}::{}::network.png'.format(scenario_name,
+                                                                                                  result_type,
+                                                                                                  var_value))
+
+    plt.close()
+
 
 SCENARIOS = [
     # ('AnimalIntroduction', 'num_infected_farms', [1, 5, 10, 15, 19]),
@@ -149,6 +192,7 @@ SCENARIOS = [
     # ('TransmissionCowCow', 'cattle_infect_cattle_prob', [i / 10 for i in range(1, 10, 4)]),
     # ('TransmissionPersonPerson', 'human_infect_human_prob', [i / 10 for i in range(1, 10, 4)]),
     ('TruckCleaning', 'truck_cleaning', ['none', 'daily', 'visit']),
+    ('Vaccination', 'vacc_roles', ['None', 'FARMER', 'FARM_SERVICES_CLINICIAN', 'FARMER-FARM_SERVICES_CLINICIAN']),
 ]
 
 if __name__ == "__main__":
@@ -158,9 +202,9 @@ if __name__ == "__main__":
         scenario_df = pd.read_csv(get_output_data_dir(scenario_name) / '{}_data-{}.csv'.format(scenario_name,
                                                                                                NUM_ITERATIONS))
         print('  plotting number of steps to spillover')
-        # visualise_steps_to_spillover(scenario_name, scenario_df, var_name, var_values)
+        visualise_steps_to_spillover(scenario_name, scenario_df, var_name, var_values)
         print('  plotting community infectious proportion')
-        # visualise_community_infectious_proportion(scenario_name, scenario_df, var_name)
+        visualise_community_infectious_proportion(scenario_name, scenario_df, var_name)
         print('  drawing the infection networks')
         for var_value in var_values:
             visualise_infection_network(scenario_name, 'spillover', var_value)

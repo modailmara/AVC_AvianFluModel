@@ -71,11 +71,11 @@ class Parameters:
         for role_input in role_input_list:
             if role_input in input_to_role:
                 self.vacc_roles.append(input_to_role[role_input])
-        self.vacc_human_infect_cattle_prob = self.config['DISEASE'].get('VACC_HUMAN_INFECT_CATTLE_PROB')
-        self.vacc_cattle_infect_human_prob = self.config['DISEASE'].get('VACC_CATTLE_INFECT_HUMAN_PROB')
-        self.vacc_human_infect_human_prob = self.config['DISEASE'].get('VACC_HUMAN_INFECT_HUMAN_PROB')
-        self.vacc_human_infect_env_prob = self.config['DISEASE'].get('VACC_HUMAN_INFECT_ENV_PROB')
-        self.vacc_env_infect_human_prob = self.config['DISEASE'].get('VACC_ENV_INFECT_HUMAN_PROB')
+        self.vacc_human_infect_cattle_prob = self.config['DISEASE'].getfloat('VACC_HUMAN_INFECT_CATTLE_PROB')
+        self.vacc_cattle_infect_human_prob = self.config['DISEASE'].getfloat('VACC_CATTLE_INFECT_HUMAN_PROB')
+        self.vacc_human_infect_human_prob = self.config['DISEASE'].getfloat('VACC_HUMAN_INFECT_HUMAN_PROB')
+        self.vacc_human_infect_env_prob = self.config['DISEASE'].getfloat('VACC_HUMAN_INFECT_ENV_PROB')
+        self.vacc_env_infect_human_prob = self.config['DISEASE'].getfloat('VACC_ENV_INFECT_HUMAN_PROB')
 
         self.human_exposed_days = self.config['DISEASE'].getfloat('HUMAN_EXPOSED_DAYS')
         self.human_exposed_steps = self.convert_days_to_steps(self.human_exposed_days)

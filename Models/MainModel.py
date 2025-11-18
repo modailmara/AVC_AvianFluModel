@@ -55,8 +55,12 @@ class MainModel(mesa.Model):
 
     def __init__(self, seed=None, simulator=None, scenario_name=None,
                  is_stop_community_infection=None, is_quarantine_farmer=None,
+                 # infection probabilities
                  cattle_infect_cattle_prob=None, human_infect_human_prob=None,
                  human_infect_cattle_prob=None, cattle_infect_human_prob=None,
+                 # vaccinations
+                 vacc_roles=None, vacc_human_infect_cattle_prob=None, vacc_human_infect_human_prob=None,
+                 vacc_cattle_infect_human_prob=None, vacc_human_infect_env_prob=None, vacc_env_infect_human_prob=None,
                  num_infected_farms=None,
                  people_sheet=None,
                  truck_cleaning=None, hospital_cleaning=None):
@@ -76,6 +80,7 @@ class MainModel(mesa.Model):
         if is_quarantine_farmer is not None:
             self.params.is_quarantine_farmer = is_quarantine_farmer
             self.scenario_value = is_quarantine_farmer
+        # infection probabilities
         if cattle_infect_cattle_prob is not None:
             self.params.cattle_infect_cattle_prob = cattle_infect_cattle_prob
             self.scenario_value = cattle_infect_cattle_prob
@@ -88,6 +93,31 @@ class MainModel(mesa.Model):
         if cattle_infect_human_prob is not None:
             self.params.cattle_infect_human_prob = cattle_infect_human_prob
             self.scenario_value = cattle_infect_human_prob
+        # vaccination
+        if vacc_roles is not None:
+            # passed as a list of PersonRole
+            self.params.vacc_roles = vacc_roles
+            if vacc_roles is None or (isinstance(vacc_roles, str) and vacc_roles.strip().lower() == 'none') \
+                    or None in vacc_roles:
+                self.scenario_value = 'None'
+            else:
+                self.scenario_value = '-'.join([vr.name for vr in vacc_roles if vr in PersonRole])
+        if vacc_human_infect_cattle_prob is not None:
+            self.params.vacc_human_infect_cattle_prob = vacc_human_infect_cattle_prob
+            self.scenario_value = vacc_human_infect_cattle_prob
+        if vacc_human_infect_human_prob is not None:
+            self.params.vacc_human_infect_human_prob = vacc_human_infect_human_prob
+            self.scenario_value = vacc_human_infect_human_prob
+        if vacc_cattle_infect_human_prob is not None:
+            self.params.vacc_cattle_infect_human_prob = vacc_cattle_infect_human_prob
+            self.scenario_value = vacc_cattle_infect_human_prob
+        if vacc_human_infect_env_prob is not None:
+            self.params.vacc_human_infect_env_prob = vacc_human_infect_env_prob
+            self.scenario_value = vacc_human_infect_env_prob
+        if vacc_env_infect_human_prob is not None:
+            self.params.vacc_env_infect_human_prob = vacc_env_infect_human_prob
+            self.scenario_value = vacc_env_infect_human_prob
+
         if num_infected_farms is not None:
             self.params.num_init_infected_farms = num_infected_farms
             self.scenario_value = num_infected_farms
@@ -215,7 +245,8 @@ class MainModel(mesa.Model):
             self.farm_cells.append(cell)
 
             # one farmer per farm
-            FarmerAgent(self, farm)
+            farmer = FarmerAgent(self, farm)
+            farmer.vaccinated = PersonRole.FARMER in self.params.vacc_roles
             self.total_people += 1
 
             # increment the cell coordinates
@@ -252,6 +283,9 @@ class MainModel(mesa.Model):
             num_role = int(role_def_row.num)
             self.total_people += num_role
 
+            # vaccination status
+            is_vaccinated = person_role in self.params.vacc_roles
+
             # parse the weightings for each area for this role
             area_weights = []
             for name in area_names:
@@ -262,6 +296,7 @@ class MainModel(mesa.Model):
                 if person_role in [PersonRole.FARM_SERVICES_CLINICIAN, PersonRole.FARM_SERVICES_STUDENT]:
                     visitor_agent = FarmVisitorAgent(self, person_num, cell=None, role=person_role,
                                                      area_weights=area_weights)
+                    visitor_agent.vaccinated = is_vaccinated
                     if person_role == PersonRole.FARM_SERVICES_CLINICIAN:
                         # add the farmer to the queue for vet farm visits
                         self.available_farm_clinicians.append(visitor_agent)
@@ -269,8 +304,9 @@ class MainModel(mesa.Model):
                         # add the farmer to the queue for vet farm visits
                         self.available_farm_students.append(visitor_agent)
                 else:
-                    PersonAgent(self, person_num, cell=None, role=person_role,
-                                area_weights=area_weights)
+                    hospital_agent = PersonAgent(self, person_num, cell=None, role=person_role,
+                                                 area_weights=area_weights)
+                    hospital_agent.vaccinated = is_vaccinated
                 # person.move()
 
         # ------------------------- end initial people placement
