@@ -22,7 +22,7 @@ if __name__ == "__main__":
         },
         iterations=NUM_ITERATIONS,
         max_steps=STEPS,
-        number_processes=None,
+        number_processes=1,
         data_collection_period=1,
         display_progress=True
     )

@@ -1,5 +1,7 @@
 import numpy as np
 
+# from Models import MainModel
+
 
 class SEIRModel(object):
     """
@@ -12,7 +14,8 @@ class SEIRModel(object):
                  infectious_steps, recovered_steps,
                  num_contacts_per_step):
         """
-
+        :param model: Model that this compartment model belongs.
+        :type model: MainModel
         :param name: Name of this model. Identifies what this model represents.
         :type name: str
         :param population: Total number of entities to be modelled
@@ -31,6 +34,8 @@ class SEIRModel(object):
         self.model = model
         self.name = name
 
+        self.population = population
+
         # counts for each disease state - start off clear of the disease
         self.susceptible = population
         self.exposed = [0] * exposed_steps
@@ -41,15 +46,6 @@ class SEIRModel(object):
         # model parameters
         self.infection_prob = infection_probability
         self.num_contacts_per_step = num_contacts_per_step
-
-    @property
-    def population(self):
-        """
-        Total count of all entities, across all disease states
-        :return: Number of entities
-        :rtype: int
-        """
-        return self.susceptible + sum(self.exposed) + sum(self.infectious) + sum(self.recovered)
 
     @property
     def num_susceptible(self):
@@ -155,7 +151,7 @@ class SEIRModel(object):
 
     def expose_to_infection(self, num_to_expose):
         """
-        Changes some of the model entities from susceptible to infectious. If there are less susceptible than the number
+        Changes some of the model entities from susceptible to exposed. If there are less susceptible than the number
         specified, will only infect the number of susceptible.
 
         :param num_to_expose: The requested number to change susceptible -> exposed

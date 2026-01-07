@@ -43,24 +43,24 @@ class PersonAgent(CellAgent):
         self.location = Location.COMMUNITY
         self.department = None
 
+    def start_stop_work(self):
+        """
+        At the beginning of each week day, people go to work. At the end of the day they go home.
+        """
+        # check need to change location
+        if self.location == Location.COMMUNITY and self.model.is_business_hours(self.model.steps):
+            # out in the community and it's time to go to work
+            self.start_work()
+        elif self.location == Location.HOSPITAL and not self.model.is_business_hours(self.model.steps):
+            # at work and work time is over so time to go home
+            self.go_home()
+
     def step(self):
         """
         Do all the things that a person does in a step:
         - move to a new location
         - progress their disease status
         """
-        # check need to change location
-        if self.location == Location.COMMUNITY and self.model.is_business_hours(self.model.steps):
-            # out in the community and it's time to go to work
-            self.start_work()
-        elif self.location == Location.HOSPITAL:
-            if not self.model.is_business_hours(self.model.steps):
-                # at work and work time is over so time to go home from work
-                self.go_home()
-            elif self.model.is_business_hours(self.model.steps):
-                # at the hospital, time to move around
-                self.move()
-
         # disease stuff
         self.progress_disease()
         self.infect_others()  # maybe infect other people agents or community or truck or farm or cows
@@ -127,7 +127,7 @@ class PersonAgent(CellAgent):
 
     def become_infected(self):
         """
-        This susceptible agent becomes infectious
+        This susceptible agent becomes exposed
         """
         if self.disease_state == DiseaseState.SUSCEPTIBLE:
             self.disease_state = DiseaseState.EXPOSED
@@ -384,6 +384,8 @@ class FarmerAgent(FarmPersonAgent):
 
         :param model: The model that this agent belongs to
         :type model: MainModel object
+        :param farm: The farm that this farmer runs
+        :type farm: DairyFarmAgent
         """
         super().__init__(model, farm.number, PersonRole.FARMER, None, ())
 
@@ -393,13 +395,16 @@ class FarmerAgent(FarmPersonAgent):
         steps_between_milking = self.model.params.daytime_steps // self.model.params.num_milking_events_per_day
         self.milking_time_steps = list(range(1, self.model.params.daytime_steps+1, steps_between_milking))
 
-    def step(self):
-        super().step()
-
+    def start_stop_work(self):
+        """
+        At the beginning of each week day, people go to work. At the end of the day they go home.
+        """
         if self.location == Location.COMMUNITY and self.model.is_business_hours(self.model.steps):
             self.start_work()
         elif self.location == Location.FARM and not self.model.is_business_hours(self.model.steps):
-            self.go_home()
+            # go home if farmers are not being quarantined or there is no infection on the farm
+            if not self.model.params.is_quarantine_farmer or self.farm.num_infectious == 0:
+                self.go_home()
 
     def start_work(self):
         """

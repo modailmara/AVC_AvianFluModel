@@ -12,7 +12,7 @@ from InfectionNetwork import InfectionNetwork
 from Parameters import Parameters
 
 from Models.PeopleAgents import PersonAgent, FarmerAgent, FarmVisitorAgent
-from Models.LocationAgents import DairyFarmAgent, HospitalAgent, TruckAgent
+from Models.LocationAgents import DairyFarmAgent, HospitalAgent, TruckAgent, LocationAgent
 from constants import FARM_INPUT_FILENAME, HospitalDepartment, PEOPLE_INPUT_FILENAME, PersonRole, DiseaseState, \
     input_to_role, TRUCK_ROLE, Cleaning
 
@@ -397,17 +397,32 @@ class MainModel(mesa.Model):
                 and self.params.is_stop_community_infection:
             # stop running here
             self.running = False
-        else:
-            # go ahead with another model step
-            self.agents.shuffle_do('step')
-            self.community_model.step()
+        else:  # go ahead with another model step
+            # person agents start/stop work at begin/end of business day
+            self.agents.select(lambda a: isinstance(a, PersonAgent)).shuffle_do('start_stop_work')
 
+            # location agents sometimes have a cleaning schedule
+            self.agents.select(lambda a: isinstance(a, LocationAgent)).shuffle_do('scheduled_cleaning')
+
+            # start any requested farm visits
+            self.agents_by_type[DairyFarmAgent].shuffle_do('request_vet')
             # prioritise is_emergency visits anytime
             self.start_farm_visit(is_emergency=True, take_student=False)
-
             # normal priority farm trips are started at beginning and middle of workdays
             if self.is_start_of_workday(self.steps) or self.is_middle_of_workday(self.steps):
                 self.start_farm_visit(is_emergency=False, take_student=True)
+
+            # move agents
+            self.agents.shuffle_do('move')
+
+            # progress existing disease
+            self.agents.shuffle_do('progress_disease')
+            self.community_model.progress_infection()
+
+            # agents infect other agents (people and location) and compartmental entities (cows and community)
+            self.agents.shuffle_do('infect_others')
+            # agents in the community may be infected by the community
+            self.agents.select(lambda a: isinstance(a, PersonAgent)).shuffle_do('become_infected_by_community')
 
             self.datacollector.collect(self)
 

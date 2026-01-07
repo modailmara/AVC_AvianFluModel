@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import networkx as nx
+import upsetplot
 
 from support_functions import get_output_data_dir
 from InputData.scenario_constants import NUM_ITERATIONS
@@ -115,6 +116,40 @@ def visualise_community_infectious_proportion(scenario_name, result_df, var_name
     plt.close()
 
 
+def get_node_pos(nx_graph, current_node, current_x=0, y_min=0, visited_nodes=[]):
+    """
+    Returns a dictionary with nodes as keys and position tuples as
+    :param nx_graph:
+    :type nx_graph:
+    :param start_nodes:
+    :type start_nodes:
+    :param visited_nodes:
+    :type visited_nodes:
+    :return:
+    :rtype:
+    """
+    positions = {}
+    visited_nodes.append(current_node)
+    unvisited_successors = [n for n in nx_graph.successors(current_node) if n not in visited_nodes]
+    if len(unvisited_successors) == 0:
+        # this is a leaf node
+        y_span = 1
+        positions[current_node] = (current_x, y_min)
+    else:
+        # not a leaf - recurse through subtrees
+        y_span = 0
+        for node in unvisited_successors:
+            sub_y_span, subtree_pos = get_node_pos(nx_graph, node, current_x+1, y_min+y_span, visited_nodes)
+            positions.update(subtree_pos)
+
+            y_span += sub_y_span
+
+        # position the current node
+        positions[current_node] = (current_x, (y_span + y_min) / 2)
+
+    return y_span, positions
+
+
 def visualise_infection_network(scenario_name, result_type, var_value):
     print("    {}_{}".format(result_type, var_value))
     # get the dir with the edgelist files
@@ -143,8 +178,14 @@ def visualise_infection_network(scenario_name, result_type, var_value):
                                               create_using=nx.DiGraph)
 
     # Draw the graph nodes
-    # node_pos = nx.circular_layout(infection_graph)
-    node_pos = nx.spring_layout(infection_graph, seed=63, k=10)
+    # node_pos = nx.spring_layout(infection_graph, seed=63, k=10)
+    # get the source nodes (infected farms)
+    if 'complete' in filename:
+        # for debugging
+        print(filename)
+    y_span, node_pos = get_node_pos(infection_graph, 'F', current_x=0, y_min=0, visited_nodes=[])
+    # position community node to the right, halfway between top and bottom
+    node_pos['C'] = (max(node_pos.values(), key=lambda x: x[0])[0] + 2, y_span / 2)
 
     nx.draw_networkx_nodes(infection_graph, node_pos, node_size=700)
 
@@ -170,7 +211,7 @@ def visualise_infection_network(scenario_name, result_type, var_value):
 
     nx.draw_networkx_labels(infection_graph, node_pos, font_size=10, font_family='sans-serif')
     edge_labels = nx.get_edge_attributes(infection_graph, 'weight')
-    nx.draw_networkx_edge_labels(infection_graph, node_pos, edge_labels)
+    # nx.draw_networkx_edge_labels(infection_graph, node_pos, edge_labels)
 
     ax = plt.gca()
     ax.margins(0.08)
@@ -184,6 +225,59 @@ def visualise_infection_network(scenario_name, result_type, var_value):
     plt.close()
 
 
+def visualise_infection_upset(scenario_name, result_type, var_value):
+    print("    {}_{}".format(result_type, var_value))
+    # get the dir with the edgelist files
+    edgelist_dir = get_output_data_dir(scenario_name)
+    edgelist_filepath = edgelist_dir / '{}::{}::{}::edgelist.csv'.format(scenario_name, result_type, var_value)
+    edgelist_df = pd.read_csv(edgelist_filepath)  # , names=['source', 'target', 'weight', 'step'])
+
+    num_edges = 10
+    short_edgelist_df = edgelist_df.sort_values(by='weight', ascending=False)[:num_edges]
+
+    # node_set = set(short_edgelist_df.source) | set(short_edgelist_df.target)
+    #
+    # upset_dict = {node_name: [] for node_name in node_set}
+    # upset_dict['value'] = []
+    # upset_dict['index'] = []
+    # for index, row in short_edgelist_df.iterrows():
+    #     source_node = row.source
+    #     target_node = row.target
+    #     edge_weight = row.weight
+    #
+    #     upset_dict[source_node].append(True)
+    #     upset_dict[target_node].append(True)
+    #     upset_dict['value'].append(edge_weight)
+    #     upset_dict['index'].append(index)
+    #     for other_node in [node_name for node_name in node_set if node_name not in [source_node, target_node]]:
+    #         upset_dict[other_node].append(False)
+    #
+    # upset_df = pd.DataFrame(upset_dict)
+    # upset_df = upset_df.set_index(list(node_set))
+    memberships = []
+    counts = []
+    for _, row in short_edgelist_df.iterrows():
+        item = [row.source, row.target]
+        item.sort()
+        try:
+            index = memberships.index(item)
+
+            # link is already in the memberships so add the weight to the count
+            counts[index] += row.weight
+        except ValueError:
+            # new item - append to both lists
+            memberships.append(item)
+            counts.append(row.weight)
+    upset_df = upsetplot.from_memberships(memberships, counts)
+
+    upsetplot.plot(upset_df, sort_by='cardinality')
+
+    plt.savefig(get_output_data_dir(scenario_name) / '{}::{}::{}::upset.png'.format(scenario_name,
+                                                                                    result_type,
+                                                                                    var_value))
+    plt.close()
+
+
 SCENARIOS = [
     # ('AnimalIntroduction', 'num_infected_farms', [1, 5, 10, 15, 19]),
     # ('HospitalCleaning', 'hospital_cleaning', ['none', 'daily']),
@@ -191,7 +285,7 @@ SCENARIOS = [
     # ('QuarantineFarmers', 'is_quarantine_farmer', [False, True]),
     # ('TransmissionCowCow', 'cattle_infect_cattle_prob', [i / 10 for i in range(1, 10, 4)]),
     # ('TransmissionPersonPerson', 'human_infect_human_prob', [i / 10 for i in range(1, 10, 4)]),
-    ('TruckCleaning', 'truck_cleaning', ['none', 'daily', 'visit']),
+    # ('TruckCleaning', 'truck_cleaning', ['none', 'daily', 'visit']),
     ('Vaccination', 'vacc_roles', ['None', 'FARMER', 'FARM_SERVICES_CLINICIAN', 'FARMER-FARM_SERVICES_CLINICIAN']),
 ]
 
@@ -202,11 +296,13 @@ if __name__ == "__main__":
         scenario_df = pd.read_csv(get_output_data_dir(scenario_name) / '{}_data-{}.csv'.format(scenario_name,
                                                                                                NUM_ITERATIONS))
         print('  plotting number of steps to spillover')
-        visualise_steps_to_spillover(scenario_name, scenario_df, var_name, var_values)
+        # visualise_steps_to_spillover(scenario_name, scenario_df, var_name, var_values)
         print('  plotting community infectious proportion')
-        visualise_community_infectious_proportion(scenario_name, scenario_df, var_name)
+        # visualise_community_infectious_proportion(scenario_name, scenario_df, var_name)
         print('  drawing the infection networks')
         for var_value in var_values:
-            visualise_infection_network(scenario_name, 'spillover', var_value)
-            visualise_infection_network(scenario_name, 'complete', var_value)
+            # visualise_infection_network(scenario_name, 'spillover', var_value)
+            # visualise_infection_network(scenario_name, 'complete', var_value)
+            visualise_infection_upset(scenario_name, 'spillover', var_value)
+            visualise_infection_upset(scenario_name, 'complete', var_value)
 
