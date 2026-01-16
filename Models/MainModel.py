@@ -77,9 +77,7 @@ class MainModel(mesa.Model):
         # the init argument values override the parameter values (there may be a neater way to do this)
         if is_stop_community_infection is not None:
             self.params.is_stop_community_infection = is_stop_community_infection
-        if is_quarantine_farmer is not None:
-            self.params.is_quarantine_farmer = is_quarantine_farmer
-            self.scenario_value = is_quarantine_farmer
+
         # infection probabilities
         if cattle_infect_cattle_prob is not None:
             self.params.cattle_infect_cattle_prob = cattle_infect_cattle_prob
@@ -142,6 +140,9 @@ class MainModel(mesa.Model):
             else:
                 # default to none on any other input
                 self.params.hospital_cleaning_schedule = Cleaning.NONE
+        if is_quarantine_farmer is not None:
+            self.params.is_quarantine_farmer = is_quarantine_farmer
+            self.scenario_value = is_quarantine_farmer
 
         # set up the grid
         self.width = 43

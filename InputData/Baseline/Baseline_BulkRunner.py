@@ -5,7 +5,7 @@ import pandas as pd
 
 from mesa.batchrunner import batch_run
 
-from InputData.scenario_constants import NUM_ITERATIONS, STEPS, clear_working_directory
+from InputData.scenario_constants import NUM_ITERATIONS, STEPS, clear_working_directory, NUM_PROCESSORS
 from support_functions import get_output_data_dir
 from Models.MainModel import MainModel
 
@@ -22,7 +22,7 @@ if __name__ == "__main__":
         },
         iterations=NUM_ITERATIONS,
         max_steps=STEPS,
-        number_processes=1,
+        number_processes=NUM_PROCESSORS,
         data_collection_period=1,
         display_progress=True
     )

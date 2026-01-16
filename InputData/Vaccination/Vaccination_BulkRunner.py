@@ -13,8 +13,7 @@ from constants import PersonRole
 
 scenario_name = 'Vaccination'
 var_name = 'vacc_roles'
-var_values = [[None], [PersonRole.FARMER], [PersonRole.FARM_SERVICES_CLINICIAN],
-              [PersonRole.FARMER, PersonRole.FARM_SERVICES_CLINICIAN]]
+var_values = [[None], [PersonRole.FARM_SERVICES_STUDENT, PersonRole.FARM_SERVICES_CLINICIAN]]
 
 
 if __name__ == "__main__":
