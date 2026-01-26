@@ -14,7 +14,7 @@ from Parameters import Parameters
 from Models.PeopleAgents import PersonAgent, FarmerAgent, FarmVisitorAgent
 from Models.LocationAgents import DairyFarmAgent, HospitalAgent, TruckAgent, LocationAgent
 from constants import FARM_INPUT_FILENAME, HospitalDepartment, PEOPLE_INPUT_FILENAME, PersonRole, DiseaseState, \
-    input_to_role, TRUCK_ROLE, Cleaning
+    input_to_role, TRUCK_ROLE, Cleaning, Location
 
 
 def count_person_agents_with_disease_state(disease_state, model):
@@ -54,7 +54,7 @@ class MainModel(mesa.Model):
     """
 
     def __init__(self, seed=None, simulator=None, scenario_name=None,
-                 is_stop_community_infection=None, is_quarantine_farmer=None,
+                 is_stop_community_infection=None, is_quarantine_farm=None,
                  # infection probabilities
                  cattle_infect_cattle_prob=None, human_infect_human_prob=None,
                  human_infect_cattle_prob=None, cattle_infect_human_prob=None,
@@ -140,9 +140,9 @@ class MainModel(mesa.Model):
             else:
                 # default to none on any other input
                 self.params.hospital_cleaning_schedule = Cleaning.NONE
-        if is_quarantine_farmer is not None:
-            self.params.is_quarantine_farmer = is_quarantine_farmer
-            self.scenario_value = is_quarantine_farmer
+        if is_quarantine_farm is not None:
+            self.params.is_quarantine_farm = is_quarantine_farm
+            self.scenario_value = is_quarantine_farm
 
         # set up the grid
         self.width = 43
@@ -423,7 +423,11 @@ class MainModel(mesa.Model):
             # agents infect other agents (people and location) and compartmental entities (cows and community)
             self.agents.shuffle_do('infect_others')
             # agents in the community may be infected by the community
-            self.agents.select(lambda a: isinstance(a, PersonAgent)).shuffle_do('become_infected_by_community')
+            self.agents.select(lambda a: isinstance(a, PersonAgent) and a.location == Location.COMMUNITY) \
+                .shuffle_do('become_infected_by_community')
+            # agents on a farm may become infected by the cattle herd
+            self.agents.select(lambda a: isinstance(a, PersonAgent) and a.location == Location.FARM) \
+                .shuffle_do('become_infected_by_cattle')
 
             self.datacollector.collect(self)
 

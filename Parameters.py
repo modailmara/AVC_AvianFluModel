@@ -22,7 +22,7 @@ class Parameters:
 
         # ----------------- MODEL ------------
         self.is_stop_community_infection = self.config['MODEL'].getboolean('IS_STOP_COMMUNITY_INFECTION')
-        self.is_quarantine_farmer = self.config['MODEL'].getboolean('IS_QUARANTINE_FARMER')
+        self.is_quarantine_farm = self.config['MODEL'].getboolean('IS_QUARANTINE_FARM')
 
         # ----------------- TIME ------------
         self.steps_per_day = self.config['TIME'].getint('STEPS_PER_DAY')
@@ -83,6 +83,9 @@ class Parameters:
         self.human_infectious_steps = self.convert_days_to_steps(self.human_infectious_days)
         self.human_recovered_days = self.config['DISEASE'].getfloat('HUMAN_RECOVERED_DAYS')
         self.human_recovered_steps = self.convert_days_to_steps(self.human_recovered_days)
+
+        self.human_symptomatic_days = self.config['DISEASE'].getfloat('HUMAN_SYMPTOMATIC_DAYS')
+        self.human_symptomatic_steps = self.convert_days_to_steps(self.human_symptomatic_days)
 
         self.cattle_exposed_days = self.config['DISEASE'].getfloat('CATTLE_EXPOSED_DAYS')
         self.cattle_exposed_steps = self.convert_days_to_steps(self.cattle_exposed_days)

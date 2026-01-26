@@ -70,7 +70,9 @@ def vet_location_portrayal(agent):
         portrayal['size'] = 100
 
         # disease state
-        if agent.infection_level > 0:
+        if agent.is_quarantined:
+            portrayal['color'] = 'xkcd:grey'
+        elif agent.num_infectious > 0:
             portrayal['color'] = 'xkcd:light pink'
         else:
             portrayal['color'] = 'xkcd:light green'
@@ -270,7 +272,7 @@ model_params = {
     'is_stop_community_infection': {
         'type': 'Checkbox', 'value': True, 'label': 'Stop on community infection'
     },
-    'is_quarantine_farmer': {
+    'is_quarantine_farm': {
         'type': 'Checkbox', 'value': True, 'label': 'Quarantine farmers after infection'
     },
     'cattle_infect_cattle_prob': Slider(min=0, max=1, step=.01, value=params.cattle_infect_cattle_prob,
@@ -285,7 +287,7 @@ model_params = {
 
 
 simulator = ABMSimulator()
-main_model = MainModel(simulator=simulator, is_stop_community_infection=True, is_quarantine_farmer=True)
+main_model = MainModel(simulator=simulator, is_stop_community_infection=True, is_quarantine_farm=True)
 
 page = SolaraViz(
     main_model,

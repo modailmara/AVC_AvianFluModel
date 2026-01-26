@@ -1,29 +1,31 @@
 """
-Change the frequency of cleaning the trucks.
+The Quarantine Farmers scenario
+  - uses the default parameters
+  - uses the default farms and people input files
+  - farmers remain on their farm if there are any infectious cattle on the farm
 """
 import pandas as pd
 
 from mesa.batchrunner import batch_run
 
+from InputData.scenario_constants import NUM_ITERATIONS, STEPS, clear_working_directory
 from support_functions import get_output_data_dir
 from Models.MainModel import MainModel
-from InputData.scenario_constants import NUM_ITERATIONS, STEPS, clear_working_directory
-from constants import PersonRole
 
 
-scenario_name = 'Vacc+TClean+Q'
+scenario_name = 'QuarantineFarms'
 var_name = 'is_quarantine_farm'
 var_values = [False, True]
 
 
 if __name__ == "__main__":
     clear_working_directory(scenario_name)
+
+    # simulator = ABMSimulator()
     results = batch_run(
         MainModel,
         parameters={
             'scenario_name': scenario_name,
-            'vacc_roles': [[PersonRole.FARM_SERVICES_STUDENT, PersonRole.FARM_SERVICES_CLINICIAN]],
-            'truck_cleaning': 'visit',
             var_name: var_values},
         iterations=NUM_ITERATIONS,
         max_steps=STEPS,

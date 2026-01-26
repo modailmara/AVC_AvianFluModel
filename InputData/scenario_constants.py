@@ -9,7 +9,7 @@ from support_functions import get_output_data_dir
 DAYS = 15 * 7
 STEPS = DAYS * 24
 
-NUM_ITERATIONS = 100
+NUM_ITERATIONS = 500
 
 NUM_PROCESSORS = None
 

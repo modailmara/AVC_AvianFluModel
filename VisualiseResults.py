@@ -265,7 +265,7 @@ SCENARIOS_1 = [
     ('AnimalIntroduction', 'num_infected_farms', [1, 5, 10, 15, 19]),
     ('HospitalCleaning', 'hospital_cleaning', ['none', 'daily']),
     ('PeopleMixing', 'people_sheet', ['default', 'no_common', 'dept_only']),
-    ('QuarantineFarmers', 'is_quarantine_farmer', [False, True]),
+
     ('TransmissionCowCow', 'cattle_infect_cattle_prob', [i / 10 for i in range(1, 10, 4)]),
     ('TransmissionPersonPerson', 'human_infect_human_prob', [i / 10 for i in range(1, 10, 4)]),
     ('TruckCleaning', 'truck_cleaning', ['none', 'daily', 'visit']),
@@ -273,8 +273,9 @@ SCENARIOS_1 = [
 ]
 
 SCENARIOS_2 = [
+    ('QuarantineFarms', 'is_quarantine_farm', [False, True]),
     # ('Vacc+TClean', 'truck_cleaning', ['none', 'daily', 'visit']),
-    ('Vacc+TClean+Q', 'is_quarantine_farmer', [False, True])
+    # ('Vacc+TClean+Q', 'is_quarantine_farm', [False, True])
 ]
 
 
@@ -286,8 +287,10 @@ if __name__ == "__main__":
                                                                                                NUM_ITERATIONS))
         print('  plotting number of steps to spillover')
         visualise_steps_to_spillover(scenario_name, scenario_df, var_name, var_values)
+
         print('  plotting community infectious proportion')
         visualise_community_infectious_proportion(scenario_name, scenario_df, var_name)
+
         print('  drawing the infection networks')
         for var_value in var_values:
             visualise_infection_network(scenario_name, 'spillover', var_value)

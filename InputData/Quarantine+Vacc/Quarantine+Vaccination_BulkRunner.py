@@ -11,11 +11,12 @@ from mesa.batchrunner import batch_run
 from InputData.scenario_constants import NUM_ITERATIONS, STEPS, clear_working_directory
 from support_functions import get_output_data_dir
 from Models.MainModel import MainModel
+from constants import PersonRole
 
 
-scenario_name = 'QuarantineFarmers'
-var_name = 'is_quarantine_farmer'
-var_values = [False, True]
+scenario_name = 'Quarantine+Vacc'
+var_name = 'vacc_roles'
+var_values = [[None], [PersonRole.FARM_SERVICES_STUDENT, PersonRole.FARM_SERVICES_CLINICIAN]]
 
 
 if __name__ == "__main__":
@@ -26,6 +27,7 @@ if __name__ == "__main__":
         MainModel,
         parameters={
             'scenario_name': scenario_name,
+            'is_quarantine_farm': True,
             var_name: var_values},
         iterations=NUM_ITERATIONS,
         max_steps=STEPS,

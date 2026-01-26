@@ -135,12 +135,17 @@ class DairyFarmAgent(LocationAgent):
         """
         super().__init__(model, cell)
 
+        self.farmer = None  # to be set when a farmer is assigned
+
         self.location = Location.FARM
 
         # unique ID (number is only unique within farms)
         self.number = int(farm_id[1:])
         self.name = 'Farm_{}'.format(self.number)
         self.short_name = 'F_{}'.format(self.number)
+
+        # is this farm quarantined? means there is no disease transfer outside the herd due to biosecurity measures
+        self.is_quarantined = False
 
         # set up the frequency and random counter since last (not modelled) last visit
         self.visit_frequency_steps = self.model.params.convert_days_to_steps(visit_frequency)
@@ -229,15 +234,33 @@ class DairyFarmAgent(LocationAgent):
         """
         return self.cattle_model.proportion_infected
 
-    def infect_others(self):
-        super().infect_others()
+    def progress_disease(self):
+        """
+        In addition to usual location agent disease progress, farms need to check quarantine progress.
 
+        If the herd is all clear of the disease, then quarantine should be ended.
+        """
+        super().progress_disease()
+
+        if self.is_quarantined:
+            # quarantine is lifted if the herd and farmer are not infected or exposed
+            if self.num_susceptible + self.num_recovered == self.herd_count and not self.farmer.symptomatic:
+                self.is_quarantined = False
+
+    def infect_others(self):
+        if not self.is_quarantined:
+            # only infect other agents if not quarantined
+            super().infect_others()
+
+        # infection still transfers between herd and farm environment under quarantine
         self.farm_infect_herd()
         self.herd_infect_farm()
 
     def farm_infect_herd(self):
         """
-        The farm agent (location/environment) infecting others.
+        The farm agent (location/environment) infecting the cattle herd.
+
+        Note that this still occurs even during quarantine.
         """
         # farm location agent (not cattle) can infect susceptible cattle
         if self.disease_state == DiseaseState.INFECTIOUS and self.cattle_model.num_susceptible > 0:
@@ -250,6 +273,11 @@ class DairyFarmAgent(LocationAgent):
             #                                                  time_step=self.model.steps)
 
     def herd_infect_farm(self):
+        """
+        The cattle herd can infect the environment (the farm location agent).
+
+        This still happens when the farm is quarantined
+        """
         # infectious cattle can infect the farm location agent
         if self.disease_state == DiseaseState.SUSCEPTIBLE and self.cattle_model.num_infectious > 0:
             for _ in range(self.cattle_model.num_infectious):
@@ -259,9 +287,19 @@ class DairyFarmAgent(LocationAgent):
                     # don't record this for now as it will swamp the rest of the network
                     # self.model.infection_network.add_infection_event('h_{}'.format(self.number), self.short_name,
                     #                                                  time_step=self.model.steps)
-                    break  # farm location agent can only be infectious once
+                    break  # farm location agent can only be infected once
 
     def request_vet(self):
+        """
+        Determine if the farm needs a vet from the hospital to come visit, and send a request if it does.
+
+        There are 3 types of visits:
+          1. scheduled visits at regular intervals (specified in farm info spreadsheet)
+          2. non-urgent visits (random chance to give frequency from parameters)
+          3. emergency visits (random chance to give frequency from parameters)
+
+        Visits still happen if the farm is quarantined
+        """
         # does the farm need a vet?
         if self.vet_state == FarmVetVisitState.OK:
             if self.steps_since_last_visit >= self.visit_frequency_steps:
@@ -373,8 +411,9 @@ class TruckAgent(LocationAgent):
         # if Infectious, infect any people agents
         super().infect_others()
 
-        if self.location == Location.FARM:
+        if self.location == Location.FARM and not self.farm.is_quarantined:
             # if at a farm, there is a chance to exchange infectious material to the farm
+            # if the farm is quarantined, assume biosecurity measures prevent infection
             if self.disease_state == DiseaseState.INFECTIOUS and self.farm.disease_state == DiseaseState.SUSCEPTIBLE:
                 # check if there is infection transfer between the truck and farm
                 if self.random.random() < self.model.params.truck_infect_env_prob:
