@@ -91,6 +91,11 @@ class MainModel(mesa.Model):
         if cattle_infect_human_prob is not None:
             self.params.cattle_infect_human_prob = cattle_infect_human_prob
             self.scenario_value = cattle_infect_human_prob
+
+        if is_quarantine_farm is not None:
+            self.params.is_quarantine_farm = is_quarantine_farm
+            self.scenario_value = is_quarantine_farm
+
         # vaccination
         if vacc_roles is not None:
             # passed as a list of PersonRole
@@ -140,9 +145,6 @@ class MainModel(mesa.Model):
             else:
                 # default to none on any other input
                 self.params.hospital_cleaning_schedule = Cleaning.NONE
-        if is_quarantine_farm is not None:
-            self.params.is_quarantine_farm = is_quarantine_farm
-            self.scenario_value = is_quarantine_farm
 
         # set up the grid
         self.width = 43
@@ -266,7 +268,7 @@ class MainModel(mesa.Model):
         for farm in infected_farms:
             farm.cattle_model.infect_susceptible(1)
             # record this source of infection in the network
-            self.infection_network.add_infection_source(farm.short_name)
+            self.infection_network.add_infection_source(farm.herd_short_name)
 
         # ------------------------- end farm space definition
         # ------------------------- People

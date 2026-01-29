@@ -269,13 +269,13 @@ SCENARIOS_1 = [
     ('TransmissionCowCow', 'cattle_infect_cattle_prob', [i / 10 for i in range(1, 10, 4)]),
     ('TransmissionPersonPerson', 'human_infect_human_prob', [i / 10 for i in range(1, 10, 4)]),
     ('TruckCleaning', 'truck_cleaning', ['none', 'daily', 'visit']),
-    ('Vaccination', 'vacc_roles', ['None', 'FARM_SERVICES_STUDENT-FARM_SERVICES_CLINICIAN']),
+
 ]
 
 SCENARIOS_2 = [
     ('QuarantineFarms', 'is_quarantine_farm', [False, True]),
-    # ('Vacc+TClean', 'truck_cleaning', ['none', 'daily', 'visit']),
-    # ('Vacc+TClean+Q', 'is_quarantine_farm', [False, True])
+    # ('Quarantine+Vacc', 'vacc_roles', ['None', 'FARM_SERVICES_STUDENT-FARM_SERVICES_CLINICIAN']),
+
 ]
 
 

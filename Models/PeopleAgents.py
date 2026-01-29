@@ -166,10 +166,10 @@ class PersonAgent(CellAgent):
                     # record the infection
                     self.model.infection_network.add_community_spillover(self.short_name, self.model.steps)
             elif self.location in [Location.HOSPITAL, Location.TRAVEL]:
-                self.__infect_environment()
-                self.__infect_other_person_agents()
+                self.infect_environment()
+                self.infect_other_person_agents()
 
-    def __infect_environment(self):
+    def infect_environment(self):
         """
         May infect the environment/location agent in the same cell as this agent.
         """
@@ -191,7 +191,7 @@ class PersonAgent(CellAgent):
                 self.model.infection_network.add_infection_event(self.short_name, location_agent.short_name,
                                                                  self.model.steps)
 
-    def __infect_other_person_agents(self):
+    def infect_other_person_agents(self):
         """
         May infect all the other person agents in the same cell as this agent.
         """
@@ -316,6 +316,17 @@ class FarmVisitorAgent(PersonAgent):
         self.model.come_back_from_farm(self)
         self.move()
 
+    def infect_others(self):
+        super().infect_others()  # hospital and community only
+
+        if self.location == Location.FARM and not self.farm.is_quarantined:
+            if self.disease_state == DiseaseState.INFECTIOUS:
+                self.infect_environment()
+                self.infect_other_person_agents()
+                self.infect_cattle()
+            elif self.disease_state == DiseaseState.SUSCEPTIBLE:
+                self.become_infected_by_cattle()
+
     def infect_cattle(self):
         """
         This person is infectious and on the farm. They may infect susceptible cattle on the farm.
@@ -337,7 +348,7 @@ class FarmVisitorAgent(PersonAgent):
                 self.farm.cattle_model.expose_to_infection(num_infected)
 
                 self.model.infection_network.add_infection_event(source_name=self.short_name,
-                                                                 target_name=self.farm.short_name,
+                                                                 target_name=self.farm.herd_short_name,
                                                                  time_step=self.model.steps)
 
     def become_infected_by_cattle(self):
@@ -360,7 +371,7 @@ class FarmVisitorAgent(PersonAgent):
             if num_infections > 0:
                 self.become_infected()
 
-                self.model.infection_network.add_infection_event(source_name=self.farm.short_name,
+                self.model.infection_network.add_infection_event(source_name=self.farm.herd_short_name,
                                                                  target_name=self.short_name,
                                                                  time_step=self.model.steps)
 
@@ -419,10 +430,15 @@ class FarmerAgent(PersonAgent):
             super().go_home()
 
     def infect_others(self):
-        if not self.symptomatic:
-            super().infect_others()
-            self.infect_cattle()
-            self.become_infected_by_cattle()
+        super().infect_others()  # Hospital and community only
+
+        if self.location == Location.FARM and not self.farm.is_quarantined:
+            if self.disease_state == DiseaseState.INFECTIOUS:
+                self.infect_environment()
+                self.infect_other_person_agents()
+                self.infect_cattle()
+            elif self.disease_state == DiseaseState.SUSCEPTIBLE:
+                self.become_infected_by_cattle()
 
     def become_infected_by_cattle(self):
         """
@@ -446,7 +462,7 @@ class FarmerAgent(PersonAgent):
                     if num_infections > 0:
                         self.become_infected()
 
-                        self.model.infection_network.add_infection_event(source_name=self.farm.short_name,
+                        self.model.infection_network.add_infection_event(source_name=self.farm.herd_short_name,
                                                                          target_name=self.short_name,
                                                                          time_step=self.model.steps)
 
@@ -475,7 +491,7 @@ class FarmerAgent(PersonAgent):
                         self.farm.cattle_model.expose_to_infection(num_infected)
 
                         self.model.infection_network.add_infection_event(source_name=self.short_name,
-                                                                         target_name=self.farm.short_name,
+                                                                         target_name=self.farm.herd_short_name,
                                                                          time_step=self.model.steps)
 
     def become_symptomatic(self):

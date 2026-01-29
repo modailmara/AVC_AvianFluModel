@@ -143,6 +143,7 @@ class DairyFarmAgent(LocationAgent):
         self.number = int(farm_id[1:])
         self.name = 'Farm_{}'.format(self.number)
         self.short_name = 'F_{}'.format(self.number)
+        self.herd_short_name = 'h_{}'.format(self.number)
 
         # is this farm quarantined? means there is no disease transfer outside the herd due to biosecurity measures
         self.is_quarantined = False
@@ -268,9 +269,9 @@ class DairyFarmAgent(LocationAgent):
                                               self.model.params.env_infect_cattle_prob)
             self.cattle_model.infect_susceptible(num_infected)
 
-            # don't record this for now as it will swamp the rest of the network
-            # self.model.infection_network.add_infection_event(self.short_name, 'h_{}'.format(self.number),
-            #                                                  time_step=self.model.steps)
+            # record farm infect the herd
+            self.model.infection_network.add_infection_event(self.short_name, self.herd_short_name,
+                                                             time_step=self.model.steps)
 
     def herd_infect_farm(self):
         """
@@ -284,9 +285,9 @@ class DairyFarmAgent(LocationAgent):
                 if self.random.random() < self.model.params.cattle_infect_env_prob:
                     self.become_infected()
 
-                    # don't record this for now as it will swamp the rest of the network
-                    # self.model.infection_network.add_infection_event('h_{}'.format(self.number), self.short_name,
-                    #                                                  time_step=self.model.steps)
+                    # record herd infect the farm
+                    self.model.infection_network.add_infection_event(self.herd_short_name, self.short_name,
+                                                                     time_step=self.model.steps)
                     break  # farm location agent can only be infected once
 
     def request_vet(self):
