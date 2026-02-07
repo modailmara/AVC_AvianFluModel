@@ -96,12 +96,12 @@ class HospitalAgent(LocationAgent):
         self.department = department
 
         short_dept = ''.join([word[0].upper() for word in self.department.value.split()])
-        self.short_name = 'H{}_{}'.format(short_dept, dept_id)
+        self.short_name = '{}_{}'.format(short_dept, dept_id)
 
     def scheduled_cleaning(self):
         if self.disease_state == DiseaseState.INFECTIOUS \
                 and self.model.params.hospital_cleaning_schedule == Cleaning.DAILY \
-                and self.model.is_after_hours_workday(self.model.steps):
+                and self.model.is_num_steps_after_workday(1):
             # do a daily clean
             self.clean()
 
@@ -142,7 +142,7 @@ class DairyFarmAgent(LocationAgent):
         # unique ID (number is only unique within farms)
         self.number = int(farm_id[1:])
         self.name = 'Farm_{}'.format(self.number)
-        self.short_name = 'F_{}'.format(self.number)
+        self.short_name = 'FA_{}'.format(self.number)
         self.herd_short_name = 'h_{}'.format(self.number)
 
         # is this farm quarantined? means there is no disease transfer outside the herd due to biosecurity measures
@@ -373,7 +373,7 @@ class TruckAgent(LocationAgent):
 
         self.number = truck_id
         self.name = f"Truck_{self.number}"
-        self.short_name = f"T_{self.number}"
+        self.short_name = f"TR_{self.number}"
         self.role = TRUCK_ROLE
 
         self.farm = None
@@ -449,13 +449,6 @@ class TruckAgent(LocationAgent):
                     # record the hospital truck bay infecting the truck
                     self.model.infection_network.add_infection_event(self.truck_bay.short_name, self.short_name,
                                                                      self.model.steps)
-
-    def scheduled_cleaning(self):
-        if self.disease_state == DiseaseState.INFECTIOUS \
-                and self.model.params.truck_cleaning_schedule == Cleaning.DAILY \
-                and self.model.is_after_hours_workday(self.model.steps):
-            # do a daily clean
-            self.clean()
 
     def start_travel_from_hospital(self, farms_to_visit, passengers):
         """
@@ -547,8 +540,15 @@ class TruckAgent(LocationAgent):
         """
         self.disease_state = DiseaseState.INFECTIOUS
 
-    def remove_infectious_material(self):
+    def scheduled_cleaning(self):
         """
-        Any infectious material on the truck is removed.
+        If on a daily cleaning schedule, check if it's the end of the day and clean the truck.
+
+        'visit' scheduled cleaning is implemented in return_to_hospital method
         """
-        self.disease_state = DiseaseState.SUSCEPTIBLE
+        if self.disease_state == DiseaseState.INFECTIOUS \
+                and self.model.params.truck_cleaning_schedule == Cleaning.DAILY \
+                and self.model.is_num_steps_after_workday(1):
+            # do a daily clean
+            self.clean()
+

@@ -132,7 +132,7 @@ class Parameters:
         }
 
         # ----------------- CLEANING -------------------------------
-        truck_cleaning_input = self.config['CLEANING'].get('TRUCK').strip().lower()
+        truck_cleaning_input = self.config['CLEANING'].get('TRUCK_CLEANING_SCHEDULE').strip().lower()
         if truck_cleaning_input == 'daily':
             self.truck_cleaning_schedule = Cleaning.DAILY
         elif truck_cleaning_input == 'visit':
@@ -141,7 +141,7 @@ class Parameters:
             # default to none on any other input
             self.truck_cleaning_schedule = Cleaning.NONE
 
-        hospital_cleaning_input = self.config['CLEANING'].get('HOSPITAL').strip().lower()
+        hospital_cleaning_input = self.config['CLEANING'].get('HOSPITAL_CLEANING_SCHEDULE').strip().lower()
         if hospital_cleaning_input == 'daily':
             self.hospital_cleaning_schedule = Cleaning.DAILY
         else:

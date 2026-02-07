@@ -80,9 +80,9 @@ class PersonRole(Enum):
     SMALL_ANIMAL_CLINICIAN = 'SAc'
     SMALL_ANIMAL_STAFF = 'SAs'
     SMALL_ANIMAL_STUDENT = 'SAu'
-    FLOATING_CLINICIAN = 'Fc'
-    FLOATING_STAFF = 'Fs'
-    FLOATING_STUDENT = 'Fu'
+    FLOATING_CLINICIAN = 'FLc'
+    FLOATING_STAFF = 'FLs'
+    FLOATING_STUDENT = 'FLu'
     FARMER = 'f'
 
 TRUCK_ROLE = 'truck'
@@ -139,7 +139,7 @@ class HospitalDepartment(Enum):
     LARGE_ANIMAL = "large animal"
     SMALL_ANIMAL = "small animal"
     FARM_SERVICES = "farm services"
-    COMMON = 'common'
+    COMMON = 'common area'
 
 
 class Cleaning(Enum):

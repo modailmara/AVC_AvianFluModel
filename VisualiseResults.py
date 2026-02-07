@@ -8,7 +8,7 @@ import upsetplot
 
 from support_functions import get_output_data_dir
 from InputData.scenario_constants import NUM_ITERATIONS
-
+from constants import PersonRole
 
 matplotlib.use('TkAgg')
 
@@ -62,11 +62,6 @@ def visualise_steps_to_spillover(scenario_name, result_df, var_name, var_values)
     :type var_values:
 
     """
-    if 'vacc_roles' in result_df:
-        # this column entries are stringified lists of either None or list of one or more PersonRole
-        # print(list(result_df['vacc_roles'].unique()))
-        result_df['vacc_roles'] = result_df.vacc_roles.apply(_convert_person_role_list_to_string)
-        # print(list(result_df['vacc_roles'].unique()))
 
     set_seaborn_context()
 
@@ -109,7 +104,7 @@ def visualise_community_infectious_proportion(scenario_name, result_df, var_name
     result_df['Days'] = result_df.Step / STEPS_PER_DAY
 
     # make a line plot comparing outcomes
-    plot = sns.lineplot(result_df, x='Days', y='Community_prop_INFECTIOUS', hue=var_name)
+    plot = sns.lineplot(result_df, x='Days', y='Community_prop_INFECTIOUS', hue=var_name, palette='colorblind')
 
     plt.ylim(-0.05, 1.05)
 
@@ -160,7 +155,10 @@ def visualise_infection_network(scenario_name, result_type, var_value):
     edge_df_list = []
     for edgelist_filepath in [edgelist_dir / filename for filename in list(edgelist_dir.glob('{}::{}::{}::*.csv'.format(
             scenario_name, result_type, var_value)))]:
-        edge_df_list.append(pd.read_csv(edgelist_filepath, names=['source', 'target', 'weight', 'step']))
+        # each file is a single iteration
+        iteration_df = pd.read_csv(edgelist_filepath, names=['source', 'target', 'weight', 'step'])
+
+        edge_df_list.append(iteration_df)
     edgelist_df = pd.concat(edge_df_list)
 
     # simplify nodes into types
@@ -185,7 +183,7 @@ def visualise_infection_network(scenario_name, result_type, var_value):
     if 'complete' in filename:
         # for debugging
         print(filename)
-    y_span, node_pos = get_node_pos(infection_graph, 'F', current_x=0, y_min=0, visited_nodes=[])
+    y_span, node_pos = get_node_pos(infection_graph, 'h', current_x=0, y_min=0, visited_nodes=[])
     # position community node to the right, halfway between top and bottom
     node_pos['C'] = (max(node_pos.values(), key=lambda x: x[0])[0] + 2, y_span / 2)
 
@@ -193,7 +191,7 @@ def visualise_infection_network(scenario_name, result_type, var_value):
 
     # sort weights and put them in bands for drawing
     sorted_weights = sorted(edgelist_df.weight.unique())
-    num_bands = 5
+    num_bands = 10
     band_size = sorted_weights[-1] / num_bands
     edge_list_list = []
     for i in range(num_bands):
@@ -228,14 +226,48 @@ def visualise_infection_network(scenario_name, result_type, var_value):
 
 
 def visualise_infection_upset(scenario_name, result_type, var_value):
+    var_value = 'None' if var_value == 'none' else var_value
+    var_value = var_value.replace(', ', ',')
     print("    {}_{}".format(result_type, var_value))
-    # get the dir with the edgelist files
-    edgelist_dir = get_output_data_dir(scenario_name)
-    edgelist_filepath = edgelist_dir / '{}::{}::{}::edgelist.csv'.format(scenario_name, result_type, var_value)
-    edgelist_df = pd.read_csv(edgelist_filepath)  # , names=['source', 'target', 'weight', 'step'])
 
-    num_edges = 10
-    short_edgelist_df = edgelist_df.sort_values(by='weight', ascending=False)[:num_edges]
+    # get the dir with the edgelist files
+    edgelist_dir = get_output_data_dir(scenario_name) / 'working'
+    # read in all the iteration result edge lists and put them together
+    edge_df_list = []
+    print("scenario={}\nresult_type={}\nvar_value={}".format(scenario_name, result_type, var_value))
+    for edgelist_filepath in [edgelist_dir / filename
+                              for filename in list(edgelist_dir.glob('{}::{}::{}::*.csv'.format(scenario_name,
+                                                                                                result_type,
+                                                                                                var_value)))]:
+        # each file is a single iteration
+        iteration_df = pd.read_csv(edgelist_filepath, names=['from_node', 'to_node', 'weight', 'step'])
+
+        # simplify nodes into types
+        iteration_df['from_node'] = iteration_df['from_node'].apply(lambda x: x.split('_')[0])
+        iteration_df['to_node'] = iteration_df['to_node'].apply(lambda x: x.split('_')[0])
+
+        # upset doesn't preserve direction so sort standard (alphabetically)
+        iteration_df['source'] = iteration_df.apply(lambda r: sorted([r.from_node, r.to_node])[0], axis=1)
+        iteration_df['target'] = iteration_df.apply(lambda r: sorted([r.from_node, r.to_node])[-1], axis=1)
+
+        # add together any repeats
+        iteration_group = iteration_df.groupby(by=['source', 'target'])
+        iteration_df = iteration_group.agg({'weight': 'sum', 'step': 'min'}).reset_index()
+
+        edge_df_list.append(iteration_df)
+    edgelist_df = pd.concat(edge_df_list)
+
+    # remove the h <-> F row
+    edgelist_df = edgelist_df[~((edgelist_df.source == 'FA') & (edgelist_df.target == 'h'))]
+
+    # get the mean number of node connections
+    edgelist_group = edgelist_df.groupby(by=['source', 'target'])
+    edgelist_df = edgelist_group.agg({'weight': 'mean', 'step': 'min'}).reset_index()
+
+    edgelist_df.sort_values(by='weight', ascending=False, inplace=True)
+
+    num_edges = 15
+    short_edgelist_df = edgelist_df[:num_edges]
 
     memberships = []
     counts = []
@@ -253,7 +285,16 @@ def visualise_infection_upset(scenario_name, result_type, var_value):
             counts.append(row.weight)
     upset_df = upsetplot.from_memberships(memberships, counts)
 
-    upsetplot.plot(upset_df, sort_by='cardinality', totals_plot_elements=0)
+    plot_result = upsetplot.plot(upset_df, sort_by='cardinality', totals_plot_elements=0)
+
+    subtext = """C=community, FA=farm, FL=floating, FS=farm services, LA=large animal, SA=small animal. 
+    s=staff, u=student, c=clinician, t=technician, f=farmer, h=herd. 
+    Combinations, e.g. FSu=farm services student"""
+
+    plot_result['shading'].set_xlabel(subtext, multialignment='left')
+
+    plot_result['intersections'].set_ylabel('Pathogen transmissions')
+    plot_result['intersections'].set_ylim(0, 300)
 
     plt.savefig(get_output_data_dir(scenario_name) / '{}::{}::{}::upset.png'.format(scenario_name,
                                                                                     result_type,
@@ -271,10 +312,14 @@ SCENARIOS_1 = [
     ('TruckCleaning', 'truck_cleaning', ['none', 'daily', 'visit']),
 
 ]
+# [[None], [PersonRole.FARM_SERVICES_STUDENT],
+# [PersonRole.FARM_SERVICES_STUDENT, PersonRole.FARM_SERVICES_CLINICIAN]])
 
 SCENARIOS_2 = [
-    ('QuarantineFarms', 'is_quarantine_farm', [False, True]),
-    # ('Quarantine+Vacc', 'vacc_roles', ['None', 'FARM_SERVICES_STUDENT-FARM_SERVICES_CLINICIAN']),
+    # ('QuarantineFarms', 'is_quarantine_farm', [False, True]),
+    # ('Quarantine+TClean', 'truck_cleaning', ['none', 'daily', 'visit']),
+    ('Quarantine+TClean+Vacc', 'vacc_roles', ['none', 'farm services clinician',
+                                              'farm services student, farm services clinician']),
 
 ]
 
@@ -286,15 +331,15 @@ if __name__ == "__main__":
         scenario_df = pd.read_csv(get_output_data_dir(scenario_name) / '{}_data-{}.csv'.format(scenario_name,
                                                                                                NUM_ITERATIONS))
         print('  plotting number of steps to spillover')
-        visualise_steps_to_spillover(scenario_name, scenario_df, var_name, var_values)
+        # visualise_steps_to_spillover(scenario_name, scenario_df, var_name, var_values)
 
         print('  plotting community infectious proportion')
-        visualise_community_infectious_proportion(scenario_name, scenario_df, var_name)
+        # visualise_community_infectious_proportion(scenario_name, scenario_df, var_name)
 
-        print('  drawing the infection networks')
+        print('  drawing the infection networks and upset plots')
         for var_value in var_values:
-            visualise_infection_network(scenario_name, 'spillover', var_value)
-            visualise_infection_network(scenario_name, 'complete', var_value)
-            visualise_infection_upset(scenario_name, 'spillover', var_value)
+            # visualise_infection_network(scenario_name, 'spillover', var_value)
+            # visualise_infection_network(scenario_name, 'complete', var_value)
+            # visualise_infection_upset(scenario_name, 'spillover', var_value)
             visualise_infection_upset(scenario_name, 'complete', var_value)
 

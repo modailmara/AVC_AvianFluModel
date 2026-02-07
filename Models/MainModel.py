@@ -95,16 +95,30 @@ class MainModel(mesa.Model):
         if is_quarantine_farm is not None:
             self.params.is_quarantine_farm = is_quarantine_farm
             self.scenario_value = is_quarantine_farm
+        if truck_cleaning is not None:
+            arg_value = truck_cleaning.strip().lower()
+            self.scenario_value = arg_value
+            if arg_value == 'daily':
+                self.params.truck_cleaning_schedule = Cleaning.DAILY
+            elif arg_value == 'visit':
+                self.params.truck_cleaning_schedule = Cleaning.VISIT
+            else:
+                # default to none on any other input
+                self.params.truck_cleaning_schedule = Cleaning.NONE
 
         # vaccination
         if vacc_roles is not None:
-            # passed as a list of PersonRole
-            self.params.vacc_roles = vacc_roles
-            if vacc_roles is None or (isinstance(vacc_roles, str) and vacc_roles.strip().lower() == 'none') \
-                    or None in vacc_roles:
+            # passed as a comma separated string of role
+            input_vacc_roles = [role.strip().lower() for role in vacc_roles.split(',')]
+            use_vacc_role_list = []
+            for role_input in input_vacc_roles:
+                if role_input in input_to_role:
+                    use_vacc_role_list.append(input_to_role[role_input])
+            self.params.vacc_roles = use_vacc_role_list
+            if vacc_roles.strip().lower() == 'none':
                 self.scenario_value = 'None'
             else:
-                self.scenario_value = '-'.join([vr.name for vr in vacc_roles if vr in PersonRole])
+                self.scenario_value = ','.join(input_vacc_roles)
         if vacc_human_infect_cattle_prob is not None:
             self.params.vacc_human_infect_cattle_prob = vacc_human_infect_cattle_prob
             self.scenario_value = vacc_human_infect_cattle_prob
@@ -127,16 +141,6 @@ class MainModel(mesa.Model):
         if people_sheet is not None:
             self.params.people_sheet = people_sheet.strip().lower()
             self.scenario_value = people_sheet.strip().lower()
-        if truck_cleaning is not None:
-            arg_value = truck_cleaning.strip().lower()
-            self.scenario_value = arg_value
-            if arg_value == 'daily':
-                self.params.truck_cleaning_schedule = Cleaning.DAILY
-            elif arg_value == 'visit':
-                self.params.truck_cleaning_schedule = Cleaning.VISIT
-            else:
-                # default to none on any other input
-                self.params.truck_cleaning_schedule = Cleaning.NONE
         if hospital_cleaning is not None:
             arg_value = hospital_cleaning.strip().lower()
             self.scenario_value = arg_value
@@ -431,6 +435,10 @@ class MainModel(mesa.Model):
             self.agents.select(lambda a: isinstance(a, PersonAgent) and a.location == Location.FARM) \
                 .shuffle_do('become_infected_by_cattle')
 
+            # do any scheduled cleaning/disinfecting of location agents
+            self.agents.select(lambda a: isinstance(a, LocationAgent)).shuffle_do('scheduled_cleaning')
+
+            # collect data from the model
             self.datacollector.collect(self)
 
         if self.steps == STEPS:
@@ -665,3 +673,19 @@ class MainModel(mesa.Model):
         _, _, leftover_days, leftover_steps = self.get_weeks_days_steps(step)
 
         return leftover_steps in range(5) and leftover_steps >= self.params.daytime_steps
+
+    def is_num_steps_after_workday(self, num_steps):
+        """
+        Returns True if current time steps are num_steps after the workday has finished.
+
+        :param num_steps: Number of steps after the workday has finished.
+        :type num_steps: int
+        :return: True if current step is end_of_workday + num_steps = current step
+        :rtype: bool
+        """
+        _, _, leftover_days, leftover_steps = self.get_weeks_days_steps(self.steps)
+
+        is_num_steps_after_workday = leftover_days in range(5) \
+                                     and leftover_steps == self.params.daytime_steps + num_steps
+
+        return is_num_steps_after_workday
