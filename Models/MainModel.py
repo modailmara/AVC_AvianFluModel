@@ -92,21 +92,13 @@ class MainModel(mesa.Model):
             self.params.cattle_infect_human_prob = cattle_infect_human_prob
             self.scenario_value = cattle_infect_human_prob
 
+        # quarantine farms
         if is_quarantine_farm is not None:
             self.params.is_quarantine_farm = is_quarantine_farm
             self.scenario_value = is_quarantine_farm
-        if truck_cleaning is not None:
-            arg_value = truck_cleaning.strip().lower()
-            self.scenario_value = arg_value
-            if arg_value == 'daily':
-                self.params.truck_cleaning_schedule = Cleaning.DAILY
-            elif arg_value == 'visit':
-                self.params.truck_cleaning_schedule = Cleaning.VISIT
-            else:
-                # default to none on any other input
-                self.params.truck_cleaning_schedule = Cleaning.NONE
 
         # vaccination
+        # print("VACC_ROLES: {}".format(vacc_roles))
         if vacc_roles is not None:
             # passed as a comma separated string of role
             input_vacc_roles = [role.strip().lower() for role in vacc_roles.split(',')]
@@ -119,6 +111,20 @@ class MainModel(mesa.Model):
                 self.scenario_value = 'None'
             else:
                 self.scenario_value = ','.join(input_vacc_roles)
+
+        # truck cleaning schedule
+        if truck_cleaning is not None:
+            arg_value = truck_cleaning.strip().lower()
+            self.scenario_value = arg_value
+            if arg_value == 'daily':
+                self.params.truck_cleaning_schedule = Cleaning.DAILY
+            elif arg_value == 'visit':
+                self.params.truck_cleaning_schedule = Cleaning.VISIT
+            else:
+                # default to none on any other input
+                self.params.truck_cleaning_schedule = Cleaning.NONE
+
+        # print("scenario_value: {}".format(self.scenario_value))
         if vacc_human_infect_cattle_prob is not None:
             self.params.vacc_human_infect_cattle_prob = vacc_human_infect_cattle_prob
             self.scenario_value = vacc_human_infect_cattle_prob
@@ -254,6 +260,7 @@ class MainModel(mesa.Model):
             # one farmer per farm
             farmer = FarmerAgent(self, farm)
             farmer.vaccinated = PersonRole.FARMER in self.params.vacc_roles
+            # print("  {} vacc status: {}".format(farmer.name, farmer.vaccinated))
             self.total_people += 1
 
             # increment the cell coordinates
@@ -304,6 +311,7 @@ class MainModel(mesa.Model):
                     visitor_agent = FarmVisitorAgent(self, person_num, cell=None, role=person_role,
                                                      area_weights=area_weights)
                     visitor_agent.vaccinated = is_vaccinated
+                    # print("  {} vacc_status: {}".format(visitor_agent.name, visitor_agent.vaccinated))
                     if person_role == PersonRole.FARM_SERVICES_CLINICIAN:
                         # add the farmer to the queue for vet farm visits
                         self.available_farm_clinicians.append(visitor_agent)
@@ -314,6 +322,7 @@ class MainModel(mesa.Model):
                     hospital_agent = PersonAgent(self, person_num, cell=None, role=person_role,
                                                  area_weights=area_weights)
                     hospital_agent.vaccinated = is_vaccinated
+                    # print("  {} vacc_status: {}".format(hospital_agent.name, hospital_agent.vaccinated))
                 # person.move()
 
         # ------------------------- end initial people placement

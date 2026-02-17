@@ -225,8 +225,8 @@ def visualise_infection_network(scenario_name, result_type, var_value):
     plt.close()
 
 
-def visualise_infection_upset(scenario_name, result_type, var_value):
-    var_value = 'None' if var_value == 'none' else var_value
+def visualise_infection_upset(scenario_name, result_type, var_value, axis=None):
+    # var_value = 'None' if var_value == 'none' else var_value
     var_value = var_value.replace(', ', ',')
     print("    {}_{}".format(result_type, var_value))
 
@@ -285,7 +285,7 @@ def visualise_infection_upset(scenario_name, result_type, var_value):
             counts.append(row.weight)
     upset_df = upsetplot.from_memberships(memberships, counts)
 
-    plot_result = upsetplot.plot(upset_df, sort_by='cardinality', totals_plot_elements=0)
+    plot_result = upsetplot.plot(upset_df, sort_by='cardinality', totals_plot_elements=0, fig=axis)
 
     subtext = """C=community, FA=farm, FL=floating, FS=farm services, LA=large animal, SA=small animal. 
     s=staff, u=student, c=clinician, t=technician, f=farmer, h=herd. 
@@ -318,9 +318,11 @@ SCENARIOS_1 = [
 SCENARIOS_2 = [
     # ('QuarantineFarms', 'is_quarantine_farm', [False, True]),
     # ('Quarantine+TClean', 'truck_cleaning', ['none', 'daily', 'visit']),
-    ('Quarantine+TClean+Vacc', 'vacc_roles', ['none', 'farm services clinician',
-                                              'farm services student, farm services clinician']),
-
+    # ('Vaccination', 'vacc_roles', ['none', 'farm services clinician',
+    #                                'farm services student, farm services clinician']),
+    ('Quarantine+Vacc', 'vacc_roles', ['none', 'farm services clinician',
+                                       'farm services student, farm services clinician']),
+    # ('Quarantine+Vacc+TClean', 'truck_cleaning', ['none', 'daily', 'visit']),
 ]
 
 
@@ -331,15 +333,20 @@ if __name__ == "__main__":
         scenario_df = pd.read_csv(get_output_data_dir(scenario_name) / '{}_data-{}.csv'.format(scenario_name,
                                                                                                NUM_ITERATIONS))
         print('  plotting number of steps to spillover')
-        # visualise_steps_to_spillover(scenario_name, scenario_df, var_name, var_values)
+        # plt.subplot(3, 1, 1)
+        visualise_steps_to_spillover(scenario_name, scenario_df, var_name, var_values)
 
         print('  plotting community infectious proportion')
-        # visualise_community_infectious_proportion(scenario_name, scenario_df, var_name)
+        # plt.subplot(3, 1, 2)
+        visualise_community_infectious_proportion(scenario_name, scenario_df, var_name)
 
         print('  drawing the infection networks and upset plots')
-        for var_value in var_values:
+        for num, var_value in enumerate(var_values):
             # visualise_infection_network(scenario_name, 'spillover', var_value)
             # visualise_infection_network(scenario_name, 'complete', var_value)
             # visualise_infection_upset(scenario_name, 'spillover', var_value)
+            # ax = plt.subplot(3, len(var_values), 2 + len(var_values) + num)
             visualise_infection_upset(scenario_name, 'complete', var_value)
 
+        # plt.savefig(get_output_data_dir(scenario_name) / f'{scenario_name}-all.png')
+        plt.close()

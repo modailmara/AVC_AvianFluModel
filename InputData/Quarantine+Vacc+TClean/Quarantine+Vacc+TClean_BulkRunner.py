@@ -11,13 +11,9 @@ from InputData.scenario_constants import NUM_ITERATIONS, STEPS, clear_working_di
 from constants import PersonRole
 
 
-scenario_name = 'Vaccination'
-var_name = 'vacc_roles'
-var_values = ['none',
-              'farm services clinician',
-              'farm services student, farm services clinician'
-              ]
-
+scenario_name = 'Quarantine+Vacc+TClean'
+var_name = 'truck_cleaning'
+var_values = ['none', 'daily', 'visit']
 
 if __name__ == "__main__":
     clear_working_directory(scenario_name)
@@ -25,6 +21,8 @@ if __name__ == "__main__":
         MainModel,
         parameters={
             'scenario_name': scenario_name,
+            'is_quarantine_farm': True,
+            'vacc_roles': 'farm services student, farm services clinician',
             var_name: var_values},
         iterations=NUM_ITERATIONS,
         max_steps=STEPS,

@@ -151,6 +151,7 @@ class PersonAgent(CellAgent):
             if self.location == Location.COMMUNITY:
                 # in the community so can infect community members
                 if self.vaccinated:
+                    # print("to community: {} using vaccination prob".format(self.name))
                     infection_prob = self.model.params.vacc_human_infect_human_prob
                 else:
                     infection_prob = self.model.params.human_infect_human_prob
@@ -174,6 +175,7 @@ class PersonAgent(CellAgent):
         May infect the environment/location agent in the same cell as this agent.
         """
         if self.vaccinated:
+            # print("to env: {} using vaccination prob".format(self.name))
             infection_prob = self.model.params.vacc_human_infect_env_prob
         else:
             infection_prob = self.model.params.human_infect_env_prob
@@ -197,22 +199,23 @@ class PersonAgent(CellAgent):
         """
         # work out the infection probability
         if self.vaccinated:
+            # print("to person: {} using vaccination prob".format(self.name))
             infection_prob = self.model.params.vacc_human_infect_human_prob
         else:
             infection_prob = self.model.params.human_infect_human_prob
         # get all the location agents (environment) in this cell
-            # get all the agents in this cell
-            susceptible_agents_in_cell = [agent for agent in self.cell.agents
-                                          if isinstance(agent, PersonAgent)
-                                          and agent.disease_state == DiseaseState.SUSCEPTIBLE]
-            for agent in susceptible_agents_in_cell:
-                if self.random.random() < infection_prob:
-                    agent.become_infected()
+        # get all the agents in this cell
+        susceptible_agents_in_cell = [agent for agent in self.cell.agents
+                                      if isinstance(agent, PersonAgent)
+                                      and agent.disease_state == DiseaseState.SUSCEPTIBLE]
+        for agent in susceptible_agents_in_cell:
+            if self.random.random() < infection_prob:
+                agent.become_infected()
 
-                    # record in the infection graph
-                    self.model.infection_network.add_infection_event(source_name=self.short_name,
-                                                                     target_name=agent.short_name,
-                                                                     time_step=self.model.steps)
+                # record in the infection graph
+                self.model.infection_network.add_infection_event(source_name=self.short_name,
+                                                                 target_name=agent.short_name,
+                                                                 time_step=self.model.steps)
 
     def become_infected_by_community(self):
         """
@@ -221,6 +224,7 @@ class PersonAgent(CellAgent):
         if self.disease_state == DiseaseState.SUSCEPTIBLE and self.location == Location.COMMUNITY \
                 and self.model.community_model.num_infectious > 0:
             if self.vaccinated:
+                # print("from community: {} using vaccination prob".format(self.name))
                 infection_prob = self.model.params.vacc_human_infect_human_prob
             else:
                 infection_prob = self.model.params.human_infect_human_prob
@@ -336,6 +340,7 @@ class FarmVisitorAgent(PersonAgent):
         if self.disease_state == DiseaseState.INFECTIOUS and self.farm.num_susceptible > 0 \
                 and not self.farm.is_quarantined:
             if self.vaccinated:
+                # print("to cattle: {} using vaccination prob".format(self.name))
                 infection_prob = self.model.params.vacc_human_infect_cattle_prob
             else:
                 infection_prob = self.model.params.human_infect_cattle_prob
@@ -360,6 +365,7 @@ class FarmVisitorAgent(PersonAgent):
         if self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.num_infectious > 0 \
                 and not self.farm.is_quarantined:
             if self.vaccinated:
+                # print("from cattle: {} using vaccination prob".format(self.name))
                 infection_prob = self.model.params.vacc_cattle_infect_human_prob
             else:
                 infection_prob = self.model.params.cattle_infect_human_prob
@@ -451,6 +457,7 @@ class FarmerAgent(PersonAgent):
             # direct contact with cattle is just at milking
             if self.model.steps % self.model.params.steps_per_day in self.milking_time_steps:
                 if self.vaccinated:
+                    # print("from cattle: {} using vaccination prob".format(self.name))
                     infection_prob = self.model.params.vacc_cattle_infect_human_prob
                 else:
                     infection_prob = self.model.params.cattle_infect_human_prob
@@ -479,6 +486,7 @@ class FarmerAgent(PersonAgent):
             # direct contact with cattle is just at milking
             if self.model.steps % self.model.params.steps_per_day in self.milking_time_steps:
                 if self.vaccinated:
+                    # print("to cattle: {} using vaccination prob".format(self.name))
                     infection_prob = self.model.params.vacc_human_infect_cattle_prob
                 else:
                     infection_prob = self.model.params.human_infect_cattle_prob
