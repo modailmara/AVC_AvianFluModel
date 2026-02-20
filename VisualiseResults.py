@@ -48,7 +48,7 @@ def _convert_person_role_list_to_string(person_role_list):
         return names
 
 
-def visualise_steps_to_spillover(scenario_name, result_df, var_name, var_values):
+def visualise_steps_to_spillover(ax, scenario_name, result_df, var_name, var_values):
     """
     Draws and saves a boxplot of number of steps to first community spillover.
 
@@ -69,17 +69,29 @@ def visualise_steps_to_spillover(scenario_name, result_df, var_name, var_values)
     result_group = result_df.groupby(by=['iteration', var_name])
     spillover_result_df = result_group['steps_to_community'].aggregate('max').reset_index()
     # print('sr_df ({}):\n{}'.format(spillover_result_df.shape, spillover_result_df))
-    spillover_result_df['Days to Community Spillover'] = spillover_result_df.steps_to_community / STEPS_PER_DAY
+    spillover_result_df['Days'] = spillover_result_df.steps_to_community / STEPS_PER_DAY
 
-    plot = sns.boxplot(spillover_result_df, x=var_name, y='Days to Community Spillover', order=var_values)
-    plt.ylim(0, np.nanmax(spillover_result_df['Days to Community Spillover']) + 1)
+    # convert labels for clearer display
+    if var_name == 'vacc_roles':
+        spillover_result_df['variable'] = spillover_result_df[var_name].apply(
+            lambda x: x.replace('farm services', 'FS'))
+        var_values = [val.replace('farm services', 'FS') for val in var_values]
+    else:
+        spillover_result_df['variable'] = spillover_result_df[var_name]
 
-    plot.get_figure().savefig(get_output_data_dir(scenario_name) / '{}-spillover_steps-box.png'.format(scenario_name))
+    plot = sns.boxplot(spillover_result_df, x='variable', y='Days', order=var_values, ax=ax)
+    if scenario_name == 'QuarantineFarms':
+        plot.set(xticklabels=['no quarantine', 'quarantine'])
+    elif scenario_name == 'Quarantine+Vacc':
+        plot.set(xticklabels=['none', 'FS clinician', 'FS student, FS clinician'])
 
-    plt.close()
+    plt.ylim(0, np.nanmax(spillover_result_df['Days']) + 1)
+    plot.set(xlabel=None)
+
+    # plot.get_figure().savefig(get_output_data_dir(scenario_name) / '{}-spillover_steps-box.png'.format(scenario_name))
 
 
-def visualise_community_infectious_proportion(scenario_name, result_df, var_name):
+def visualise_community_infectious_proportion(ax, scenario_name, result_df, var_name):
     """
 
     :param scenario_name:
@@ -98,19 +110,25 @@ def visualise_community_infectious_proportion(scenario_name, result_df, var_name
                       'Community_num_RECOVERED']
     result_df['Community_num_TOTAL'] = result_df[community_cols].sum(axis=1)
     # make a column with the proportion of infectious community members
-    result_df['Community_prop_INFECTIOUS'] = result_df['Community_num_INFECTIOUS'] / result_df['Community_num_TOTAL']
+    result_df['Infectious proportion'] = \
+        result_df['Community_num_INFECTIOUS'] / result_df['Community_num_TOTAL']
 
     # make a day column as it's easier to read
     result_df['Days'] = result_df.Step / STEPS_PER_DAY
 
     # make a line plot comparing outcomes
-    plot = sns.lineplot(result_df, x='Days', y='Community_prop_INFECTIOUS', hue=var_name, palette='colorblind')
-
+    plot = sns.lineplot(result_df, x='Days', y='Infectious proportion',
+                        hue=var_name, palette='colorblind', ax=ax)
     plt.ylim(-0.05, 1.05)
 
-    plot.get_figure().savefig(get_output_data_dir(scenario_name) / '{}-prop_infectious-line.png'.format(scenario_name))
+    # fix the legend labels for readability
+    handles, labels = plot.get_legend_handles_labels()
+    if scenario_name == 'QuarantineFarms':
+        labels = ['no quarantine', 'quarantine']
+    elif scenario_name == 'Quarantine+Vacc':
+        labels = [lab.replace('farm services', 'FS') for lab in labels]
 
-    plt.close()
+    plot.legend(handles=handles, labels=labels)
 
 
 def get_node_pos(nx_graph, current_node, current_x=0, y_min=0, visited_nodes=[]):
@@ -225,9 +243,10 @@ def visualise_infection_network(scenario_name, result_type, var_value):
     plt.close()
 
 
-def visualise_infection_upset(scenario_name, result_type, var_value, axis=None):
+def visualise_infection_upset(scenario_name, result_type, var_value, fig):
     # var_value = 'None' if var_value == 'none' else var_value
-    var_value = var_value.replace(', ', ',')
+    if scenario_name == 'Quarantine+Vacc':
+        var_value = var_value.replace(', ', ',')
     print("    {}_{}".format(result_type, var_value))
 
     # get the dir with the edgelist files
@@ -235,10 +254,18 @@ def visualise_infection_upset(scenario_name, result_type, var_value, axis=None):
     # read in all the iteration result edge lists and put them together
     edge_df_list = []
     print("scenario={}\nresult_type={}\nvar_value={}".format(scenario_name, result_type, var_value))
-    for edgelist_filepath in [edgelist_dir / filename
-                              for filename in list(edgelist_dir.glob('{}::{}::{}::*.csv'.format(scenario_name,
-                                                                                                result_type,
-                                                                                                var_value)))]:
+    var_filename_list = [edgelist_dir / filename
+                         for filename in list(edgelist_dir.glob('{}::{}::{}::*.csv'.format(scenario_name,
+                                                                                           result_type,
+                                                                                           var_value)))]
+    if len(var_filename_list) == 0 and var_value == 'none':
+        # given 'none' but filenames use 'None'
+        var_filename_list = [edgelist_dir / filename
+                             for filename in list(edgelist_dir.glob('{}::{}::{}::*.csv'.format(scenario_name,
+                                                                                               result_type,
+                                                                                               'None')))]
+
+    for edgelist_filepath in var_filename_list:
         # each file is a single iteration
         iteration_df = pd.read_csv(edgelist_filepath, names=['from_node', 'to_node', 'weight', 'step'])
 
@@ -266,7 +293,7 @@ def visualise_infection_upset(scenario_name, result_type, var_value, axis=None):
 
     edgelist_df.sort_values(by='weight', ascending=False, inplace=True)
 
-    num_edges = 15
+    num_edges = 10
     short_edgelist_df = edgelist_df[:num_edges]
 
     memberships = []
@@ -285,21 +312,26 @@ def visualise_infection_upset(scenario_name, result_type, var_value, axis=None):
             counts.append(row.weight)
     upset_df = upsetplot.from_memberships(memberships, counts)
 
-    plot_result = upsetplot.plot(upset_df, sort_by='cardinality', totals_plot_elements=0, fig=axis)
+    upset_obj = upsetplot.UpSet(upset_df, sort_by='cardinality', totals_plot_elements=0, element_size=None)
+    upset_ax_dict = upset_obj.plot(fig=fig)
 
-    subtext = """C=community, FA=farm, FL=floating, FS=farm services, LA=large animal, SA=small animal. 
-    s=staff, u=student, c=clinician, t=technician, f=farmer, h=herd. 
-    Combinations, e.g. FSu=farm services student"""
+    # subplots = fig.subplots(2, 1)
+    #
+    # upset_obj.plot_intersections(subplots[0])
+    upset_ax_dict['intersections'].set_ylabel('# transmissions')
+    upset_ax_dict['intersections'].set_ylim(0, 300)
 
-    plot_result['shading'].set_xlabel(subtext, multialignment='left')
+    if scenario_name == 'QuarantineFarms':
+        if var_value:
+            x_label = 'quarantine'
+        else:
+            x_label = 'no quarantine'
+    elif scenario_name == 'Quarantine+Vacc':
+        x_label = var_value.replace('farm services', 'FS')
+    else:
+        x_label = var_value
 
-    plot_result['intersections'].set_ylabel('Pathogen transmissions')
-    plot_result['intersections'].set_ylim(0, 300)
-
-    plt.savefig(get_output_data_dir(scenario_name) / '{}::{}::{}::upset.png'.format(scenario_name,
-                                                                                    result_type,
-                                                                                    var_value))
-    plt.close()
+    upset_ax_dict['shading'].set_xlabel('{}'.format(x_label))
 
 
 SCENARIOS_1 = [
@@ -312,17 +344,13 @@ SCENARIOS_1 = [
     ('TruckCleaning', 'truck_cleaning', ['none', 'daily', 'visit']),
 
 ]
-# [[None], [PersonRole.FARM_SERVICES_STUDENT],
-# [PersonRole.FARM_SERVICES_STUDENT, PersonRole.FARM_SERVICES_CLINICIAN]])
+
 
 SCENARIOS_2 = [
-    # ('QuarantineFarms', 'is_quarantine_farm', [False, True]),
-    # ('Quarantine+TClean', 'truck_cleaning', ['none', 'daily', 'visit']),
-    # ('Vaccination', 'vacc_roles', ['none', 'farm services clinician',
-    #                                'farm services student, farm services clinician']),
+    ('QuarantineFarms', 'is_quarantine_farm', [False, True]),
+    ('Quarantine+TClean', 'truck_cleaning', ['none', 'daily', 'visit']),
     ('Quarantine+Vacc', 'vacc_roles', ['none', 'farm services clinician',
                                        'farm services student, farm services clinician']),
-    # ('Quarantine+Vacc+TClean', 'truck_cleaning', ['none', 'daily', 'visit']),
 ]
 
 
@@ -332,13 +360,25 @@ if __name__ == "__main__":
         print('  reading data')
         scenario_df = pd.read_csv(get_output_data_dir(scenario_name) / '{}_data-{}.csv'.format(scenario_name,
                                                                                                NUM_ITERATIONS))
+
+        # define a single figure with a subfigure each for boxplot, lineplot, and upsets (3 rows)
+        figure = plt.figure(layout='constrained', figsize=(8, 11))
+        subfigs = figure.subfigures(3, 1, height_ratios=[1.5, 1.5, 2.5])
+
         print('  plotting number of steps to spillover')
-        # plt.subplot(3, 1, 1)
-        visualise_steps_to_spillover(scenario_name, scenario_df, var_name, var_values)
+        ax = subfigs[0].subplots()
+        visualise_steps_to_spillover(ax, scenario_name, scenario_df, var_name, var_values)
+        subfigs[0].suptitle('(a)', fontsize=18, weight='bold')
+        # ax.set_title('(a)', fontsize=18, weight='bold')
 
         print('  plotting community infectious proportion')
-        # plt.subplot(3, 1, 2)
-        visualise_community_infectious_proportion(scenario_name, scenario_df, var_name)
+        ax = subfigs[1].subplots()
+        visualise_community_infectious_proportion(ax, scenario_name, scenario_df, var_name)
+        subfigs[1].suptitle('(b)', fontsize=18, weight='bold')
+
+        # separate subfigure for each upset plot
+        upset_subfigs = subfigs[2].subfigures(1, len(var_values))
+        upset_subfig_titles = ['(c)', '(d)', '(e)']
 
         print('  drawing the infection networks and upset plots')
         for num, var_value in enumerate(var_values):
@@ -346,7 +386,14 @@ if __name__ == "__main__":
             # visualise_infection_network(scenario_name, 'complete', var_value)
             # visualise_infection_upset(scenario_name, 'spillover', var_value)
             # ax = plt.subplot(3, len(var_values), 2 + len(var_values) + num)
-            visualise_infection_upset(scenario_name, 'complete', var_value)
+            print('    complete {}'.format(var_value))
+            visualise_infection_upset(scenario_name, 'complete', var_value, upset_subfigs[num])
+            upset_subfigs[num].suptitle(upset_subfig_titles[num], fontsize=18, weight='bold')
 
-        # plt.savefig(get_output_data_dir(scenario_name) / f'{scenario_name}-all.png')
+        subtext = "C=community, FA=farm, FL=floating, FS=farm services, LA=large animal, SA=small animal.\n" + \
+                  "s=staff, u=student, c=clinician, t=technician, f=farmer, h=herd.\n" + \
+                  "Combinations, e.g. FSu=farm services student"
+        subfigs[2].supxlabel(subtext, multialignment='left')
+
+        plt.savefig(get_output_data_dir(scenario_name) / f'{scenario_name}-all.png')
         plt.close()
