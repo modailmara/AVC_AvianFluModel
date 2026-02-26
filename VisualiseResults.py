@@ -395,5 +395,5 @@ if __name__ == "__main__":
                   "Combinations, e.g. FSu=farm services student"
         subfigs[2].supxlabel(subtext, multialignment='left')
 
-        plt.savefig(get_output_data_dir(scenario_name) / f'{scenario_name}-all.png')
+        plt.savefig(get_output_data_dir(scenario_name) / f'{scenario_name}-all.tiff', dpi=500)
         plt.close()
