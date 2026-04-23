@@ -243,7 +243,7 @@ def visualise_infection_network(scenario_name, result_type, var_value):
     plt.close()
 
 
-def visualise_infection_upset(scenario_name, result_type, var_value, fig):
+def create_full_transmission_edgelist(scenario_name, result_type, var_value):
     # var_value = 'None' if var_value == 'none' else var_value
     if scenario_name == 'Quarantine+Vacc':
         var_value = var_value.replace(', ', ',')
@@ -274,8 +274,10 @@ def visualise_infection_upset(scenario_name, result_type, var_value, fig):
         iteration_df['to_node'] = iteration_df['to_node'].apply(lambda x: x.split('_')[0])
 
         # upset doesn't preserve direction so sort standard (alphabetically)
-        iteration_df['source'] = iteration_df.apply(lambda r: sorted([r.from_node, r.to_node])[0], axis=1)
-        iteration_df['target'] = iteration_df.apply(lambda r: sorted([r.from_node, r.to_node])[-1], axis=1)
+        # iteration_df['source'] = iteration_df.apply(lambda r: sorted([r.from_node, r.to_node])[0], axis=1)
+        # iteration_df['target'] = iteration_df.apply(lambda r: sorted([r.from_node, r.to_node])[-1], axis=1)
+        iteration_df['source'] = iteration_df['from_node']
+        iteration_df['target'] = iteration_df['to_node']
 
         # add together any repeats
         iteration_group = iteration_df.groupby(by=['source', 'target'])
@@ -292,6 +294,12 @@ def visualise_infection_upset(scenario_name, result_type, var_value, fig):
     edgelist_df = edgelist_group.agg({'weight': 'mean', 'step': 'min'}).reset_index()
 
     edgelist_df.sort_values(by='weight', ascending=False, inplace=True)
+
+    return edgelist_df
+
+
+def visualise_infection_upset(scenario_name, result_type, var_value, fig):
+    edgelist_df = create_full_transmission_edgelist(scenario_name, result_type, var_value)
 
     num_edges = 10
     short_edgelist_df = edgelist_df[:num_edges]
@@ -334,6 +342,112 @@ def visualise_infection_upset(scenario_name, result_type, var_value, fig):
     upset_ax_dict['shading'].set_xlabel('{}'.format(x_label))
 
 
+def create_scenario_figure(scenario_df, scenario_name, var_name, var_values):
+    """
+    Creates a single large figure with 3 rows of sub figures.
+    First row is a boxplot of times to first community exposure.
+    Second row is a lineplot of proportion of the community infected over time.
+    Third row is a series of upset plots showing average number of transmissions per simulation
+
+    :param scenario_df: Model observer output as a pandas dataframe
+    :type scenario_df: pandas.DataFrame
+    :param scenario_name: Name of the scenario
+    :type scenario_name: str
+    :param var_name: Name of the parameter being varied for the scenario (assumes one)
+    :type var_name: str
+    :param var_values: List of the parameter values used in the scenario
+    :type var_values: list
+    """
+    # define a single figure with a subfigure each for boxplot, lineplot, and upsets (3 rows)
+    figure = plt.figure(layout='constrained', figsize=(8, 11))
+    subfigs = figure.subfigures(3, 1, height_ratios=[1.5, 1.5, 2.5])
+
+    print('  plotting number of steps to spillover')
+    ax = subfigs[0].subplots()
+    visualise_steps_to_spillover(ax, scenario_name, scenario_df, var_name, var_values)
+    subfigs[0].suptitle('(a)', fontsize=18, weight='bold')
+    # ax.set_title('(a)', fontsize=18, weight='bold')
+
+    print('  plotting community infectious proportion')
+    ax = subfigs[1].subplots()
+    visualise_community_infectious_proportion(ax, scenario_name, scenario_df, var_name)
+    subfigs[1].suptitle('(b)', fontsize=18, weight='bold')
+
+    # separate subfigure for each upset plot
+    upset_subfigs = subfigs[2].subfigures(1, len(var_values))
+    upset_subfig_titles = ['(c)', '(d)', '(e)']
+
+    print('  drawing the infection networks and upset plots')
+    for num, var_value in enumerate(var_values):
+        # visualise_infection_network(scenario_name, 'spillover', var_value)
+        # visualise_infection_network(scenario_name, 'complete', var_value)
+        # visualise_infection_upset(scenario_name, 'spillover', var_value)
+        # ax = plt.subplot(3, len(var_values), 2 + len(var_values) + num)
+        print('    complete {}'.format(var_value))
+        visualise_infection_upset(scenario_name, 'complete', var_value, upset_subfigs[num])
+        upset_subfigs[num].suptitle(upset_subfig_titles[num], fontsize=18, weight='bold')
+
+    subtext = "C=community, FA=farm, FL=floating, FS=farm services, LA=large animal, SA=small animal.\n" + \
+              "s=staff, u=student, c=clinician, t=technician, f=farmer, h=herd.\n" + \
+              "Combinations, e.g. FSu=farm services student"
+    subfigs[2].supxlabel(subtext, multialignment='left')
+
+    plt.savefig(get_output_data_dir(scenario_name) / f'{scenario_name}-all.tiff', dpi=500)
+    plt.close()
+
+
+def count_transmissions(scenario_name, var_name, var_values):
+    """
+    Shows counts for transmissions to the community aggregated to farmers vs VTH personnel
+
+    :param scenario_df: Model observer output as a pandas dataframe
+    :type scenario_df: pandas.DataFrame
+    :param scenario_name: Name of the scenario
+    :type scenario_name: str
+    :param var_name: Name of the parameter being varied for the scenario (assumes one)
+    :type var_name: str
+    :param var_values: List of the parameter values used in the scenario
+    :type var_values: list
+    """
+    out_dir = get_output_data_dir(scenario_name)
+    with open(out_dir / '{}_transmission-counts.txt'.format(scenario_name), 'w') as count_file:
+        count_file.write("scenario: {}\nparameter: {}\n\n".format(scenario_name, var_name))
+        for var_value in var_values:
+            count_file.write('  value: {}\n'.format(var_value))
+            # get the full DF of edges
+            edgelist_df = create_full_transmission_edgelist(scenario_name, 'complete', var_value)
+            all_transmissions = edgelist_df['weight'].sum()
+
+            # get counts of f -> C and C -> f transmissions
+            farmer_comm_trans = edgelist_df[(edgelist_df.source == 'f') & (edgelist_df.target == 'C')]['weight'].sum()
+            comm_farmer_trans = edgelist_df[(edgelist_df.source == 'C') & (edgelist_df.target == 'f')]['weight'].sum()
+
+            # get counts of VTH -> C and C -> VTH transmissions
+            vth_person_types = [member.value for name, member in PersonRole.__members__.items()]
+            vth_comm_trans = edgelist_df[(edgelist_df.source.isin(vth_person_types))
+                                         & (edgelist_df.target == 'C')]['weight'].sum()
+            comm_vth_trans = edgelist_df[(edgelist_df.source == 'C')
+                                         & (edgelist_df.target.isin(vth_person_types))]['weight'].sum()
+
+            all_comm = farmer_comm_trans + vth_comm_trans
+
+            count_file.write('    all: {}\n    all comm: {}\n\n'.format(all_transmissions, all_comm))
+
+            count_file.write('    f->C= {}  (comm={}) (all={})\n'.format(farmer_comm_trans,
+                                                                         farmer_comm_trans / all_comm,
+                                                                         farmer_comm_trans / all_transmissions
+                                                                         ))
+            count_file.write('    C->f= {}\n'.format(comm_farmer_trans))
+            count_file.write('    total: {}\n\n'.format(farmer_comm_trans + comm_farmer_trans))
+
+            count_file.write('    VTH->C= {}  (comm={}) (all={})\n'.format(vth_comm_trans,
+                                                                           vth_comm_trans / all_comm,
+                                                                           vth_comm_trans / all_transmissions
+                                                                           ))
+            count_file.write('    C->VTH= {}\n'.format(comm_vth_trans))
+            count_file.write('    total: {}\n\n'.format(vth_comm_trans + comm_vth_trans))
+
+
 SCENARIOS_1 = [
     ('AnimalIntroduction', 'num_infected_farms', [1, 5, 10, 15, 19]),
     ('HospitalCleaning', 'hospital_cleaning', ['none', 'daily']),
@@ -354,46 +468,18 @@ SCENARIOS_2 = [
 ]
 
 
-if __name__ == "__main__":
+def main():
     for scenario_name, var_name, var_values in SCENARIOS_2:
         print(scenario_name)
         print('  reading data')
         scenario_df = pd.read_csv(get_output_data_dir(scenario_name) / '{}_data-{}.csv'.format(scenario_name,
                                                                                                NUM_ITERATIONS))
 
-        # define a single figure with a subfigure each for boxplot, lineplot, and upsets (3 rows)
-        figure = plt.figure(layout='constrained', figsize=(8, 11))
-        subfigs = figure.subfigures(3, 1, height_ratios=[1.5, 1.5, 2.5])
+        # create_scenario_figure(scenario_df, scenario_name, var_name, var_values)
 
-        print('  plotting number of steps to spillover')
-        ax = subfigs[0].subplots()
-        visualise_steps_to_spillover(ax, scenario_name, scenario_df, var_name, var_values)
-        subfigs[0].suptitle('(a)', fontsize=18, weight='bold')
-        # ax.set_title('(a)', fontsize=18, weight='bold')
+        count_transmissions(scenario_name, var_name, var_values)
 
-        print('  plotting community infectious proportion')
-        ax = subfigs[1].subplots()
-        visualise_community_infectious_proportion(ax, scenario_name, scenario_df, var_name)
-        subfigs[1].suptitle('(b)', fontsize=18, weight='bold')
 
-        # separate subfigure for each upset plot
-        upset_subfigs = subfigs[2].subfigures(1, len(var_values))
-        upset_subfig_titles = ['(c)', '(d)', '(e)']
+if __name__ == "__main__":
+    main()
 
-        print('  drawing the infection networks and upset plots')
-        for num, var_value in enumerate(var_values):
-            # visualise_infection_network(scenario_name, 'spillover', var_value)
-            # visualise_infection_network(scenario_name, 'complete', var_value)
-            # visualise_infection_upset(scenario_name, 'spillover', var_value)
-            # ax = plt.subplot(3, len(var_values), 2 + len(var_values) + num)
-            print('    complete {}'.format(var_value))
-            visualise_infection_upset(scenario_name, 'complete', var_value, upset_subfigs[num])
-            upset_subfigs[num].suptitle(upset_subfig_titles[num], fontsize=18, weight='bold')
-
-        subtext = "C=community, FA=farm, FL=floating, FS=farm services, LA=large animal, SA=small animal.\n" + \
-                  "s=staff, u=student, c=clinician, t=technician, f=farmer, h=herd.\n" + \
-                  "Combinations, e.g. FSu=farm services student"
-        subfigs[2].supxlabel(subtext, multialignment='left')
-
-        plt.savefig(get_output_data_dir(scenario_name) / f'{scenario_name}-all.tiff', dpi=500)
-        plt.close()
