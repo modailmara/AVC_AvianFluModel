@@ -37,3 +37,18 @@ dairy farms including farmers and cows, the veterinary hospital, and into the wi
    visualisation.
 
 ### Run a scenario
+1. Add the code directory to the PYTHONPATH environment variable. 
+   1. (Linux+bash) `export PYTHONPATH=<insert-your-path>/AVC_AvianFluModel:$PYTHONPATH`
+2. Run a scenario in the `InputData` directory, e.g. Baseline. 
+   1. **Warning:** this will take a long time to run. For testing, change `NUM_ITERATIONS` in 
+      `InputData/scenario_constants.py` to 10.
+   2. `> python InputData/Baseline/Baseline_Bulkrunner.py`
+   3. When the scenario run completes, it produces a CSV file with the results: 
+      `InputData/Baseline/output/Baseline_data-<num_iterations>.csv`. 
+   4. You can analyse the CSV output file and use the `VisualiseResults.py` script to produce figures in the style of 
+      the paper.
+
+### Visualise scenario results
+1. Make sure the code directory is in the PYTHONPATH environment variable. 
+2. Run `python VisualiseResults.py <scenario-data-file-name>` (don't include the full path to the scenario)
+3. The final figure with all results will be `InputData/<scenario-name>/output/<scenario-name>-all.tiff`
