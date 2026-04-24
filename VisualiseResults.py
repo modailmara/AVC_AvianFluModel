@@ -475,7 +475,7 @@ def main():
         scenario_df = pd.read_csv(get_output_data_dir(scenario_name) / '{}_data-{}.csv'.format(scenario_name,
                                                                                                NUM_ITERATIONS))
 
-        # create_scenario_figure(scenario_df, scenario_name, var_name, var_values)
+        create_scenario_figure(scenario_df, scenario_name, var_name, var_values)
 
         count_transmissions(scenario_name, var_name, var_values)
 

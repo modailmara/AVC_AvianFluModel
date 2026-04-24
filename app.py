@@ -2,7 +2,6 @@ import networkx.exception
 import solara
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 import numpy as np
 from mesa.visualization import (
     Slider,
