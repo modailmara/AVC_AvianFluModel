@@ -38,13 +38,10 @@ def get_input_data_dir():
     return get_root_dir() / 'InputData'
 
 
-def get_output_data_dir(scenario_name=None):
-    if scenario_name is None:
-        return get_root_dir() / 'output'
-    else:
-        scenario_output_dir = get_scenario_input_dir(scenario_name) / 'output'
-        scenario_output_dir.mkdir(exist_ok=True)
-        return scenario_output_dir
+def get_output_data_dir(scenario_name):
+    scenario_output_dir = get_scenario_input_dir(scenario_name) / 'output'
+    scenario_output_dir.mkdir(exist_ok=True)
+    return scenario_output_dir
 
 
 def get_scenario_input_dir(scenario_dir_name):

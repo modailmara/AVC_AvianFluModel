@@ -16,6 +16,7 @@ dairy farms including farmers and cows, the veterinary hospital, and into the wi
    3. Simple case when everything works and assuming you want to call your environment `hpai-env`
       1. `> python -m venv hpai-env`
       2. `> source hpai-env/bin/activate` (Linux and MacOSX, see website for Windows)
+         1. You will need to do this step first each time you use the model
 3. Install the Mesa package. 
    1. We use version 3.1.5. We haven't tested later versions, other v3.x versions probably work?
    2. We used `pip install -U mesa[rec]==3.1.5` to install the recommended dependency packages.
@@ -50,5 +51,11 @@ dairy farms including farmers and cows, the veterinary hospital, and into the wi
 
 ### Visualise scenario results
 1. Make sure the code directory is in the PYTHONPATH environment variable. 
-2. Run `python VisualiseResults.py <scenario-data-file-name>` (don't include the full path to the scenario)
-3. The final figure with all results will be `InputData/<scenario-name>/output/<scenario-name>-all.tiff`
+2. Install the seaborn package for drawing charts (https://seaborn.pydata.org)
+   1. We used v0.13.2
+   2. `pip install seaborn`
+3. Install the upsetplot package for drawing upset plots (https://upsetplot.readthedocs.io/en/stable/)
+   1. We used v0.9.0
+   2. `pip install UpSetPlot`
+4. Run `python VisualiseResults.py <scenario-data-file-name>` (don't include the full path to the scenario)
+5. The final figure with all results will be `InputData/<scenario-name>/output/<scenario-name>-all.tiff`

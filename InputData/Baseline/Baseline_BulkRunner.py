@@ -10,7 +10,8 @@ from support_functions import get_output_data_dir
 from Models.MainModel import MainModel
 
 scenario_name = 'Baseline'
-
+var_name = 'no var'
+var_values = [False, True]
 
 if __name__ == "__main__":
     clear_working_directory(scenario_name)

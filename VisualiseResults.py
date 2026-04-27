@@ -5,10 +5,12 @@ import matplotlib
 import matplotlib.pyplot as plt
 import networkx as nx
 import upsetplot
+import argparse
+import importlib.util
 
-from support_functions import get_output_data_dir
-from InputData.scenario_constants import NUM_ITERATIONS
+from support_functions import get_output_data_dir, get_input_data_dir
 from constants import PersonRole
+from InputData.scenario_constants import NUM_ITERATIONS
 
 matplotlib.use('TkAgg')
 
@@ -448,36 +450,44 @@ def count_transmissions(scenario_name, var_name, var_values):
             count_file.write('    total: {}\n\n'.format(vth_comm_trans + comm_vth_trans))
 
 
-SCENARIOS_1 = [
-    ('AnimalIntroduction', 'num_infected_farms', [1, 5, 10, 15, 19]),
-    ('HospitalCleaning', 'hospital_cleaning', ['none', 'daily']),
-    ('PeopleMixing', 'people_sheet', ['default', 'no_common', 'dept_only']),
-
-    ('TransmissionCowCow', 'cattle_infect_cattle_prob', [i / 10 for i in range(1, 10, 4)]),
-    ('TransmissionPersonPerson', 'human_infect_human_prob', [i / 10 for i in range(1, 10, 4)]),
-    ('TruckCleaning', 'truck_cleaning', ['none', 'daily', 'visit']),
-
-]
-
-
-SCENARIOS_2 = [
-    ('QuarantineFarms', 'is_quarantine_farm', [False, True]),
-    ('Quarantine+TClean', 'truck_cleaning', ['none', 'daily', 'visit']),
-    ('Quarantine+Vacc', 'vacc_roles', ['none', 'farm services clinician',
-                                       'farm services student, farm services clinician']),
-]
-
-
 def main():
-    for scenario_name, var_name, var_values in SCENARIOS_2:
-        print(scenario_name)
-        print('  reading data')
-        scenario_df = pd.read_csv(get_output_data_dir(scenario_name) / '{}_data-{}.csv'.format(scenario_name,
-                                                                                               NUM_ITERATIONS))
+    parser = argparse.ArgumentParser()
+    parser.add_argument("scenario_name", help="Create figures for generated results for the named scenario.")
+    args = parser.parse_args()
 
-        create_scenario_figure(scenario_df, scenario_name, var_name, var_values)
+    # get the names of scenarios that have data generated
+    valid_scenarios = []
+    for scenario_dir in [x for x in get_input_data_dir().iterdir() if x.is_dir() and 'pycache' not in x.name]:
+        data_files = list(scenario_dir.glob('output/*_data*.csv'))
+        # print("  {}: {}".format(scenario_dir, data_files))
+        if len(data_files) > 0:
+            # print("{}: {}".format(scenario_dir, data_files))
+            valid_scenarios.append(scenario_dir.name)
 
-        count_transmissions(scenario_name, var_name, var_values)
+    if args.scenario_name in valid_scenarios:
+        print('Visualising scenario: {}'.format(args.scenario_name))
+
+        # load the BulkRunner file
+        # InputData/Baseline/Baseline_BulkRunner.py
+        file_path = get_input_data_dir() / args.scenario_name / '{}_BulkRunner.py'.format(args.scenario_name)
+        module_name = '{}'.format(args.scenario_name)
+        spec = importlib.util.spec_from_file_location(module_name, file_path)
+        scenario_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(scenario_module)
+
+        # run the visualisation
+        scenario_df = pd.read_csv(get_output_data_dir(args.scenario_name) / '{}_data-{}.csv'.format(args.scenario_name,
+                                                                                                    NUM_ITERATIONS))
+
+        create_scenario_figure(scenario_df, args.scenario_name, scenario_module.var_name, scenario_module.var_values)
+
+        count_transmissions(args.scenario_name, scenario_module.var_name, scenario_module.var_values)
+    else:
+        print("{} is not a valid scenario name. Valid means:".format(args.scenario_name))
+        print("  - it has a directory in InputDir")
+        print("  - with a data file in InputDir/output named <scenario-name>_data-<num_iterations>.csv")
+
+        print('Valid scenarios are: {}'.format(valid_scenarios))
 
 
 if __name__ == "__main__":
