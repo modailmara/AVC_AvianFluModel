@@ -152,11 +152,11 @@ class PersonAgent(CellAgent):
                 # in the community so can infect community members
                 if self.vaccinated:
                     # print("to community: {} using vaccination prob".format(self.name))
-                    infection_prob = self.model.params.vacc_human_infect_human_prob
+                    infection_prob = self.model.params.VACC_HUMAN_INFECT_HUMAN_PROB
                 else:
-                    infection_prob = self.model.params.human_infect_human_prob
+                    infection_prob = self.model.params.HUMAN_INFECT_HUMAN_PROB
 
-                num_possible_infections = np.random.binomial(self.model.params.community_contacts_per_step,
+                num_possible_infections = np.random.binomial(self.model.params.COMMUNITY_CONTACTS_PER_STEP,
                                                              self.model.community_model.proportion_susceptible)
                 num_infections = np.random.binomial(num_possible_infections, infection_prob)
 
@@ -176,9 +176,9 @@ class PersonAgent(CellAgent):
         """
         if self.vaccinated:
             # print("to env: {} using vaccination prob".format(self.name))
-            infection_prob = self.model.params.vacc_human_infect_env_prob
+            infection_prob = self.model.params.VACC_HUMAN_INFECT_ENV_PROB
         else:
-            infection_prob = self.model.params.human_infect_env_prob
+            infection_prob = self.model.params.HUMAN_INFECT_ENV_PROB
         # chance of infecting the environment
         env_location_agents = [agent for agent in self.cell.agents
                                if isinstance(agent, Models.LocationAgents.LocationAgent)
@@ -200,9 +200,9 @@ class PersonAgent(CellAgent):
         # work out the infection probability
         if self.vaccinated:
             # print("to person: {} using vaccination prob".format(self.name))
-            infection_prob = self.model.params.vacc_human_infect_human_prob
+            infection_prob = self.model.params.VACC_HUMAN_INFECT_HUMAN_PROB
         else:
-            infection_prob = self.model.params.human_infect_human_prob
+            infection_prob = self.model.params.HUMAN_INFECT_HUMAN_PROB
         # get all the location agents (environment) in this cell
         # get all the agents in this cell
         susceptible_agents_in_cell = [agent for agent in self.cell.agents
@@ -225,11 +225,11 @@ class PersonAgent(CellAgent):
                 and self.model.community_model.num_infectious > 0:
             if self.vaccinated:
                 # print("from community: {} using vaccination prob".format(self.name))
-                infection_prob = self.model.params.vacc_human_infect_human_prob
+                infection_prob = self.model.params.VACC_HUMAN_INFECT_HUMAN_PROB
             else:
-                infection_prob = self.model.params.human_infect_human_prob
+                infection_prob = self.model.params.HUMAN_INFECT_HUMAN_PROB
             num_infected_people_contacted = min(self.model.community_model.num_infectious,
-                                                np.random.binomial(self.model.params.community_contacts_per_step,
+                                                np.random.binomial(self.model.params.COMMUNITY_CONTACTS_PER_STEP,
                                                                    self.model.community_model.proportion_infected))
             num_infections = np.random.binomial(num_infected_people_contacted, infection_prob)
 
@@ -341,11 +341,11 @@ class FarmVisitorAgent(PersonAgent):
                 and not self.farm.is_quarantined:
             if self.vaccinated:
                 # print("to cattle: {} using vaccination prob".format(self.name))
-                infection_prob = self.model.params.vacc_human_infect_cattle_prob
+                infection_prob = self.model.params.VACC_HUMAN_INFECT_CATTLE_PROB
             else:
-                infection_prob = self.model.params.human_infect_cattle_prob
+                infection_prob = self.model.params.HUMAN_INFECT_CATTLE_PROB
             num_susceptible_cows_contacted = min(self.farm.num_susceptible,
-                                                 np.random.binomial(self.model.params.vet_contacts_per_step,
+                                                 np.random.binomial(self.model.params.VET_CONTACTS_PER_STEP,
                                                                     self.farm.proportion_susceptible))
             num_infected = np.random.binomial(num_susceptible_cows_contacted, infection_prob)
 
@@ -366,11 +366,11 @@ class FarmVisitorAgent(PersonAgent):
                 and not self.farm.is_quarantined:
             if self.vaccinated:
                 # print("from cattle: {} using vaccination prob".format(self.name))
-                infection_prob = self.model.params.vacc_cattle_infect_human_prob
+                infection_prob = self.model.params.VACC_CATTLE_INFECT_HUMAN_PROB
             else:
-                infection_prob = self.model.params.cattle_infect_human_prob
+                infection_prob = self.model.params.CATTLE_INFECT_HUMAN_PROB
             num_infected_cows_contacted = min(self.farm.num_infectious,
-                                              np.random.binomial(self.model.params.vet_contacts_per_step,
+                                              np.random.binomial(self.model.params.VET_CONTACTS_PER_STEP,
                                                                  self.farm.proportion_infected))
             num_infections = np.random.binomial(num_infected_cows_contacted, infection_prob)
 
@@ -401,8 +401,8 @@ class FarmerAgent(PersonAgent):
         self.farm = farm
         self.farm.farmer = self
 
-        steps_between_milking = self.model.params.daytime_steps // self.model.params.num_milking_events_per_day
-        self.milking_time_steps = list(range(1, self.model.params.daytime_steps+1, steps_between_milking))
+        steps_between_milking = self.model.params.DAYTIME_STEPS // self.model.params.NUM_MILKING_EVENTS_PER_DAY
+        self.milking_time_steps = list(range(1, self.model.params.DAYTIME_STEPS + 1, steps_between_milking))
 
     def start_stop_work(self):
         """
@@ -455,12 +455,12 @@ class FarmerAgent(PersonAgent):
         if self.disease_state == DiseaseState.SUSCEPTIBLE and self.farm.num_infectious > 0 \
                 and not self.farm.is_quarantined:
             # direct contact with cattle is just at milking
-            if self.model.steps % self.model.params.steps_per_day in self.milking_time_steps:
+            if self.model.steps % self.model.params.STEPS_PER_DAY in self.milking_time_steps:
                 if self.vaccinated:
                     # print("from cattle: {} using vaccination prob".format(self.name))
-                    infection_prob = self.model.params.vacc_cattle_infect_human_prob
+                    infection_prob = self.model.params.VACC_CATTLE_INFECT_HUMAN_PROB
                 else:
-                    infection_prob = self.model.params.cattle_infect_human_prob
+                    infection_prob = self.model.params.CATTLE_INFECT_HUMAN_PROB
                 # contact every cow a number of times based on milking system
                 for _ in range(self.farm.num_milking_contacts):
                     num_infected_cows_contacted = self.farm.num_infectious
@@ -484,12 +484,12 @@ class FarmerAgent(PersonAgent):
         if self.disease_state == DiseaseState.INFECTIOUS and self.farm.num_susceptible > 0 \
                 and not self.farm.is_quarantined:
             # direct contact with cattle is just at milking
-            if self.model.steps % self.model.params.steps_per_day in self.milking_time_steps:
+            if self.model.steps % self.model.params.STEPS_PER_DAY in self.milking_time_steps:
                 if self.vaccinated:
                     # print("to cattle: {} using vaccination prob".format(self.name))
-                    infection_prob = self.model.params.vacc_human_infect_cattle_prob
+                    infection_prob = self.model.params.VACC_HUMAN_INFECT_CATTLE_PROB
                 else:
-                    infection_prob = self.model.params.human_infect_cattle_prob
+                    infection_prob = self.model.params.HUMAN_INFECT_CATTLE_PROB
                 # contact every cow a number of times based on milking system
                 for _ in range(self.farm.num_milking_contacts):
                     num_susceptible_cows_contacted = self.farm.num_susceptible
@@ -508,5 +508,5 @@ class FarmerAgent(PersonAgent):
         """
         super().become_symptomatic()
 
-        if self.model.params.is_quarantine_farm:
+        if self.model.params.IS_QUARANTINE_FARM:
             self.farm.is_quarantined = True

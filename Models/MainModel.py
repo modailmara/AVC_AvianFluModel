@@ -54,17 +54,7 @@ class MainModel(mesa.Model):
     """
 
     def __init__(self, seed=None, simulator=None, scenario_name=None,
-                 is_stop_community_infection=None, is_quarantine_farm=None,
-                 # infection probabilities
-                 cattle_infect_cattle_prob=None, human_infect_human_prob=None,
-                 human_infect_cattle_prob=None, cattle_infect_human_prob=None,
-                 # vaccinations
-                 vacc_roles=None, vacc_human_infect_cattle_prob=None, vacc_human_infect_human_prob=None,
-                 vacc_cattle_infect_human_prob=None, vacc_human_infect_env_prob=None, vacc_env_infect_human_prob=None,
-                 num_infected_farms=None,
-                 people_sheet=None,
-                 truck_cleaning=None, hospital_cleaning=None):
-
+                 **kwargs):
         super().__init__(seed=seed)
         if simulator is not None:
             self.simulator = simulator
@@ -74,87 +64,19 @@ class MainModel(mesa.Model):
         self.scenario_name = scenario_name
         self.scenario_value = None  # the value of the variable in this iteration
         self.params = Parameters(scenario_name)
-        # the init argument values override the parameter values (there may be a neater way to do this)
-        if is_stop_community_infection is not None:
-            self.params.is_stop_community_infection = is_stop_community_infection
-
-        # infection probabilities
-        if cattle_infect_cattle_prob is not None:
-            self.params.cattle_infect_cattle_prob = cattle_infect_cattle_prob
-            self.scenario_value = cattle_infect_cattle_prob
-        if human_infect_human_prob is not None:
-            self.params.human_infect_human_prob = human_infect_human_prob
-            self.scenario_value = human_infect_human_prob
-        if human_infect_cattle_prob is not None:
-            self.params.human_infect_cattle_prob = human_infect_cattle_prob
-            self.scenario_value = human_infect_cattle_prob
-        if cattle_infect_human_prob is not None:
-            self.params.cattle_infect_human_prob = cattle_infect_human_prob
-            self.scenario_value = cattle_infect_human_prob
-
-        # quarantine farms
-        if is_quarantine_farm is not None:
-            self.params.is_quarantine_farm = is_quarantine_farm
-            self.scenario_value = is_quarantine_farm
-
-        # vaccination
-        # print("VACC_ROLES: {}".format(vacc_roles))
-        if vacc_roles is not None:
-            # passed as a comma separated string of role
-            input_vacc_roles = [role.strip().lower() for role in vacc_roles.split(',')]
-            use_vacc_role_list = []
-            for role_input in input_vacc_roles:
-                if role_input in input_to_role:
-                    use_vacc_role_list.append(input_to_role[role_input])
-            self.params.vacc_roles = use_vacc_role_list
-            if vacc_roles.strip().lower() == 'none':
-                self.scenario_value = 'None'
+        # the init argument values override the parameter values
+        param_str_list = []
+        for param_name, param_value in kwargs.items():
+            # some parameters need proce
+            if param_name == 'VACC_ROLES':
+                value = self.params.process_vacc_roles(param_value)
+            elif param_name in ['TRUCK_CLEANING_SCHEDULE', 'HOSPITAL_CLEANING_SCHEDULE']:
+                value = self.params.process_cleaning_schedule(param_value)
             else:
-                self.scenario_value = ','.join(input_vacc_roles)
-
-        # truck cleaning schedule
-        if truck_cleaning is not None:
-            arg_value = truck_cleaning.strip().lower()
-            self.scenario_value = arg_value
-            if arg_value == 'daily':
-                self.params.truck_cleaning_schedule = Cleaning.DAILY
-            elif arg_value == 'visit':
-                self.params.truck_cleaning_schedule = Cleaning.VISIT
-            else:
-                # default to none on any other input
-                self.params.truck_cleaning_schedule = Cleaning.NONE
-
-        # print("scenario_value: {}".format(self.scenario_value))
-        if vacc_human_infect_cattle_prob is not None:
-            self.params.vacc_human_infect_cattle_prob = vacc_human_infect_cattle_prob
-            self.scenario_value = vacc_human_infect_cattle_prob
-        if vacc_human_infect_human_prob is not None:
-            self.params.vacc_human_infect_human_prob = vacc_human_infect_human_prob
-            self.scenario_value = vacc_human_infect_human_prob
-        if vacc_cattle_infect_human_prob is not None:
-            self.params.vacc_cattle_infect_human_prob = vacc_cattle_infect_human_prob
-            self.scenario_value = vacc_cattle_infect_human_prob
-        if vacc_human_infect_env_prob is not None:
-            self.params.vacc_human_infect_env_prob = vacc_human_infect_env_prob
-            self.scenario_value = vacc_human_infect_env_prob
-        if vacc_env_infect_human_prob is not None:
-            self.params.vacc_env_infect_human_prob = vacc_env_infect_human_prob
-            self.scenario_value = vacc_env_infect_human_prob
-
-        if num_infected_farms is not None:
-            self.params.num_init_infected_farms = num_infected_farms
-            self.scenario_value = num_infected_farms
-        if people_sheet is not None:
-            self.params.people_sheet = people_sheet.strip().lower()
-            self.scenario_value = people_sheet.strip().lower()
-        if hospital_cleaning is not None:
-            arg_value = hospital_cleaning.strip().lower()
-            self.scenario_value = arg_value
-            if arg_value == 'daily':
-                self.params.hospital_cleaning_schedule = Cleaning.DAILY
-            else:
-                # default to none on any other input
-                self.params.hospital_cleaning_schedule = Cleaning.NONE
+                value = param_value
+            setattr(self.params, param_name, value)
+            param_str_list.append("{}-{}".format(param_name, param_value))
+        self.scenario_value = '_'.join(param_str_list)
 
         # set up the grid
         self.width = 43
@@ -259,7 +181,7 @@ class MainModel(mesa.Model):
 
             # one farmer per farm
             farmer = FarmerAgent(self, farm)
-            farmer.vaccinated = PersonRole.FARMER in self.params.vacc_roles
+            farmer.vaccinated = PersonRole.FARMER in self.params.VACC_ROLES
             # print("  {} vacc status: {}".format(farmer.name, farmer.vaccinated))
             self.total_people += 1
 
@@ -271,10 +193,10 @@ class MainModel(mesa.Model):
 
             min_farm_x = min(min_farm_x, cell_x)
 
-        # do the initial infections - 1 on params.num_init_infected_farms farms
+        # do the initial infections - 1 on params.NUM_INIT_INFECTED_FARMS farms
         infected_farms = self.random.sample(
             self.agents_by_type[DairyFarmAgent],
-            min(self.params.num_init_infected_farms, len(self.agents_by_type[DairyFarmAgent]))
+            min(self.params.NUM_INIT_INFECTED_FARMS, len(self.agents_by_type[DairyFarmAgent]))
         )
         for farm in infected_farms:
             farm.cattle_model.infect_susceptible(1)
@@ -285,7 +207,7 @@ class MainModel(mesa.Model):
         # ------------------------- People
 
         # load the people file to define hospital locations and staff/clinicians/students
-        people_df = pd.read_excel(get_input_data_dir() / PEOPLE_INPUT_FILENAME, sheet_name=self.params.people_sheet)
+        people_df = pd.read_excel(get_input_data_dir() / PEOPLE_INPUT_FILENAME, sheet_name=self.params.SHEET_NAME)
         people_df.columns = people_df.columns.str.lower()
         area_names = [name.split(':')[1].strip()
                       for name in people_df.columns if name.startswith('area:')]
@@ -298,7 +220,7 @@ class MainModel(mesa.Model):
             self.total_people += num_role
 
             # vaccination status
-            is_vaccinated = person_role in self.params.vacc_roles
+            is_vaccinated = person_role in self.params.VACC_ROLES
 
             # parse the weightings for each area for this role
             area_weights = []
@@ -330,8 +252,8 @@ class MainModel(mesa.Model):
         home_cell_x = hospital_width
         home_cell_y = farm_start
         travel_cell_x = (hospital_width + min_farm_x) // 2
-        travel_cell_y = home_cell_y - self.params.num_trucks
-        for truck_num in range(self.params.num_trucks):
+        travel_cell_y = home_cell_y - self.params.NUM_TRUCKS
+        for truck_num in range(self.params.NUM_TRUCKS):
             home_cell = self.grid[home_cell_x, home_cell_y+truck_num]
             travel_cell = self.grid[travel_cell_x, travel_cell_y + 2 * truck_num]
             truck = TruckAgent(self, home_cell, truck_num, travel_cell, self.truck_bay)
@@ -341,9 +263,9 @@ class MainModel(mesa.Model):
         # ------------------------- end initial truck placement
         # ------------------------- Community setup
         self.community_model = SEIRModel(self, 'community',
-                                         self.params.community_population, self.params.human_infect_human_prob,
+                                         self.params.COMMUNITY_POPULATION, self.params.HUMAN_INFECT_HUMAN_PROB,
                                          self.params.human_exposed_steps, self.params.human_infectious_steps,
-                                         self.params.human_recovered_steps, self.params.community_contacts_per_step)
+                                         self.params.human_recovered_steps, self.params.COMMUNITY_CONTACTS_PER_STEP)
 
         # ------------------------- end Community setup
         # ------------------------- Data logging
@@ -410,7 +332,7 @@ class MainModel(mesa.Model):
                 self.step_community_infected = self.steps
                 # print('   {}: first infectious {}'.format(self.steps, self.step_community_infected))
         if self.community_model.susceptible < self.community_model.population \
-                and self.params.is_stop_community_infection:
+                and self.params.IS_STOP_COMMUNITY_INFECTION:
             # stop running here
             self.running = False
         else:  # go ahead with another model step
@@ -470,13 +392,13 @@ class MainModel(mesa.Model):
         queue = self.farm_emergency_request_queue if is_emergency else self.farm_request_queue
         while len(queue) > 0 and len(self.available_farm_clinicians) > 0 and len(self.available_trucks) > 0:
             if is_emergency:
-                farms_to_visit = self.farm_emergency_request_queue[:self.params.max_visits_per_trip]
+                farms_to_visit = self.farm_emergency_request_queue[:self.params.MAX_VISITS_PER_TRIP]
                 # remove those requests from the queue
-                del self.farm_emergency_request_queue[:self.params.max_visits_per_trip]
+                del self.farm_emergency_request_queue[:self.params.MAX_VISITS_PER_TRIP]
             else:
-                farms_to_visit = self.farm_request_queue[:self.params.max_visits_per_trip]
+                farms_to_visit = self.farm_request_queue[:self.params.MAX_VISITS_PER_TRIP]
                 # remove those requests from the queue
-                del self.farm_request_queue[:self.params.max_visits_per_trip]
+                del self.farm_request_queue[:self.params.MAX_VISITS_PER_TRIP]
 
             # get the next available clinician and give them a visit list
             clinician = self.available_farm_clinicians.pop(0)
@@ -577,7 +499,7 @@ class MainModel(mesa.Model):
         :return: Day number for the given step
         :rtype: int
         """
-        return step_number // self.params.steps_per_day
+        return step_number // self.params.STEPS_PER_DAY
 
     def get_weeks_days_steps(self, steps):
         """
@@ -592,7 +514,7 @@ class MainModel(mesa.Model):
         :return: Tuple of (total weeks, total days, days left after weeks, steps left after days)
         :rtype: tuple
         """
-        days, leftover_steps = divmod(steps, self.params.steps_per_day)
+        days, leftover_steps = divmod(steps, self.params.STEPS_PER_DAY)
         weeks, leftover_days = divmod(days, 7)
 
         return weeks, days, leftover_days, leftover_steps
@@ -614,7 +536,7 @@ class MainModel(mesa.Model):
 
         # print("{} (w={}, d={}, s={}): {}".format(all_steps, weeks, leftover_days, leftover_steps,
         #                                          leftover_days < 5 and 1 <= leftover_steps <= DAYTIME_STEPS))
-        return leftover_days < 5 and 1 <= leftover_steps <= self.params.daytime_steps
+        return leftover_days < 5 and 1 <= leftover_steps <= self.params.DAYTIME_STEPS
 
     def is_weekend(self, all_steps):
         """
@@ -668,7 +590,7 @@ class MainModel(mesa.Model):
         _, _, leftover_days, leftover_steps = self.get_weeks_days_steps(step)
 
         # True if a weekday and the first step of the day
-        return leftover_days in range(5) and leftover_steps == self.params.daytime_steps // 2 + 1
+        return leftover_days in range(5) and leftover_steps == self.params.DAYTIME_STEPS // 2 + 1
 
     def is_after_hours_workday(self, step):
         """
@@ -681,7 +603,7 @@ class MainModel(mesa.Model):
         """
         _, _, leftover_days, leftover_steps = self.get_weeks_days_steps(step)
 
-        return leftover_steps in range(5) and leftover_steps >= self.params.daytime_steps
+        return leftover_steps in range(5) and leftover_steps >= self.params.DAYTIME_STEPS
 
     def is_num_steps_after_workday(self, num_steps):
         """
@@ -695,6 +617,6 @@ class MainModel(mesa.Model):
         _, _, leftover_days, leftover_steps = self.get_weeks_days_steps(self.steps)
 
         is_num_steps_after_workday = leftover_days in range(5) \
-                                     and leftover_steps == self.params.daytime_steps + num_steps
+                                     and leftover_steps == self.params.DAYTIME_STEPS + num_steps
 
         return is_num_steps_after_workday

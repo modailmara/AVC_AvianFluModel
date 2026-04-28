@@ -14,7 +14,7 @@ from Models.MainModel import MainModel
 
 
 scenario_name = 'PeopleMixing'
-var_name = 'people_sheet'
+var_name = 'SHEET_NAME'
 var_values = ['default', 'no_common', 'dept_only']
 
 

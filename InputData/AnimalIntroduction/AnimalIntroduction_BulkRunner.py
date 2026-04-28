@@ -14,8 +14,8 @@ from InputData.scenario_constants import NUM_ITERATIONS, STEPS, clear_working_di
 
 
 scenario_name = 'AnimalIntroduction'
-var_name = 'num_infected_farms'
-var_values = [1, 5, 10, 15, 19]  # range(1, 20)
+var_name = 'NUM_INFECTED_FARMS'
+var_values = [1, 5, 10, 15, 19]
 
 
 if __name__ == "__main__":

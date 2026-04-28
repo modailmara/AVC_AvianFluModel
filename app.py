@@ -268,19 +268,19 @@ model_params = {
     'seed': {
         'type': 'InputText', 'value': 42, 'label': 'Random Seed'
     },
-    'is_stop_community_infection': {
+    'IS_STOP_COMMUNITY_INFECTION': {
         'type': 'Checkbox', 'value': True, 'label': 'Stop on community infection'
     },
-    'is_quarantine_farm': {
+    'IS_QUARANTINE_FARM': {
         'type': 'Checkbox', 'value': True, 'label': 'Quarantine farmers after infection'
     },
-    'cattle_infect_cattle_prob': Slider(min=0, max=1, step=.01, value=params.cattle_infect_cattle_prob,
+    'CATTLE_INFECT_CATTLE_PROB': Slider(min=0, max=1, step=.01, value=params.CATTLE_INFECT_CATTLE_PROB,
                                         label='Prob. cow -> cow'),
-    'human_infect_human_prob': Slider(min=0, max=1, step=.01, value=params.human_infect_human_prob,
+    'HUMAN_INFECT_HUMAN_PROB': Slider(min=0, max=1, step=.01, value=params.HUMAN_INFECT_HUMAN_PROB,
                                       label='Prob. person -> person'),
-    'human_infect_cattle_prob': Slider(min=0, max=1, step=.01, value=params.human_infect_cattle_prob,
+    'HUMAN_INFECT_CATTLE_PROB': Slider(min=0, max=1, step=.01, value=params.HUMAN_INFECT_CATTLE_PROB,
                                        label='Prob. person -> cow'),
-    'cattle_infect_human_prob': Slider(min=0, max=1, step=.01, value=params.cattle_infect_human_prob,
+    'CATTLE_INFECT_HUMAN_PROB': Slider(min=0, max=1, step=.01, value=params.CATTLE_INFECT_HUMAN_PROB,
                                        label='Prob. cow -> person'),
 }
 

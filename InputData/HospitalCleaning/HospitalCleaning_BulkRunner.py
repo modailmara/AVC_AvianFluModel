@@ -11,7 +11,7 @@ from InputData.scenario_constants import NUM_ITERATIONS, STEPS, clear_working_di
 
 
 scenario_name = 'HospitalCleaning'
-var_name = 'hospital_cleaning'
+var_name = 'HOSPITAL_CLEANING_SCHEDULE'
 var_values = ['none', 'daily']
 
 

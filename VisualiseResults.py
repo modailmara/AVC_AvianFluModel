@@ -74,7 +74,7 @@ def visualise_steps_to_spillover(ax, scenario_name, result_df, var_name, var_val
     spillover_result_df['Days'] = spillover_result_df.steps_to_community / STEPS_PER_DAY
 
     # convert labels for clearer display
-    if var_name == 'vacc_roles':
+    if var_name == 'VACC_ROLES':
         spillover_result_df['variable'] = spillover_result_df[var_name].apply(
             lambda x: x.replace('farm services', 'FS'))
         var_values = [val.replace('farm services', 'FS') for val in var_values]
@@ -173,8 +173,9 @@ def visualise_infection_network(scenario_name, result_type, var_value):
     edgelist_dir = get_output_data_dir(scenario_name) / 'working'
     # read in all the iteration result edge lists and put them together
     edge_df_list = []
-    for edgelist_filepath in [edgelist_dir / filename for filename in list(edgelist_dir.glob('{}::{}::{}::*.csv'.format(
-            scenario_name, result_type, var_value)))]:
+    for edgelist_filepath in [edgelist_dir / filename for filename in
+                              list(edgelist_dir.glob('{}--{}--{}--*.csv'.format(scenario_name, result_type,
+                                                                                var_value)))]:
         # each file is a single iteration
         iteration_df = pd.read_csv(edgelist_filepath, names=['source', 'target', 'weight', 'step'])
 
@@ -190,7 +191,7 @@ def visualise_infection_network(scenario_name, result_type, var_value):
     edgelist_df = edgelist_group.agg({'weight': 'mean', 'step': 'min'}).reset_index()
 
     # write the edgelist to a csv file
-    filename = '{}::{}::{}::edgelist.csv'.format(scenario_name, result_type, var_value)
+    filename = '{}--{}--{}--edgelist.csv'.format(scenario_name, result_type, var_value)
     edgelist_df.to_csv(get_output_data_dir(scenario_name) / filename, index=False)
 
     # convert to a network graph
@@ -238,14 +239,14 @@ def visualise_infection_network(scenario_name, result_type, var_value):
     plt.axis("off")
     # plt.tight_layout()
 
-    ax.get_figure().savefig(get_output_data_dir(scenario_name) / '{}::{}::{}::network.png'.format(scenario_name,
+    ax.get_figure().savefig(get_output_data_dir(scenario_name) / '{}--{}--{}--network.png'.format(scenario_name,
                                                                                                   result_type,
                                                                                                   var_value))
 
     plt.close()
 
 
-def create_full_transmission_edgelist(scenario_name, result_type, var_value):
+def create_full_transmission_edgelist(scenario_name, result_type, var_name, var_value):
     # var_value = 'None' if var_value == 'none' else var_value
     if scenario_name == 'Quarantine+Vacc':
         var_value = var_value.replace(', ', ',')
@@ -254,19 +255,16 @@ def create_full_transmission_edgelist(scenario_name, result_type, var_value):
     # get the dir with the edgelist files
     edgelist_dir = get_output_data_dir(scenario_name) / 'working'
     # read in all the iteration result edge lists and put them together
-    edge_df_list = []
-    print("scenario={}\nresult_type={}\nvar_value={}".format(scenario_name, result_type, var_value))
-    var_filename_list = [edgelist_dir / filename
-                         for filename in list(edgelist_dir.glob('{}::{}::{}::*.csv'.format(scenario_name,
-                                                                                           result_type,
-                                                                                           var_value)))]
-    if len(var_filename_list) == 0 and var_value == 'none':
-        # given 'none' but filenames use 'None'
-        var_filename_list = [edgelist_dir / filename
-                             for filename in list(edgelist_dir.glob('{}::{}::{}::*.csv'.format(scenario_name,
-                                                                                               result_type,
-                                                                                               'None')))]
 
+    print("scenario={}\nresult_type={}\nvar_value={}".format(scenario_name, result_type, var_value))
+
+    var_filename_list = [filepath for filepath in edgelist_dir.iterdir()
+                         if filepath.is_file()
+                         and filepath.suffix == '.csv'
+                         and '{}--{}'.format(scenario_name, result_type) in filepath.name
+                         and '{}-{}'.format(var_name, var_value) in filepath.name]
+
+    edge_df_list = []
     for edgelist_filepath in var_filename_list:
         # each file is a single iteration
         iteration_df = pd.read_csv(edgelist_filepath, names=['from_node', 'to_node', 'weight', 'step'])
@@ -300,8 +298,8 @@ def create_full_transmission_edgelist(scenario_name, result_type, var_value):
     return edgelist_df
 
 
-def visualise_infection_upset(scenario_name, result_type, var_value, fig):
-    edgelist_df = create_full_transmission_edgelist(scenario_name, result_type, var_value)
+def visualise_infection_upset(scenario_name, result_type, var_name, var_value, fig):
+    edgelist_df = create_full_transmission_edgelist(scenario_name, result_type, var_name, var_value)
 
     num_edges = 10
     short_edgelist_df = edgelist_df[:num_edges]
@@ -377,16 +375,16 @@ def create_scenario_figure(scenario_df, scenario_name, var_name, var_values):
 
     # separate subfigure for each upset plot
     upset_subfigs = subfigs[2].subfigures(1, len(var_values))
-    upset_subfig_titles = ['(c)', '(d)', '(e)']
+    upset_subfig_titles = ['(c)', '(d)', '(e)', '(f)', '(g)', '(h)', '(i)']
 
     print('  drawing the infection networks and upset plots')
-    for num, var_value in enumerate(var_values):
+    for num, var_value in enumerate(var_values[:len(upset_subfig_titles)]):
         # visualise_infection_network(scenario_name, 'spillover', var_value)
         # visualise_infection_network(scenario_name, 'complete', var_value)
         # visualise_infection_upset(scenario_name, 'spillover', var_value)
         # ax = plt.subplot(3, len(var_values), 2 + len(var_values) + num)
         print('    complete {}'.format(var_value))
-        visualise_infection_upset(scenario_name, 'complete', var_value, upset_subfigs[num])
+        visualise_infection_upset(scenario_name, 'complete', var_name, var_value, upset_subfigs[num])
         upset_subfigs[num].suptitle(upset_subfig_titles[num], fontsize=18, weight='bold')
 
     subtext = "C=community, FA=farm, FL=floating, FS=farm services, LA=large animal, SA=small animal.\n" + \
@@ -417,7 +415,7 @@ def count_transmissions(scenario_name, var_name, var_values):
         for var_value in var_values:
             count_file.write('  value: {}\n'.format(var_value))
             # get the full DF of edges
-            edgelist_df = create_full_transmission_edgelist(scenario_name, 'complete', var_value)
+            edgelist_df = create_full_transmission_edgelist(scenario_name, 'complete', var_name, var_value)
             all_transmissions = edgelist_df['weight'].sum()
 
             # get counts of f -> C and C -> f transmissions

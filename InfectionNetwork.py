@@ -121,7 +121,7 @@ class InfectionNetwork:
 
         # The uuid is to make sure there is a separate file for each iteration. The iteration number would be ideal
         # but I don't think I can access it from here.
-        filename = "{}::{}::{}::{}".format(scenario_name, label, param_value, uuid.uuid4())
+        filename = "{}--{}--{}--{}".format(scenario_name, label, param_value, uuid.uuid4())
 
         # write the edgelist
         nx.write_edgelist(self.infection_graph, working_dir / '{}.{}'.format(filename, 'csv'), delimiter=',',

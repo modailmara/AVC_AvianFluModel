@@ -7,11 +7,11 @@ from mesa.batchrunner import batch_run
 
 from support_functions import get_output_data_dir
 from Models.MainModel import MainModel
-from InputData.scenario_constants import NUM_ITERATIONS, STEPS, clear_working_directory
+from InputData.scenario_constants import NUM_ITERATIONS, STEPS, clear_working_directory, NUM_PROCESSORS
 
 
 scenario_name = 'TruckCleaning'
-var_name = 'truck_cleaning'
+var_name = 'TRUCK_CLEANING_SCHEDULE'
 var_values = ['none', 'daily', 'visit']
 
 
@@ -25,7 +25,7 @@ if __name__ == "__main__":
             var_name: var_values},
         iterations=NUM_ITERATIONS,
         max_steps=STEPS,
-        number_processes=None,
+        number_processes=NUM_PROCESSORS,
         data_collection_period=1,
         display_progress=True
     )

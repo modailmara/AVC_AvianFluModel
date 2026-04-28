@@ -8,11 +8,10 @@ from mesa.batchrunner import batch_run
 from support_functions import get_output_data_dir
 from Models.MainModel import MainModel
 from InputData.scenario_constants import NUM_ITERATIONS, STEPS, clear_working_directory, NUM_PROCESSORS
-from constants import PersonRole
 
 
 scenario_name = 'Quarantine+Vacc+TClean'
-var_name = 'truck_cleaning'
+var_name = 'TRUCK_CLEANING_SCHEDULE'
 var_values = ['none', 'daily', 'visit']
 
 if __name__ == "__main__":
@@ -21,8 +20,8 @@ if __name__ == "__main__":
         MainModel,
         parameters={
             'scenario_name': scenario_name,
-            'is_quarantine_farm': True,
-            'vacc_roles': 'farm services student, farm services clinician',
+            'IS_QUARANTINE_FARM': True,
+            'VACC_ROLES': 'farm services student, farm services clinician',
             var_name: var_values},
         iterations=NUM_ITERATIONS,
         max_steps=STEPS,

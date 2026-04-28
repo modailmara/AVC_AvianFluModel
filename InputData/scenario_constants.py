@@ -11,6 +11,7 @@ STEPS = DAYS * 24
 
 NUM_ITERATIONS = 500
 
+# None means use all the available processors
 NUM_PROCESSORS = None
 
 

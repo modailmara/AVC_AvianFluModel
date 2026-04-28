@@ -12,7 +12,7 @@ from constants import PersonRole
 
 
 scenario_name = 'Quarantine+Vacc'
-var_name = 'vacc_roles'
+var_name = 'VACC_ROLES'
 var_values = ['none',
               'farm services clinician',
               'farm services student, farm services clinician'
@@ -25,7 +25,7 @@ if __name__ == "__main__":
         MainModel,
         parameters={
             'scenario_name': scenario_name,
-            'is_quarantine_farm': True,
+            'IS_QUARANTINE_FARM': True,
             var_name: var_values},
         iterations=NUM_ITERATIONS,
         max_steps=STEPS,

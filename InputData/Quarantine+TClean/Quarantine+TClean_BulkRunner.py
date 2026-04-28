@@ -11,11 +11,10 @@ from mesa.batchrunner import batch_run
 from InputData.scenario_constants import NUM_ITERATIONS, STEPS, clear_working_directory, NUM_PROCESSORS
 from support_functions import get_output_data_dir
 from Models.MainModel import MainModel
-from constants import PersonRole
 
 
 scenario_name = 'Quarantine+TClean'
-var_name = 'truck_cleaning'
+var_name = 'TRUCK_CLEANING_SCHEDULE'
 var_values = ['none', 'daily', 'visit']
 
 
@@ -27,7 +26,7 @@ if __name__ == "__main__":
         MainModel,
         parameters={
             'scenario_name': scenario_name,
-            'is_quarantine_farm': True,
+            'IS_QUARANTINE_FARM': True,
             var_name: var_values},
         iterations=NUM_ITERATIONS,
         max_steps=STEPS,

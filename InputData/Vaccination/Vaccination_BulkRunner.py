@@ -12,7 +12,7 @@ from constants import PersonRole
 
 
 scenario_name = 'Vaccination'
-var_name = 'vacc_roles'
+var_name = 'VACC_ROLES'
 var_values = ['none',
               'farm services clinician',
               'farm services student, farm services clinician'

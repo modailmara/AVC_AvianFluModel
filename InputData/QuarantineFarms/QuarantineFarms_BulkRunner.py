@@ -14,7 +14,7 @@ from Models.MainModel import MainModel
 
 
 scenario_name = 'QuarantineFarms'
-var_name = 'is_quarantine_farm'
+var_name = 'IS_QUARANTINE_FARM'
 var_values = [False, True]
 
 

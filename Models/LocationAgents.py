@@ -55,7 +55,7 @@ class LocationAgent(CellAgent):
             for person_agent in [agent for agent in self.cell.agents
                                  if isinstance(agent, Models.PeopleAgents.PersonAgent)
                                     and agent.disease_state == DiseaseState.SUSCEPTIBLE]:
-                if self.random.random() <= self.model.params.env_infect_human_prob:
+                if self.random.random() <= self.model.params.ENV_INFECT_HUMAN_PROB:
                     person_agent.become_infected()
 
                     # record the environment infecting the person
@@ -100,7 +100,7 @@ class HospitalAgent(LocationAgent):
 
     def scheduled_cleaning(self):
         if self.disease_state == DiseaseState.INFECTIOUS \
-                and self.model.params.hospital_cleaning_schedule == Cleaning.DAILY \
+                and self.model.params.HOSPITAL_CLEANING_SCHEDULE == Cleaning.DAILY \
                 and self.model.is_num_steps_after_workday(1):
             # do a daily clean
             self.clean()
@@ -174,7 +174,7 @@ class DairyFarmAgent(LocationAgent):
         # SIR model for the cattle herd
         self.cattle_model = SEIRModel(model=self.model, name=self.name,
                                       population=herd_size,
-                                      infection_probability=self.model.params.cattle_infect_cattle_prob,
+                                      infection_probability=self.model.params.CATTLE_INFECT_CATTLE_PROB,
                                       exposed_steps=self.model.params.cattle_exposed_steps,
                                       infectious_steps=self.model.params.cattle_infected_steps,
                                       recovered_steps=self.model.params.cattle_recovered_steps,
@@ -266,7 +266,7 @@ class DairyFarmAgent(LocationAgent):
         # farm location agent (not cattle) can infect susceptible cattle
         if self.disease_state == DiseaseState.INFECTIOUS and self.cattle_model.num_susceptible > 0:
             num_infected = np.random.binomial(self.cattle_model.num_susceptible,
-                                              self.model.params.env_infect_cattle_prob)
+                                              self.model.params.ENV_INFECT_CATTLE_PROB)
             self.cattle_model.infect_susceptible(num_infected)
 
             # record farm infect the herd
@@ -282,7 +282,7 @@ class DairyFarmAgent(LocationAgent):
         # infectious cattle can infect the farm location agent
         if self.disease_state == DiseaseState.SUSCEPTIBLE and self.cattle_model.num_infectious > 0:
             for _ in range(self.cattle_model.num_infectious):
-                if self.random.random() < self.model.params.cattle_infect_env_prob:
+                if self.random.random() < self.model.params.CATTLE_INFECT_ENV_PROB:
                     self.become_infected()
 
                     # record herd infect the farm
@@ -391,7 +391,7 @@ class TruckAgent(LocationAgent):
         """
         if self.location == Location.TRAVEL:
             # already travelling
-            if self.steps_at_travel >= self.model.params.visit_travel_steps:
+            if self.steps_at_travel >= self.model.params.VISIT_TRAVEL_STEPS:
                 # been travelling long enough - reached destination (farm or hospital)
                 self.go_to_next_location()
             else:
@@ -399,7 +399,7 @@ class TruckAgent(LocationAgent):
                 self.steps_at_travel += 1
         elif self.location == Location.FARM:
             # check if the truck needs to leave the farm
-            if self.steps_at_farm >= self.model.params.vet_steps_at_farm:
+            if self.steps_at_farm >= self.model.params.VET_STEPS_AT_FARM:
                 # been here long enough, time to leave
                 self.travel()
             else:
@@ -417,7 +417,7 @@ class TruckAgent(LocationAgent):
             # if the farm is quarantined, assume biosecurity measures prevent infection
             if self.disease_state == DiseaseState.INFECTIOUS and self.farm.disease_state == DiseaseState.SUSCEPTIBLE:
                 # check if there is infection transfer between the truck and farm
-                if self.random.random() < self.model.params.truck_infect_env_prob:
+                if self.random.random() < self.model.params.TRUCK_INFECT_ENV_PROB:
                     self.farm.become_infected()
                     # record the truck infecting the farm location
                     self.model.infection_network.add_infection_event(self.short_name, self.farm.short_name,
@@ -425,7 +425,7 @@ class TruckAgent(LocationAgent):
                 elif self.disease_state == DiseaseState.SUSCEPTIBLE \
                         and self.farm.disease_state == DiseaseState.INFECTIOUS:
                     # susceptible truck and infectious farm - maybe get infectious
-                    if self.random.random() < self.model.params.env_infect_truck_prob:
+                    if self.random.random() < self.model.params.ENV_INFECT_TRUCK_PROB:
                         self.become_infected()
                         # record the farm location infecting the truck
                         self.model.infection_network.add_infection_event(self.farm.short_name, self.short_name,
@@ -436,7 +436,7 @@ class TruckAgent(LocationAgent):
             if self.disease_state == DiseaseState.INFECTIOUS \
                     and self.truck_bay.disease_state == DiseaseState.SUSCEPTIBLE:
                 # possibility to infect the truck bay at the hospital
-                if self.random.random() < self.model.params.truck_infect_env_prob:
+                if self.random.random() < self.model.params.TRUCK_INFECT_ENV_PROB:
                     self.truck_bay.become_infected()
                     # record the truck infecting the hospital truck bay
                     self.model.infection_network.add_infection_event(self.short_name, self.truck_bay.short_name,
@@ -444,7 +444,7 @@ class TruckAgent(LocationAgent):
             elif self.disease_state == DiseaseState.SUSCEPTIBLE \
                     and self.truck_bay.disease_state == DiseaseState.INFECTIOUS:
                 # possibility to be infectious by the truck bay
-                if self.random.random() < self.model.params.env_infect_truck_prob:
+                if self.random.random() < self.model.params.ENV_INFECT_TRUCK_PROB:
                     self.become_infected()
                     # record the hospital truck bay infecting the truck
                     self.model.infection_network.add_infection_event(self.truck_bay.short_name, self.short_name,
@@ -525,7 +525,7 @@ class TruckAgent(LocationAgent):
         self.cell = self.home_cell
 
         if self.disease_state == DiseaseState.INFECTIOUS \
-                and self.model.params.truck_cleaning_schedule == Cleaning.VISIT:
+                and self.model.params.TRUCK_CLEANING_SCHEDULE == Cleaning.VISIT:
             # clean on return from visiting farms
             self.clean()
 
@@ -547,7 +547,7 @@ class TruckAgent(LocationAgent):
         'visit' scheduled cleaning is implemented in return_to_hospital method
         """
         if self.disease_state == DiseaseState.INFECTIOUS \
-                and self.model.params.truck_cleaning_schedule == Cleaning.DAILY \
+                and self.model.params.TRUCK_CLEANING_SCHEDULE == Cleaning.DAILY \
                 and self.model.is_num_steps_after_workday(1):
             # do a daily clean
             self.clean()
