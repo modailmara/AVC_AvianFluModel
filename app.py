@@ -262,37 +262,42 @@ def infection_network(model):
 
     solara.FigureMatplotlib(fig)
 
+
 # load the default parameters for starting values
 params = Parameters()
+
+
 model_params = {
     'seed': {
         'type': 'InputText', 'value': 42, 'label': 'Random Seed'
     },
     'IS_STOP_COMMUNITY_INFECTION': {
-        'type': 'Checkbox', 'value': True, 'label': 'Stop on community infection'
+        'type': 'Checkbox', 'value': params.IS_STOP_COMMUNITY_INFECTION, 'label': 'Stop on community infection'
     },
     'IS_QUARANTINE_FARM': {
-        'type': 'Checkbox', 'value': True, 'label': 'Quarantine farmers after infection'
+        'type': 'Checkbox', 'value': params.IS_QUARANTINE_FARM, 'label': 'Quarantine farmers after infection'
     },
-    'CATTLE_INFECT_CATTLE_PROB': Slider(min=0, max=1, step=.01, value=params.CATTLE_INFECT_CATTLE_PROB,
+    'CATTLE_INFECT_CATTLE_PROB': Slider(min=0, max=1, step=.001, value=params.CATTLE_INFECT_CATTLE_PROB,
                                         label='Prob. cow -> cow'),
-    'HUMAN_INFECT_HUMAN_PROB': Slider(min=0, max=1, step=.01, value=params.HUMAN_INFECT_HUMAN_PROB,
+    'HUMAN_INFECT_HUMAN_PROB': Slider(min=0, max=1, step=.001, value=params.HUMAN_INFECT_HUMAN_PROB,
                                       label='Prob. person -> person'),
-    'HUMAN_INFECT_CATTLE_PROB': Slider(min=0, max=1, step=.01, value=params.HUMAN_INFECT_CATTLE_PROB,
+    'HUMAN_INFECT_CATTLE_PROB': Slider(min=0, max=1, step=.001, value=params.HUMAN_INFECT_CATTLE_PROB,
                                        label='Prob. person -> cow'),
-    'CATTLE_INFECT_HUMAN_PROB': Slider(min=0, max=1, step=.01, value=params.CATTLE_INFECT_HUMAN_PROB,
+    'CATTLE_INFECT_HUMAN_PROB': Slider(min=0, max=1, step=.001, value=params.CATTLE_INFECT_HUMAN_PROB,
                                        label='Prob. cow -> person'),
+    'scenario_name': 'Baseline',
 }
 
 
 simulator = ABMSimulator()
-main_model = MainModel(simulator=simulator, is_stop_community_infection=True, is_quarantine_farm=True)
+
+main_model = MainModel(simulator=simulator, scenario_name='Baseline')
 
 page = SolaraViz(
     main_model,
     components=[space_component, infection_network, person_infection_plot, community_infection_plot],
     model_params=model_params,
-    name="Avian Influenza in the Veterinary Teaching Hospital",
+    name="HPAI in the Veterinary Teaching Hospital",
     simulator=simulator,
 )
 page  # noqa

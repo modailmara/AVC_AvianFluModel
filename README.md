@@ -8,28 +8,35 @@ dairy farms including farmers and cows, the veterinary hospital, and into the wi
 
 ### Installation
 1. Install Python (https://www.python.org). 
-   1. We used version 3.11. 
-   2. Everything should work with many other versions of Python3, but we haven't tested them.
+   1. We successfully used versions 3.11 and 3.12. 
+   2. The model *should* work with many other versions of Python3, but we haven't tested them.
 2. (Optional) We recommend using a Python virtual environment (https://docs.python.org/3/tutorial/venv.html).
    1. The main benefit is that package installations won't interfere with other Python configurations you might have. 
    2. It may be necessary if you don't have admin/root permissions on your computer.
    3. Simple case when everything works and assuming you want to call your environment `hpai-env`
-      1. `> python -m venv hpai-env`
-      2. `> source hpai-env/bin/activate` (Linux and MacOSX, see website for Windows)
-         1. You will need to do this step first each time you use the model
-3. Install the Mesa package. 
+      1. Create the environment `> python -m venv hpai-env`
+      2. Then activate it:
+         1. (Linux/Mac) `> source hpai-env/bin/activate` 
+         2. (Windows cmd) `> hpai-env\Scripts\Activate`
+         3. (Windows PowerShell) `hpai-env\Scripts\Acivate.ps1`
+      3. After activation, your terminal should show something like `(hpai-env)> `
+      4. If you are using an environment, make sure you activate it each time you use the model
+3. Clone or download the AvianFlu package.
+   1. **To download** click the big green *Code* button above and use the *Download ZIP* link in the dropdown
+   2. **To clone using Git**
+      1. Change to the directory where you want the model code
+      2. `> git clone https://github.com/modailmara/AVC_AvianFluModel.git`
+      3. Change into the model directory `cd AVC_AvianFlu`
+
+4. Install the Mesa package. 
    1. We use version 3.1.5. We haven't tested later versions, other v3.x versions probably work?
    2. We used `pip install -U mesa[rec]==3.1.5` to install the recommended dependency packages.
    3. Unfortunately the latest version of the Starlette dependency causes an error, so we have to install an old version:
-      1. `> pip uninstall starlette`
+      1. `> pip uninstall starlette -y`
       2. `> pip install starlette==0.45.3`
    4. And the `openpyxl` package to use Excel has to be installed separately:
       1. `> pip install openpyxl`
-4. Clone or download the AvianFlu package.
-   1. To download click the big green *Code* button above and use the *Download ZIP* link in the dropdown
-   2. To clone using Git
-      1. Change to the directory where you want the model code
-      2. `> git clone https://github.com/modailmara/AVC_AvianFluModel.git`
+
 
 ### Run the visual model
 1. Change to the directory where you put the code, then into the *AVC_AvianFluModel* directory

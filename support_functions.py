@@ -40,7 +40,7 @@ def get_input_data_dir():
 
 def get_output_data_dir(scenario_name):
     scenario_output_dir = get_scenario_input_dir(scenario_name) / 'output'
-    scenario_output_dir.mkdir(exist_ok=True)
+    scenario_output_dir.mkdir(parents=True, exist_ok=True)
     return scenario_output_dir
 
 
