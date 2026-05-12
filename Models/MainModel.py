@@ -65,18 +65,22 @@ class MainModel(mesa.Model):
         self.scenario_value = None  # the value of the variable in this iteration
         self.params = Parameters(scenario_name)
         # the init argument values override the parameter values
-        param_str_list = []
-        for param_name, param_value in kwargs.items():
-            # some parameters need proce
-            if param_name == 'VACC_ROLES':
-                value = self.params.process_vacc_roles(param_value)
-            elif param_name in ['TRUCK_CLEANING_SCHEDULE', 'HOSPITAL_CLEANING_SCHEDULE']:
-                value = self.params.process_cleaning_schedule(param_value)
-            else:
-                value = param_value
-            setattr(self.params, param_name, value)
-            param_str_list.append("{}-{}".format(param_name, param_value))
-        self.scenario_value = '_'.join(param_str_list)
+        if len(kwargs) == 0:
+            # no parameters set - just baseline
+            self.scenario_value = 'baseline'
+        else:
+            param_str_list = []
+            for param_name, param_value in kwargs.items():
+                # some parameters need proce
+                if param_name == 'VACC_ROLES':
+                    value = self.params.process_vacc_roles(param_value)
+                elif param_name in ['TRUCK_CLEANING_SCHEDULE', 'HOSPITAL_CLEANING_SCHEDULE']:
+                    value = self.params.process_cleaning_schedule(param_value)
+                else:
+                    value = param_value
+                setattr(self.params, param_name, value)
+                param_str_list.append("{}-{}".format(param_name, param_value))
+            self.scenario_value = '_'.join(param_str_list)
 
         # set up the grid
         self.width = 43

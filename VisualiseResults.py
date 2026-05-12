@@ -84,8 +84,8 @@ def visualise_steps_to_spillover(ax, scenario_name, result_df, var_name, var_val
     plot = sns.boxplot(spillover_result_df, x='variable', y='Days', order=var_values, ax=ax)
     if scenario_name == 'QuarantineFarms':
         plot.set(xticklabels=['no quarantine', 'quarantine'])
-    elif scenario_name == 'Quarantine+Vacc':
-        plot.set(xticklabels=['none', 'FS clinician', 'FS student, FS clinician'])
+    elif scenario_name in ['Quarantine+Vacc', 'Vaccination']:
+        plot.set(xticklabels=['none', 'FS clinician', 'FS student, FS clinician', 'FS student, FS clinician, Farmer'])
 
     plt.ylim(0, np.nanmax(spillover_result_df['Days']) + 1)
     plot.set(xlabel=None)
@@ -127,7 +127,7 @@ def visualise_community_infectious_proportion(ax, scenario_name, result_df, var_
     handles, labels = plot.get_legend_handles_labels()
     if scenario_name == 'QuarantineFarms':
         labels = ['no quarantine', 'quarantine']
-    elif scenario_name == 'Quarantine+Vacc':
+    elif scenario_name in ['Quarantine+Vacc', 'Vaccination']:
         labels = [lab.replace('farm services', 'FS') for lab in labels]
 
     plot.legend(handles=handles, labels=labels)
@@ -168,7 +168,6 @@ def get_node_pos(nx_graph, current_node, current_x=0, y_min=0, visited_nodes=[])
 
 
 def visualise_infection_network(scenario_name, result_type, var_value):
-    print("    {}_{}".format(result_type, var_value))
     # get the dir with the edgelist files
     edgelist_dir = get_output_data_dir(scenario_name) / 'working'
     # read in all the iteration result edge lists and put them together
@@ -201,9 +200,6 @@ def visualise_infection_network(scenario_name, result_type, var_value):
     # Draw the graph nodes
     # node_pos = nx.spring_layout(infection_graph, seed=63, k=10)
     # get the source nodes (infected farms)
-    if 'complete' in filename:
-        # for debugging
-        print(filename)
     y_span, node_pos = get_node_pos(infection_graph, 'h', current_x=0, y_min=0, visited_nodes=[])
     # position community node to the right, halfway between top and bottom
     node_pos['C'] = (max(node_pos.values(), key=lambda x: x[0])[0] + 2, y_span / 2)
@@ -248,15 +244,13 @@ def visualise_infection_network(scenario_name, result_type, var_value):
 
 def create_full_transmission_edgelist(scenario_name, result_type, var_name, var_value):
     # var_value = 'None' if var_value == 'none' else var_value
-    if scenario_name == 'Quarantine+Vacc':
-        var_value = var_value.replace(', ', ',')
-    print("    {}_{}".format(result_type, var_value))
-
+    # if scenario_name == 'Quarantine+Vacc':
+    #     var_value = var_value.replace(', ', ',')
     # get the dir with the edgelist files
     edgelist_dir = get_output_data_dir(scenario_name) / 'working'
     # read in all the iteration result edge lists and put them together
 
-    print("scenario={}\nresult_type={}\nvar_value={}".format(scenario_name, result_type, var_value))
+    #  print(" scenario={}\n result_type={}\n var_value={}".format(scenario_name, result_type, var_value))
 
     var_filename_list = [filepath for filepath in edgelist_dir.iterdir()
                          if filepath.is_file()
@@ -298,8 +292,11 @@ def create_full_transmission_edgelist(scenario_name, result_type, var_name, var_
     return edgelist_df
 
 
-def visualise_infection_upset(scenario_name, result_type, var_name, var_value, fig):
-    edgelist_df = create_full_transmission_edgelist(scenario_name, result_type, var_name, var_value)
+def visualise_infection_upset(scenario_name, result_type, var_name, var_value, fig, file_var_value=None):
+    if file_var_value is None:
+        file_var_value = var_value
+
+    edgelist_df = create_full_transmission_edgelist(scenario_name, result_type, var_name, file_var_value)
 
     num_edges = 10
     short_edgelist_df = edgelist_df[:num_edges]
@@ -342,7 +339,8 @@ def visualise_infection_upset(scenario_name, result_type, var_name, var_value, f
     upset_ax_dict['shading'].set_xlabel('{}'.format(x_label))
 
 
-def create_scenario_figure(scenario_df, scenario_name, var_name, var_values):
+def create_scenario_figure(scenario_df, scenario_name, var_name, var_values,
+                           var_long_values=None, var_filename_values=None):
     """
     Creates a single large figure with 3 rows of sub figures.
     First row is a boxplot of times to first community exposure.
@@ -358,6 +356,11 @@ def create_scenario_figure(scenario_df, scenario_name, var_name, var_values):
     :param var_values: List of the parameter values used in the scenario
     :type var_values: list
     """
+    if var_long_values is None:
+        var_long_values = var_values
+    if var_filename_values is None:
+        var_filename_values = var_values
+
     # define a single figure with a subfigure each for boxplot, lineplot, and upsets (3 rows)
     figure = plt.figure(layout='constrained', figsize=(8, 11))
     subfigs = figure.subfigures(3, 1, height_ratios=[1.5, 1.5, 2.5])
@@ -374,17 +377,13 @@ def create_scenario_figure(scenario_df, scenario_name, var_name, var_values):
     subfigs[1].suptitle('(b)', fontsize=18, weight='bold')
 
     # separate subfigure for each upset plot
+    print('  plotting upset charts of transmissions')
     upset_subfigs = subfigs[2].subfigures(1, len(var_values))
     upset_subfig_titles = ['(c)', '(d)', '(e)', '(f)', '(g)', '(h)', '(i)']
 
-    print('  drawing the infection networks and upset plots')
     for num, var_value in enumerate(var_values[:len(upset_subfig_titles)]):
-        # visualise_infection_network(scenario_name, 'spillover', var_value)
-        # visualise_infection_network(scenario_name, 'complete', var_value)
-        # visualise_infection_upset(scenario_name, 'spillover', var_value)
-        # ax = plt.subplot(3, len(var_values), 2 + len(var_values) + num)
-        print('    complete {}'.format(var_value))
-        visualise_infection_upset(scenario_name, 'complete', var_name, var_value, upset_subfigs[num])
+        visualise_infection_upset(scenario_name, 'complete', '', var_value, upset_subfigs[num],
+                                  file_var_value=var_filename_values[num])
         upset_subfigs[num].suptitle(upset_subfig_titles[num], fontsize=18, weight='bold')
 
     subtext = "C=community, FA=farm, FL=floating, FS=farm services, LA=large animal, SA=small animal.\n" + \
@@ -393,6 +392,7 @@ def create_scenario_figure(scenario_df, scenario_name, var_name, var_values):
     subfigs[2].supxlabel(subtext, multialignment='left')
 
     plt.savefig(get_output_data_dir(scenario_name) / f'{scenario_name}-all.tiff', dpi=500)
+    plt.savefig(get_output_data_dir(scenario_name) / f'{scenario_name}-all.png')
     plt.close()
 
 

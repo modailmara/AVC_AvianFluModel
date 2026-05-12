@@ -40,8 +40,14 @@ class SEIRModel(object):
         self.susceptible = population
         self.exposed = [0] * exposed_steps
         self.infectious = [0] * infectious_steps  # each list item is count for number of steps infectious
-        # each list item is count for number of steps recovered
-        self.recovered = [0] * recovered_steps
+        if recovered_steps < 0:
+            # compartment model entities don't go back to susceptible after recovering
+            self.lose_immunity = False
+            self.recovered = 0
+        else:
+            # each list item is count for number of steps recovered
+            self.lose_immunity = True
+            self.recovered = [0] * recovered_steps
 
         # model parameters
         self.infection_prob = infection_probability
@@ -79,11 +85,14 @@ class SEIRModel(object):
         :return: Proportion of the population that is infectious.
         :rtype: float
         """
-        return sum(self.infectious) / self.population
+        return self.num_infectious / self.population
 
     @property
     def num_recovered(self):
-        return sum(self.recovered)
+        if self.lose_immunity:
+            return sum(self.recovered)
+        else:
+            return self.recovered
 
     def progress_infection(self):
         """
@@ -98,13 +107,12 @@ class SEIRModel(object):
         )
         new_exposed = min(self.susceptible, np.random.binomial(potential_new_infections, self.infection_prob))
 
+        # get the list values before the lists change
         new_infected = self.exposed[-1]
         new_recovered = self.infectious[-1]
-        new_recovery_ended = self.recovered[-1]
 
         # adjust the state counts
         self.susceptible -= new_exposed
-        self.susceptible += new_recovery_ended
 
         self.exposed = self.progress_state_list_one_step(self.exposed)
         self.exposed[0] = new_exposed
@@ -112,10 +120,18 @@ class SEIRModel(object):
         self.infectious = self.progress_state_list_one_step(self.infectious)
         self.infectious[0] = new_infected
 
-        self.recovered = self.progress_state_list_one_step(self.recovered)
-        self.recovered[0] = new_recovered
+        if self.lose_immunity:
+            # recovered state ends for some, who become susceptible
+            new_recovery_ended = self.recovered[-1]
+            self.susceptible += new_recovery_ended
+            self.recovered = self.progress_state_list_one_step(self.recovered)
+            self.recovered[0] = new_recovered
+        else:
+            # recovery never ends, just add on the new ones
+            self.recovered += new_recovered
 
-    def progress_state_list_one_step(self, state_list):
+    @staticmethod
+    def progress_state_list_one_step(state_list):
         """
         Progresses a list one step forward, e.g. state_list[n-1] -> state_list[n], ..., state_list[0] -> state_list[1]
         Assume the last list member is not needed

@@ -8,14 +8,15 @@ from mesa.batchrunner import batch_run
 from support_functions import get_output_data_dir
 from Models.MainModel import MainModel
 from InputData.scenario_constants import NUM_ITERATIONS, STEPS, clear_working_directory, NUM_PROCESSORS
-from constants import PersonRole
 
 
 scenario_name = 'Vaccination'
 var_name = 'VACC_ROLES'
 var_values = ['none',
+              'farmer',
               'farm services clinician',
-              'farm services student, farm services clinician'
+              'farm services student, farm services clinician',
+              'farmer, farm services student, farm services clinician',
               ]
 
 

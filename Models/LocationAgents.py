@@ -211,7 +211,7 @@ class DairyFarmAgent(LocationAgent):
 
     @property
     def num_recovered(self):
-        return sum(self.cattle_model.recovered)
+        return self.cattle_model.num_recovered
 
     @property
     def proportion_recovered(self):

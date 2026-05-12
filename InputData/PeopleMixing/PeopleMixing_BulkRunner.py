@@ -26,10 +26,11 @@ if __name__ == "__main__":
         MainModel,
         parameters={
             'scenario_name': scenario_name,
+            'IS_QUARANTINE_FARM': True,
             var_name: var_values},
         iterations=NUM_ITERATIONS,
         max_steps=STEPS,
-        number_processes=NUM_PROCESSORS,
+        number_processes=6,  # NUM_PROCESSORS,
         data_collection_period=1,
         display_progress=True
     )

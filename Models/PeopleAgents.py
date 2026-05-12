@@ -113,13 +113,15 @@ class PersonAgent(CellAgent):
                 self.steps_current_disease_state += 1
             self.steps_since_exposed += 1
         elif self.disease_state == DiseaseState.RECOVERED:
-            if self.steps_current_disease_state >= self.model.params.human_recovered_steps:
-                # immunity has expired - back to susceptible
-                self.disease_state = DiseaseState.SUSCEPTIBLE
-                self.steps_current_disease_state = 0
-            else:
-                # still immune from recent recovery
-                self.steps_current_disease_state += 1
+            if self.model.params.human_recovered_steps > 0:
+                # recovery has a time limit, so may lose immunity or at least have to count steps
+                if self.steps_current_disease_state >= self.model.params.human_recovered_steps:
+                    # immunity has expired - back to susceptible
+                    self.disease_state = DiseaseState.SUSCEPTIBLE
+                    self.steps_current_disease_state = 0
+                else:
+                    # still immune from recent recovery, keep counting steps
+                    self.steps_current_disease_state += 1
             # no longer symptomatic
             self.symptomatic = False
             self.steps_since_exposed = 0
