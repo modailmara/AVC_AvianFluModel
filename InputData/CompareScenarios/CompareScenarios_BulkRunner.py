@@ -16,10 +16,20 @@ from Models.MainModel import MainModel
 from InputData.scenario_constants import NUM_ITERATIONS, STEPS, clear_working_directory, NUM_PROCESSORS
 
 
-scenario_name = 'CompareScenarios'
+def run_condition(scenario_name, condition, parameters, extra_columns=[]):
+    """
 
-
-def run_condition(condition, parameters):
+    :param scenario_name:
+    :type scenario_name: str
+    :param condition:
+    :type condition: str
+    :param parameters:
+    :type parameters: dict
+    :param extra_columns:
+    :type extra_columns: list
+    :return:
+    :rtype:
+    """
     parameters['scenario_name'] = scenario_name
     results = batch_run(
         MainModel,
@@ -36,7 +46,7 @@ def run_condition(condition, parameters):
     spillover_columns = ['iteration', 'steps_to_community', 'Step']
     community_cols = ['Community_num_SUSCEPTIBLE', 'Community_num_EXPOSED', 'Community_num_INFECTIOUS',
                       'Community_num_RECOVERED']
-    relevant_df = all_df.loc[:, spillover_columns + community_cols]
+    relevant_df = all_df.loc[:, spillover_columns + community_cols + extra_columns]
     relevant_df['condition'] = condition
     relevant_df.to_csv(get_output_data_dir(scenario_name) / '{}-{}_data-{}.csv'.format(scenario_name, condition,
                                                                                        NUM_ITERATIONS),
@@ -45,25 +55,26 @@ def run_condition(condition, parameters):
 
 
 def main():
+    scenario_name = 'CompareScenarios'
     clear_working_directory(scenario_name)
 
     condition_df_list = []
 
     # baseline
-    condition_df_list.append(run_condition('baseline', {}))
+    condition_df_list.append(run_condition(scenario_name, 'baseline', {}))
 
     # quarantine + vaccinate farmers
     parameters = {
         'IS_QUARANTINE_FARM': True,
         'VACC_ROLES': 'farmer'
     }
-    condition_df_list.append(run_condition('quarantine + vaccinate farmers', parameters))
+    condition_df_list.append(run_condition(scenario_name, 'quarantine + vaccinate farmers', parameters))
 
     # vaccinate farmers + FS clinicians
     parameters = {
         'VACC_ROLES': 'farmer, farm services clinician'
     }
-    condition_df_list.append(run_condition('vaccinate farmers + FS clinicians', parameters))
+    condition_df_list.append(run_condition(scenario_name, 'vaccinate farmers + FS clinicians', parameters))
 
     # Vaccination + disinfect trucks + Common areas
     parameters = {
@@ -72,7 +83,8 @@ def main():
         'SHEET_NAME': 'no_common'
     }
     condition_df_list.append(
-        run_condition('vaccinate farmers + FS clinicians and disinfect trucks and close common areas', parameters)
+        run_condition(scenario_name, 'vaccinate farmers + FS clinicians and disinfect trucks and close common areas',
+                      parameters)
     )
 
     compare_scenarios_df = pd.concat(condition_df_list)

@@ -87,7 +87,8 @@ def visualise_steps_to_spillover(ax, scenario_name, result_df, var_name, var_val
     elif scenario_name in ['Quarantine+Vacc', 'Vaccination']:
         plot.set(xticklabels=['none', 'FS clinician', 'FS student, FS clinician', 'FS student, FS clinician, Farmer'])
 
-    plt.ylim(0, np.nanmax(spillover_result_df['Days']) + 1)
+    # plt.ylim(0, np.nanmax(spillover_result_df['Days']) + 1)
+    ax.set_ylim([0, 30])
     plot.set(xlabel=None)
 
     # plot.get_figure().savefig(get_output_data_dir(scenario_name) / '{}-spillover_steps-box.png'.format(scenario_name))
@@ -96,6 +97,8 @@ def visualise_steps_to_spillover(ax, scenario_name, result_df, var_name, var_val
 def visualise_community_infectious_proportion(ax, scenario_name, result_df, var_name):
     """
 
+    :param ax:
+    :type ax:
     :param scenario_name:
     :type scenario_name:
     :param result_df:
@@ -121,6 +124,7 @@ def visualise_community_infectious_proportion(ax, scenario_name, result_df, var_
     # make a line plot comparing outcomes
     plot = sns.lineplot(result_df, x='Days', y='Infectious proportion',
                         hue=var_name, palette='colorblind', ax=ax)
+    ax.set_ylim([-0.05, 1.05])
     plt.ylim(-0.05, 1.05)
 
     # fix the legend labels for readability
